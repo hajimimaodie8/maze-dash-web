@@ -190,12 +190,78 @@
         });
     }
 
+    /* ================= 删除付费 / 体力 / 爱心相关界面 =================
+       全部用「停用节点」实现，索引与数组结构保持原样，因此游戏里对 0 号
+       视图、体力计时器等的引用都不会失效。 */
+    var HIDE_PROPS = [
+        'ticketView',               // 顶部爱心 + 无限体力 + 计时
+        'ticketInfinityView',
+        'ticketInfinityTimeLabel',
+        'ticketNum',                // 体力数字
+        'freeHintBtn',              // 看广告补提示
+        'freeTicketBtn',            // 看广告补体力
+        'HintShopWnd',              // 买提示窗口
+        'TicketShopWnd'             // 买体力窗口
+    ];
+    /* 场景里按名字兜底（关卡内 HUD 的爱心/体力、以及各处「+」购买按钮） */
+    var HIDE_NAME_RE = /^(addButton|buyRemoveAd|PopShop|RateUs|Aboutus)$|ticket|infinity|heart/i;
+
+    function hidePurchaseUI() {
+        var hall = window.hallScene;
+        var hidden = 0;
+        if (hall) {
+            HIDE_PROPS.forEach(function (k) {
+                var n = hall[k];
+                if (n && n.isValid && n.active) { n.active = false; hidden++; }
+            });
+            // 商店那一格整个去掉（Layout 会自动跳过停用的子项）
+            var bar = hall.tabBar;
+            if (bar && bar.children && bar.children.length > SHOP_INDEX) {
+                var shopTab = bar.children[SHOP_INDEX];
+                if (shopTab && shopTab.active) { shopTab.active = false; hidden++; }
+            }
+            var shopView = hall.viewGroup && hall.viewGroup[SHOP_INDEX];
+            if (shopView && shopView.isValid && shopView.active) { shopView.active = false; hidden++; }
+            // 任何「去商店」的入口都改跳皮肤页，避免进到已删除的页面
+            if (typeof hall.openShop === 'function' && !hall.openShop.__cleanMode) {
+                hall.openShop = function () {
+                    stats.silenced.openShop = (stats.silenced.openShop || 0) + 1;
+                    try { gamemain.showTabBarViewIndex = FACE_INDEX; hall.showBarView(); } catch (e) {}
+                };
+                hall.openShop.__cleanMode = true;
+                stats.sceneMethods = stats.sceneMethods || [];
+                stats.sceneMethods.push('openShop');
+            }
+        }
+        // 关卡内 HUD：把爱心/体力以及「+」购买按钮关掉
+        try {
+            var s = cc.director.getScene();
+            if (s) {
+                (function walk(n) {
+                    if (n !== s && n.active && HIDE_NAME_RE.test(n.name)) {
+                        n.active = false;
+                        hidden++;
+                    }
+                    (n.children || []).forEach(walk);
+                })(s);
+            }
+        } catch (e) {}
+        if (hidden) {
+            stats.hiddenNodes = (stats.hiddenNodes || 0) + hidden;
+            if (window.MazeDashCustomTab && MazeDashCustomTab.relayout) { MazeDashCustomTab.relayout(); }
+        }
+        return hidden;
+    }
+
+    var SHOP_INDEX = 0;   // 原版最左边的商店
+    var FACE_INDEX = 1;   // 皮肤页
     function quietScene() {
         try {
             var s = cc.director.getScene();
             if (!s) { return; }
             if (s.name === 'HallScene') { silenceComponent(window.hallScene, SCENE_QUIET.HallScene); }
             if (s.name === 'gameScene') { silenceComponent(window.gameScene, SCENE_QUIET.gameScene); }
+            hidePurchaseUI();
             (function walk(n) {
                 if (n !== s && n.active && NUISANCE_RE.test(n.name)) {
                     n.active = false;

@@ -12,7 +12,7 @@
     "test:coldstart": "node coldstart.js",
     "test:live": "node live.js",
     "test:tab": "node customtab.js",
-    "test:tab-sequence": "node sequence.js",`n    "test:quiet": "node clean.js"
+    "test:tab-sequence": "node sequence.js",`n    "test:quiet": "node clean.js",`n    "test:nomoney": "node nomoney.js"
   },
   "dependencies": { "puppeteer-core": "^23.0.0" }
 }

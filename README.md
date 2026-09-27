@@ -202,6 +202,23 @@ node tools/make-wrench-icon.js --color '#FF8A3D' --out dist/w.png --print-dataur
 
 ---
 
+### 付费/体力/爱心相关界面已整体删除
+
+| 删除项 | 实现 |
+| --- | --- |
+| **最左边的商店页与商店标签** | `tabBar.children[0].active = false` + `viewGroup[0].active = false`；标签栏按「可见格数」重新均分 → **5 格 × 144 = 720**（索引与数组结构保持不变，所以游戏里对 0 号视图的引用不会失效） |
+| 任何「去商店」的入口 | 接管 `hallScene.openShop`，改为跳皮肤页 —— 不会进到已删除的页面 |
+| **爱心 + 体力 + 无限(∞) + 计时** | 停用 `ticketView` / `ticketInfinityView` / `ticketInfinityTimeLabel` / `ticketNum` |
+| 看广告补提示 / 补体力 | 停用 `freeHintBtn` / `freeTicketBtn` |
+| 买提示 / 买体力的窗口 | 停用 `HintShopWnd` / `TicketShopWnd` |
+| 「+」购买按钮、Remove Ads、PopShop、RateUs、Aboutus | 按名字停用 |
+| 关卡内 HUD 的爱心/体力 | 同样按名字在场景里停用 |
+
+**提示改为直接用关卡内底部的提示按钮**（该按钮保留），右上角不再显示计数与"无限"。
+`tools/verify/nomoney.js` → **15/15**。
+
+---
+
 ## 验证情况
 
 | 项目 | 结果 |
@@ -217,6 +234,7 @@ node tools/make-wrench-icon.js --color '#FF8A3D' --out dist/w.png --print-dataur
 | 服务器版验收 | `node tools/verify/acceptance.js` → **17/17** |
 | 直装版验收 | `node tools/verify/standalone.js` → **14/14**，且网络请求数为 **0** |
 | 在线版验收 | 直接加载 `https://hajimimaodie8.github.io/maze-dash-web/` → **10/10**（含真实滑动通关） |
+| 删除付费界面 | 商店页/标签移除、5 格 × 144 均分、爱心+体力+∞+计时全部停用、买提示/买体力按钮与窗口停用、关卡内 HUD 同样清干净、openShop 改跳皮肤页 → `tools/verify/nomoney.js` **15/15** |
 | 清静模式 | 皮肤 12/12 解锁、皮肤页 0 上锁、礼包窗不再出现、通关第 1 关后无任何弹窗、10 个弹窗入口 + 5 个场景级入口被接管 → `tools/verify/clean.js` **13/13** |
 | 第 6 个标签 | 6 格 × 120 = 720 均分、扳手图标生效、页面滑入居中、高亮唯一、来回切换与连点都稳定 → 	ools/verify/customtab.js **17/17** |
 | 一致性 | `web/src/`、`web/res/` 与 APK 内文件逐字节一致 |

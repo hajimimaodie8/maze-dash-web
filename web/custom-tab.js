@@ -31,7 +31,8 @@
     /* ============================== 配置 ============================== */
     var CFG = {
         index: 5,              // 第 6 个标签的索引（原版 0..4）
-        slotWidth: 120,        // 6 x 120 = 720，正好等于标签栏宽度
+        barWidth: 720,         // 标签栏宽度
+        slotWidth: 120,        // 仅作默认值；实际按「可见格数」平分 720
         iconNodeSize: 70,      // 与原版图标一致
         tabName: 'customBar',
         viewName: 'customLevelsView',
@@ -169,10 +170,17 @@
     function layoutTabs(hall) {
         var bar = hall.tabBar;
         var kids = bar.children || [];
+        // Only active slots are laid out, so divide the bar between those — that
+        // keeps 6 slots at 120 px, or 5 at 144 px once the shop tab is hidden.
+        var active = 0;
+        for (var a = 0; a < kids.length; a++) {
+            if (kids[a].activeInHierarchy) { active++; }
+        }
+        var slot = active > 0 ? Math.round(CFG.barWidth / active) : CFG.slotWidth;
         for (var i = 0; i < kids.length; i++) {
-            kids[i].width = CFG.slotWidth;
+            kids[i].width = slot;
             var bg = childByName(kids[i], 'bg');
-            if (bg) { bg.width = CFG.slotWidth; }
+            if (bg) { bg.width = slot; }
             var icon = childByName(kids[i], 'icon');
             if (icon) {
                 icon.width = CFG.iconNodeSize;
@@ -186,7 +194,7 @@
             layout.paddingRight = 0;
             if (layout.updateLayout) { layout.updateLayout(); }
         }
-        log('bar now has', kids.length, 'slots of', CFG.slotWidth, 'px (total', kids.length * CFG.slotWidth, ')');
+        log('laid out', active, 'visible slots of', slot, 'px (bar', CFG.barWidth, ')');
     }
 
     /* --------------------------------- 3. the placeholder page for index 5 */
@@ -364,6 +372,8 @@
     /* Small API so the editor (and the tests) can drive the tab. */
     window.MazeDashCustomTab = {
         index: CFG.index,
+        /** re-divide the bar, e.g. after slots are hidden */
+        relayout: function () { try { layoutTabs(window.hallScene); } catch (e) {} },
         install: tryInstall,
         /** Open the custom-levels page from code. */
         open: function () {
