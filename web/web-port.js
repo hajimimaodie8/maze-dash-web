@@ -116,16 +116,9 @@
     function designSizeForWindow() {
         var fs = frameSize();
         var w = CONFIG.designWidth;
-        /* Gameplay runs at the authored design. The in-level board is a 720x1280
-           portrait playfield that lays itself out from the visible size, so a wide
-           design there leaves the HUD inactive and the board mis-sized. Only the
-           menu scenes (launch / hall) get the wide design. */
-        var inLevel = false;
-        try {
-            var s = cc.director && cc.director.getScene();
-            inLevel = !!(s && s.name === 'gameScene');
-        } catch (e) {}
-        if (CONFIG.wideMode !== false && !inLevel && fs.height > 0 && fs.width > 0) {
+        /* Every scene uses the wide design now: the level board centres itself and
+           the in-level HUD rows are spread across the width by wide-ui.js. */
+        if (CONFIG.wideMode !== false && fs.height > 0 && fs.width > 0) {
             w = Math.round(CONFIG.designHeight * fs.width / fs.height);
             w = Math.max(CONFIG.designWidth, Math.min(w, Math.round(CONFIG.designHeight * 3)));
         }

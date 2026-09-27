@@ -251,6 +251,7 @@
                 sp.type = cc.Sprite.Type.SIMPLE;
             });
         }
+        buildModeSelector(view);
         return view;
     }
 
@@ -271,6 +272,7 @@
         // background: reuse the 2x2 white sprite the tab highlight uses,
         // stretched and tinted — exactly how the game paints its own pages
         var sampleSprite = sample.getComponent(cc.Sprite);
+        view.__whiteFrame = sampleSprite ? sampleSprite.spriteFrame : null;
         var white = sampleSprite ? sampleSprite.spriteFrame : null;
         var bg = view.addComponent(cc.Sprite);
         if (white) { bg.spriteFrame = white; }
@@ -334,9 +336,107 @@
 
         buildPlaceholderContent(view, tint);
         log('created placeholder view', view.name);
+        buildModeSelector(view);
         return view;
     }
 
+    /* ================== 模式选择：闯关模式 / 解锁模式 ==================
+       解锁模式把所有世界与关卡都判为已通关（覆盖两个取值函数），方便调试与检查。
+       选择结果存在 localStorage，重开页面仍然生效。 */
+    var MODE_KEY = 'maze_dash_mode';
+
+    function currentMode() {
+        try { return localStorage.getItem(MODE_KEY) === 'unlocked' ? 'unlocked' : 'progression'; } catch (e) { return 'progression'; }
+    }
+    function maxLevelId(worldId) {
+        try {
+            var cfg = conf.stage_level_cfg[worldId], mx = 0;
+            for (var k in cfg) { if (cfg[k].levelId > mx) { mx = cfg[k].levelId; } }
+            return mx;
+        } catch (e) { return 0; }
+    }
+    /* clear the generated buttons, then let the game decide lock vs grid again */
+    function refreshStagePages() {
+        try {
+            var sv = cc.find('Canvas/gameView/scrollView');
+            var content = sv && sv.getComponent(cc.ScrollView).content;
+            if (!content) { return 0; }
+            var n = 0;
+            content.children.forEach(function (page) {
+                var c = page.getComponent('StageSelectLayer');
+                if (!c) { return; }
+                var host = (c.SelectLevelLayer && c.SelectLevelLayer.parent && c.SelectLevelLayer.parent.getComponent(cc.Layout))
+                    ? c.SelectLevelLayer.parent : c.SelectLevelLayer;
+                if (host) {
+                    host.children.slice().forEach(function (ch) {
+                        if (ch.getComponent && ch.getComponent('LevelButton')) { ch.removeFromParent(); }
+                    });
+                }
+                try { c.showLockLayer(); n++; } catch (e) {}
+            });
+            return n;
+        } catch (e) { return 0; }
+    }
+    function applyMode(mode) {
+        var gm = window.gamemain;
+        if (!gm) { return false; }
+        if (!gm.__origPassMax) {
+            gm.__origPassMax = gm.getPassMaxLevelId;
+            gm.__origPassCount = gm.getPassLevelCount;
+        }
+        try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+        if (mode === 'unlocked') {
+            gm.getPassLevelCount = function () { return 9999; };            // every world unlocked
+            gm.getPassMaxLevelId = function (worldId) { return maxLevelId(worldId); };
+        } else {
+            gm.getPassLevelCount = gm.__origPassCount;
+            gm.getPassMaxLevelId = gm.__origPassMax;
+        }
+        refreshStagePages();
+        if (window.MazeDashWide && MazeDashWide.widenSelectPage) { try { MazeDashWide.widenSelectPage(); } catch (e) {} }
+        log('mode ->', mode, '(stage pages refreshed)');
+        return true;
+    }
+
+    function buildModeSelector(view) {
+        var modes = [
+            { id: 'progression', label: '闯关模式', desc: '按进度解锁（默认）' },
+            { id: 'unlocked', label: '解锁模式', desc: '全关卡解锁（便于调试）' },
+        ];
+        var active = currentMode();
+        var buttons = [];
+        var y = -170;
+
+        makeLabel(view, '模式选择', y + 70, 30, cc.color(255, 255, 255, 230)).name = 'modeTitle';
+
+        modes.forEach(function (m, i) {
+            var node = new cc.Node('mode_' + m.id);
+            node.parent = view;
+            node.y = y - i * 100;
+            node.width = 420;
+            node.height = 84;
+
+            var bg = node.addComponent(cc.Sprite);
+            if (view.__whiteFrame) { bg.spriteFrame = view.__whiteFrame; }
+            bg.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            bg.type = cc.Sprite.Type.SIMPLE;
+            node.color = (m.id === active) ? cc.color(124, 107, 242, 255) : cc.color(255, 255, 255, 46);
+
+            var label = makeLabel(node, m.label + '   ' + m.desc, 0, 22, cc.color(255, 255, 255, 235));
+            label.name = 'label';
+
+            node.on(cc.Node.EventType.TOUCH_END, function () {
+                applyMode(m.id);
+                buttons.forEach(function (b) {
+                    b.node.color = (b.id === m.id) ? cc.color(124, 107, 242, 255) : cc.color(255, 255, 255, 46);
+                });
+            });
+            buttons.push({ id: m.id, node: node });
+        });
+
+        makeLabel(view, '解锁模式只影响本机显示，不改动关卡数据', y - modes.length * 100 - 10, 20, cc.color(255, 255, 255, 160)).name = 'modeHint';
+        return buttons;
+    }
     /* ------------------------------------------------------------ install */
     function install(hall) {
         if (!hall || hall.__customTabInstalled) { return false; }
@@ -391,6 +491,13 @@
     }
     scheduleInstall(0);
 
+    /* restore the saved mode once gamemain exists */
+    (function waitMode(attempt) {
+        if (window.gamemain) { applyMode(currentMode()); return; }
+        if ((attempt || 0) > 60) { return; }
+        setTimeout(function () { waitMode((attempt || 0) + 1); }, 250);
+    })(0);
+
     /* World pages are instantiated as the carousel scrolls, so keep the arrow hit
        areas trimmed for as long as the hall is alive. */
     setInterval(function () {
@@ -406,6 +513,10 @@
         /** re-divide the bar, e.g. after slots are hidden */
         relayout: function () { try { layoutTabs(window.hallScene); } catch (e) {} },
         install: tryInstall,
+        /** switch 闯关模式 / 解锁模式 (persisted) */
+        applyMode: applyMode,
+        /** re-run the game's lock/grid decision for every world page */
+        refreshStagePages: refreshStagePages,
         /** Open the custom-levels page from code. */
         open: function () {
             try {

@@ -18,7 +18,7 @@
 
     var CFG = {
         widenSelectPage: true,     // 世界翻页页 + 选关网格撑宽
-        widenLevelHud: false,      // 关卡内 HUD 保持原样：那几行是 Layout + resizeMode=CHILDREN，撑宽会被推散/裁切
+        widenLevelHud: true,       // 关卡内 HUD：把三颗按钮沿宽度拉开
         hideCountBadges: true,     // 去掉提示/重开按钮上的数字
         unlimitedHints: true,      // 提示不再消耗
         unlimitedRestarts: true,   // 重开不再消耗
@@ -169,12 +169,15 @@
                         if (hasComp(ch, 'LevelButton')) { ch.removeFromParent(); }
                     });
                 }
-                // re-run the game's own generator so the column count matches the new width
+                // Ask the game to decide: showLockLayer() shows the lock panel for a
+                // world that is still locked and only then calls updateUnlockLayer().
+                // Calling updateUnlockLayer() directly forced locked worlds to render
+                // their level grid, which is the leak that was reported.
                 try {
-                    c.updateUnlockLayer();
+                    c.showLockLayer();
                     stats.gridsRegenerated++;
                 } catch (e) {
-                    log('updateUnlockLayer failed:', e);
+                    log('showLockLayer failed:', e);
                 }
             }
         });
@@ -187,12 +190,28 @@
         if (!gs || !gs.node || !gs.node.isValid) { return 0; }
         var W = visibleWidth();
         var changed = 0;
-        var back = cc.find('Canvas/backgroup', gs.node);
+        // the gameScene component lives on the Canvas node, so resolve from the scene root
+        var back = cc.find('Canvas/backgroup') || cc.find('backgroup', gs.node);
         if (back && back.isValid) {
-            /* The bottom button row is deliberately left alone: its Layout uses
-               resizeMode = CHILDREN, so it sizes itself to the three buttons and
-               resizes back the moment we widen it. A compact, centred row reads
-               better than three buttons flung to the far edges anyway. */
+            /* The bottom row is a Layout with resizeMode = CHILDREN, so widening the
+               node itself does nothing - it resizes back. Spreading the children via
+               spacingX is what actually works. */
+            var bar = back.getChildByName('button_group');
+            if (bar && bar.isValid) {   // re-apply every tick: the buttons can activate later
+                bar.__wideW = W;
+                var spread = Math.round((W - 300) / 2);
+                var layout = bar.getComponent(cc.Layout);
+                if (layout) {
+                    layout.spacingX = spread;
+                    layout.updateLayout();
+                }
+                // Position them directly as well: the row's Layout lives on a parent
+                // in some builds, and a direct write is what actually sticks.
+                var shown = (bar.children || []).filter(function (k) { return k.activeInHierarchy; });
+                var mid = Math.floor(shown.length / 2);
+                shown.forEach(function (k, i) { k.x = (i - mid) * spread; });
+                changed++;
+            }
             // the level title row follows the width too
             var top = back.getChildByName('top');
             if (top && top.isValid && top.__wideW !== W) {
