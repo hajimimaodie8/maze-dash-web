@@ -18,7 +18,7 @@
 
     var CFG = {
         widenSelectPage: true,     // 世界翻页页 + 选关网格撑宽
-        widenLevelHud: true,       // 关卡内 HUD 撑宽
+        widenLevelHud: false,      // 关卡内 HUD 保持原样：那几行是 Layout + resizeMode=CHILDREN，撑宽会被推散/裁切
         hideCountBadges: true,     // 去掉提示/重开按钮上的数字
         unlimitedHints: true,      // 提示不再消耗
         unlimitedRestarts: true,   // 重开不再消耗
@@ -206,9 +206,49 @@
         return changed;
     }
 
+    /* ====================== 4. 启动图：去 logo、两侧留白 ======================
+       LaunchScene 的相机底色本来就是白的，是移植层的背景色把它盖成了主题青绿。
+       这里把相机底色按回白色，并把那张 720 宽的底图撑满视口宽度，
+       同时隐藏出版商的启动图（spriteFrame 名 launchImg，节点名 New Sprite）。 */
+    var LAUNCH_LOGO_RE = /launchImg|cmcm|cheetah|publisher/i;
+
+    function fixLaunchScreen() {
+        var scene = cc.director.getScene();
+        if (!scene || scene.name !== 'LaunchScene') { return 0; }
+        var W = visibleWidth();
+        var done = 0;
+        try {
+            var cam = cc.Camera.main || (cc.Camera.cameras && cc.Camera.cameras[0]);
+            if (cam && cam.backgroundColor) {
+                if (cam.backgroundColor.r !== 255 || cam.backgroundColor.g !== 255 || cam.backgroundColor.b !== 255) {
+                    cam.backgroundColor = cc.color(255, 255, 255, 255);
+                    done++;
+                }
+            }
+        } catch (e) {}
+        (function walk(n) {
+            var sp = n.getComponent && n.getComponent(cc.Sprite);
+            var frame = sp && sp.spriteFrame ? sp.spriteFrame.name : '';
+            // the publisher's launch image
+            if (n.activeInHierarchy && (LAUNCH_LOGO_RE.test(frame) || (n.name === 'New Sprite' && n.parent && /Splash/i.test(n.parent.name)))) {
+                n.active = false;
+                stats.launchLogoHidden = (stats.launchLogoHidden || 0) + 1;
+                done++;
+            }
+            // the white splash fill must cover the whole width, not just 720
+            if (n.activeInHierarchy && frame === 'default_sprite_splash' && n.width < W && n.height > 400) {
+                n.width = W;
+                n.x = 0;
+                done++;
+            }
+            (n.children || []).forEach(walk);
+        })(scene);
+        return done;
+    }
     /* ================================ 周期应用 ================================ */
     function apply() {
         var W = visibleWidth();
+        fixLaunchScreen();
         makeUnlimited();
         if (CFG.hideCountBadges) { hideCountBadges(); }
         if (CFG.widenSelectPage && window.hallScene && window.hallScene.node && window.hallScene.node.isValid) {
@@ -224,6 +264,9 @@
     setTimeout(apply, 800);
     // re-check: window resizes, pages created lazily, and the game re-showing labels
     setInterval(apply, 1200);
+    // the launch screen is short lived; repaint it quickly so the port's themed
+    // background cannot win the race on the frames that matter
+    setInterval(fixLaunchScreen, 250);
 
     window.MazeDashWide = { config: CFG, stats: stats, apply: apply, widenSelectPage: widenSelectPage };
 })();

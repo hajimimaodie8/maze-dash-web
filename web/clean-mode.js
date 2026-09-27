@@ -106,9 +106,13 @@
              // progression interruptions
              'showWorldCompleted', 'showUnlockWorld', 'showFaceUnlock',
              'showQuestTick', 'showCompleteQuest',
-             // ad / iap entry points (already inert without jsb, made explicit)
-             'showNativeAd', 'showBannerAd', 'showInterstitialAd', 'showVideoAd',
-             'hiddenNativeAd', 'hiddenBannerAd', 'pay'
+             /* The ad / iap entry points are deliberately NOT silenced: the game's own
+                implementations already no-op safely without the jsb bridge (all 12
+                native call sites sit in try/catch), and they also maintain the
+                engine's own state around the call. Replacing them stalled the
+                in-level HUD, which waits on that flow - the bottom buttons stayed
+                inactive, so "back to main" could not be clicked. */
+             'pay'
             ].forEach(function (n) { silence(gm, n); });
         }
 
