@@ -142,6 +142,44 @@ var CONFIG = {
 
 ---
 
+## 第 6 个标签：自定义关卡（关卡编辑器入口）
+
+改造的是**游戏本身的界面**，不是网页外壳。原版底部标签栏有 5 格（商店 / 皮肤 / 首页 / 任务 / 设置），
+现在加了第 6 格：**扳手图标 = 自定义关卡**，点进去是一个空白占位页，等关卡编辑器接进来。
+
+实现方式是 `web/custom-tab.js`（新增文件，不改游戏代码）：
+
+- 游戏源码里标签栏是**纯数组驱动**的 —— `tabBar.children[i]`、`viewGroup[i]`、
+  `leftViewMap[i]` / `rightViewMap[i]`（记录每个视图停在左侧还是右侧，决定滑入方向），
+  `showBarView()` 只按索引取用。所以只要把这三处数组补上第 6 项，原逻辑自己就能跑。
+- 运行时**克隆最后一个标签项**，改名为 `customBar`、指向索引 5、把图标换成生成的扳手 PNG；
+- 6 格各缩到 **120 宽**（6 × 120 = 720，正好铺满标签栏），高亮底色同步改宽，再触发 Layout 重排；
+- 新建空白页 `customLevelsView`，注册进 `viewGroup[5]` 与两个 map，
+  并给它一个 `TabBarView` 组件（带 `cc.Animation` 以满足其 `onLoad`），
+  用同方向语义的滑入/滑出替换原来的动画片段调用；
+- **顺手修了一个隐患**：每个世界页的左右箭头命中区原本是 80×**1280**（纵贯整条边缘、盖住标签栏），
+  原版最右一格止于 x=600 所以从未冲突，新增一格 600–720 就撞上了。
+  现在把 16 个箭头命中区收到 80×900（居中，y 190–1090），既腾出标签栏那一行，
+  也让箭头命中区更合理（箭头本身画在中部）。
+
+### 把占位页换成真正的编辑器
+
+`web/custom-tab.js` 里找 `buildPlaceholderContent(view)` —— 它现在只放标题和一行提示，
+`view` 就是那一页的节点，往里加什么都行。页面的背景、进出场、高亮、索引都由原版逻辑负责。
+从代码里打开这一页：`MazeDashCustomTab.open()`；取页面节点：`MazeDashCustomTab.view()`。
+
+### 换图标
+
+```bash
+node tools/make-wrench-icon.js --inject web/custom-tab.js    # 重新生成并写回
+node tools/make-wrench-icon.js --color '#FF8A3D' --out dist/w.png --print-datauri
+```
+
+图标是用纯 Node 画出来的（SDF 光栅化 + zlib 写 PNG，无图像库依赖），
+风格对齐原版：粗实心 + 同色系深色描边。
+
+---
+
 ## 验证情况
 
 | 项目 | 结果 |
@@ -157,6 +195,7 @@ var CONFIG = {
 | 服务器版验收 | `node tools/verify/acceptance.js` → **17/17** |
 | 直装版验收 | `node tools/verify/standalone.js` → **14/14**，且网络请求数为 **0** |
 | 在线版验收 | 直接加载 `https://hajimimaodie8.github.io/maze-dash-web/` → **10/10**（含真实滑动通关） |
+| 第 6 个标签 | 6 格 × 120 = 720 均分、扳手图标生效、页面滑入居中、高亮唯一、来回切换与连点都稳定 → 	ools/verify/customtab.js **17/17** |
 | 一致性 | `web/src/`、`web/res/` 与 APK 内文件逐字节一致 |
 
 

@@ -74,7 +74,8 @@ npx serve -l 8099 .
 web/
 ├── index.html          网页外壳（9:16 竖屏舞台 + 加载进度条）
 ├── main.js             启动引导（由 APK 的 main.js 改写为浏览器入口）
-├── web-port.js         移植适配层：经济系统、音频解锁/容错、键盘操作
+├── web-port.js         移植适配层：经济系统、音频解锁/容错、键盘操作、画面自适应、仓库角标
+├── custom-tab.js       第 6 个标签（自定义关卡）+ 关卡编辑器占位页
 ├── cocos2d-js.js       Cocos Creator 2.0.2 浏览器引擎（自源码构建）
 ├── serve.js            零依赖静态服务器
 ├── start.bat / start.sh

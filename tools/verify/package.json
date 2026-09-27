@@ -10,7 +10,9 @@
     "test:file-guard": "node filetest.js",
     "test:responsive": "node responsive.js",
     "test:coldstart": "node coldstart.js",
-    "test:live": "node live.js"
+    "test:live": "node live.js",
+    "test:tab": "node customtab.js",
+    "test:tab-sequence": "node sequence.js"
   },
   "dependencies": { "puppeteer-core": "^23.0.0" }
 }

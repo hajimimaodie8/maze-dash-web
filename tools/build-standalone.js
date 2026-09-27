@@ -334,10 +334,11 @@ for (const [rel, label] of plugScripts) {
     third += scriptTag('inlined src/' + rel, read(path.join(WEB, 'src', rel))) + '\n';
 }
 third += scriptTag('inlined src/project.js (game logic)', read(path.join(WEB, 'src/project.js'))) + '\n';
-third += scriptTag('inlined web-port.js', read(path.join(WEB, 'web-port.js')));
+third += scriptTag('inlined web-port.js', read(path.join(WEB, 'web-port.js'))) + '\n';
+third += scriptTag('inlined custom-tab.js (6th tab / level editor placeholder)', read(path.join(WEB, 'custom-tab.js')));
 html = replaceOnce(
     html,
-    '<!-- 3) port-specific shims / adaptations (must be before boot) -->\n    <script src="web-port.js" charset="utf-8"></script>',
+    '<!-- 3) port-specific shims / adaptations (must be before boot) -->\n    <script src="web-port.js" charset="utf-8"></script>\n    <!-- 3b) "custom levels" tab: adds a 6th tab (wrench) to the game\'s tab bar\n            and a placeholder page for the level editor -->\n    <script src="custom-tab.js" charset="utf-8"></script>',
     third,
     'web-port.js'
 );

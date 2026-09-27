@@ -3,6 +3,7 @@
 | 目录 / 文件 | 作用 |
 | --- | --- |
 | `build-standalone.js` | 把 `web/` 打包成一个自包含的单文件 HTML（`dist/MazeDash-standalone.html`），内嵌引擎、脚本与全部 350 个资源，运行时零网络请求，双击即可玩。 |
+| `make-wrench-icon.js` | 生成第 6 个标签的扳手图标（纯 Node 光栅化 + zlib 写 PNG）。`--inject web/custom-tab.js` 可直接写回模块。 |
 | `push-via-api.js` | **当 `git push` 连不上 github.com 时**，改用 GitHub REST API 把本地提交推上去（有些网络只屏蔽 `github.com:443`，`api.github.com` 仍可用）。 |
 | `verify/` | puppeteer 无头验证套件：服务器版验收、单文件版验收、290 关全量回归、自动通关、自适应布局、冷启动、线上站点检查。 |
 | `apk/` | 从原始 APK 提取游戏数据的 Python 脚本。 |
