@@ -203,7 +203,18 @@
         var bar = hall.tabBar;
         if (!bar) { return W; }
         var bottom = bar.parent;
-        if (bottom) { bottom.width = W; bottom.x = 0; bottom.y = -visibleHeight() / 2 + bottom.height / 2; }
+        if (bottom) {
+            bottom.width = W;
+            bottom.x = 0;
+            bottom.y = -visibleHeight() / 2 + bottom.height / 2;
+            /* The bar's own backdrop strip is authored 720 x 120, semi-transparent
+               white. Left at that size it crosses only the middle of a widened bar and
+               reads as "one tab's highlight is wider than the others" - it was reported
+               twice as a wide panel behind whichever tab happened to sit there. Stretch
+               it with the bar. */
+            var bg = bottom.getChildByName('background');
+            if (bg && bg.isValid) { bg.width = W; bg.x = 0; }
+        }
         bar.width = W;
         bar.x = 0;
         var views = hall.viewGroup || [];
