@@ -170,6 +170,7 @@ var CONFIG = {
 
 > 选关界面的完整实现说明（世界/小关怎么生成、数据挂在哪、编辑器从哪接入）：**[docs/level-select.md](docs/level-select.md)**
 > 关卡数据格式与编辑器写回契约（三层数据、运行时数组形状、ID 规则、持久化、校验清单）：**[docs/level-format.md](docs/level-format.md)**
+> 关卡编辑器设计规格（20×20 网格尺寸、四个工具到 JSON 的映射、传送门彩色化、多主角、第一期清单）：**[docs/editor-design.md](docs/editor-design.md)**
 
 ### 把占位页换成真正的编辑器
 
