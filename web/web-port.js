@@ -22,8 +22,306 @@
     'use strict';
 
     var PORT = (window.MazeDashPort = window.MazeDashPort || {});
-    PORT.version = '1.0.0';
+    PORT.version = '1.1.0';
     PORT.engine = 'Cocos Creator 2.0.2 (web build)';
+
+    /* =====================================================================
+     * 0. Shell / display configuration  ——  想改什么改这里
+     * ===================================================================== */
+    var CONFIG = {
+        /* 你的 GitHub 仓库。留空字符串 ('') 就不显示任何角标与链接。 */
+        repo: 'https://github.com/hajimimaodie8/maze-dash-web',
+        repoLabel: 'maze-dash-web',
+        repoBadge: true,
+        /* 角标位置：
+         *   'auto'       → 有留白时放留白里（不挡游戏），否则放左上角
+         *   'margin'     → 只放留白里，没有留白就隐藏
+         *   'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'  → 强制指定
+         */
+        repoBadgePosition: 'auto',
+
+        /* 画面适配：
+         *   'auto'    → 比 9:16 更宽（桌面横屏）时完整显示，否则铺满宽度（推荐）
+         *   'contain' → 永远完整显示，多出来的地方用主题底色填充
+         *   'width'   → 永远铺满宽度，高度自适应（手机竖屏最贴合原版）
+         *   'height'  → 永远铺满高度，宽度自适应
+         *   'cover'   → 铺满整个窗口，可能裁掉边缘（有风险）
+         *   'stretch' → 拉伸填满，会变形
+         */
+        fit: 'auto',
+
+        /* 游戏外围留白的颜色：'auto' = 跟随当前场景/世界的主题底色 */
+        background: 'auto',
+        backgroundFallback: '#1d7a5f',
+
+        designWidth: 720,
+        designHeight: 1280,
+    };
+    PORT.config = CONFIG;
+
+    // Creator 2.0 exposes these as cc.ResolutionPolicy (cc.macro.ResolutionPolicy
+    // does not exist in this version).
+    var RP = cc.ResolutionPolicy || (cc.macro && cc.macro.ResolutionPolicy) || {};
+
+    function frameSize() {
+        try {
+            var s = cc.view.getFrameSize();
+            if (s && s.width && s.height) { return s; }
+        } catch (e) {}
+        return { width: window.innerWidth || 1, height: window.innerHeight || 1 };
+    }
+
+    function policyForWindow() {
+        var fs = frameSize();
+        var aspect = fs.width / fs.height;
+        var design = CONFIG.designWidth / CONFIG.designHeight;
+        switch (CONFIG.fit) {
+            case 'contain': return RP.SHOW_ALL;
+            case 'cover': return RP.NO_BORDER;
+            case 'stretch': return RP.EXACT_FIT;
+            case 'width': return RP.FIXED_WIDTH;
+            case 'height': return RP.FIXED_HEIGHT;
+            default:
+                // 'auto': the game's own layouts are a centred 720-wide column no
+                // matter what the policy is, so:
+                //   narrower/taller than 9:16 (phone) -> fill the width, and let
+                //     the canvas grow vertically so the UI reaches the screen
+                //     edges (this is also how the Hall is authored);
+                //   wider than 9:16 (desktop) -> show everything and paint the
+                //     area beside it with the scene's own background colour.
+                return aspect > design + 0.02 ? RP.SHOW_ALL : RP.FIXED_WIDTH;
+        }
+    }
+
+    var layoutListeners = [];
+    var activePolicy = null;
+
+    function applyFit() {
+        var p = policyForWindow();
+        if (p === undefined || p === null) { return; }
+        try {
+            cc.view.setDesignResolutionSize(CONFIG.designWidth, CONFIG.designHeight, p);
+            activePolicy = p;
+            applyFit._pending = false;
+        } catch (e) {
+            // On the very first scene launch the view may not be ready yet;
+            // retry once instead of leaving the scene on its authored policy.
+            if (!applyFit._pending) {
+                applyFit._pending = true;
+                setTimeout(function () { applyFit._pending = false; applyFit(); }, 150);
+            } else {
+                console.warn('[maze-dash-port] setDesignResolutionSize failed:', e);
+            }
+        }
+        layoutListeners.forEach(function (fn) { try { fn(); } catch (e) {} });
+    }
+
+    /* The current scene's own background colour, so the area outside the game
+       content blends in instead of showing black bars. */
+    function sceneBackgroundRGB() {
+        // 1) in-level: gameScene keeps its own background node
+        try {
+            var gs = window.gameScene;
+            if (gs && gs.backGroup && cc.isValid(gs.backGroup)) {
+                var c = gs.backGroup.color;
+                if (c && (c.r || c.g || c.b)) { return { r: c.r, g: c.g, b: c.b }; }
+            }
+        } catch (e) {}
+
+        // 2) HallScene: the world page currently centred on screen (each page
+        //    carries its own "BgLayer" tinted from that world's theme)
+        try {
+            var scene = cc.director.getScene();
+            if (scene) {
+                var best = null, bestDist = Infinity;
+                (function walk(n) {
+                    if (/^BgLayer$/i.test(n.name) && n.activeInHierarchy && n.color) {
+                        var wx = n.convertToWorldSpaceAR(cc.v2(0, 0)).x;
+                        var d = Math.abs(wx - CONFIG.designWidth / 2);
+                        if (d < bestDist) { bestDist = d; best = n; }
+                    }
+                    var kids = n.children || [];
+                    for (var i = 0; i < kids.length; i++) { walk(kids[i]); }
+                })(scene);
+                if (best && best.color && (best.color.r || best.color.g || best.color.b)) {
+                    return { r: best.color.r, g: best.color.g, b: best.color.b };
+                }
+            }
+        } catch (e) {}
+
+        // 3) otherwise fall back to the theme of the world in view
+        try {
+            var w = currentWorldId();
+            var t = window.conf && conf.theme_cfg && conf.theme_cfg[w] && conf.theme_cfg[w].list_background;
+            if (t && t.length >= 3) {
+                var col = new cc.Color();
+                col.fromHSV(t[0] / 360, t[1] / 100, t[2] / 100);
+                return { r: col.r, g: col.g, b: col.b };
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function currentWorldId() {
+        try { if (window.gameScene && gameScene.worldId) { return gameScene.worldId; } } catch (e) {}
+        try { if (window.hallScene && hallScene.worldId) { return parseInt(hallScene.worldId, 10) || 1; } } catch (e) {}
+        try { if (window.gamemain && gamemain.getLastWordId) { return gamemain.getLastWordId(); } } catch (e) {}
+        return 1;
+    }
+
+    function applyBackground() {
+        var rgb = CONFIG.background === 'auto' ? sceneBackgroundRGB() : null;
+        if (!rgb && CONFIG.background && CONFIG.background !== 'auto') {
+            document.body.style.background = CONFIG.background;
+            document.documentElement.style.background = CONFIG.background;
+            return;
+        }
+        var css = rgb ? 'rgb(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ')'
+                      : CONFIG.backgroundFallback;
+        document.body.style.background = css;
+        document.documentElement.style.background = css;
+        var div = document.getElementById('GameDiv');
+        if (div) { div.style.background = css; }
+
+        if (rgb && cc.Camera) {
+            try {
+                var scene = cc.director.getScene();
+                var cams = scene ? scene.getComponentsInChildren(cc.Camera) : [];
+                if (!cams || !cams.length) { cams = cc.Camera.main ? [cc.Camera.main] : []; }
+                for (var i = 0; i < cams.length; i++) {
+                    if (cams[i] && cams[i].backgroundColor !== undefined) {
+                        cams[i].backgroundColor = new cc.Color(rgb.r, rgb.g, rgb.b, 255);
+                    }
+                }
+            } catch (e) {}
+        }
+    }
+
+    /* Where the 720x1280 design area actually lands inside the canvas, in CSS
+       pixels. Only SHOW_ALL leaves real empty space around the content — every
+       other policy sizes the canvas so the content fills it. */
+    function contentRect() {
+        var fs = frameSize();
+        if (activePolicy === RP.SHOW_ALL) {
+            var scale = Math.min(fs.width / CONFIG.designWidth, fs.height / CONFIG.designHeight);
+            var w = CONFIG.designWidth * scale, h = CONFIG.designHeight * scale;
+            return {
+                left: (fs.width - w) / 2,
+                top: (fs.height - h) / 2,
+                width: w,
+                height: h,
+                scale: scale,
+            };
+        }
+        return { left: 0, top: 0, width: fs.width, height: fs.height, scale: null };
+    }
+
+    /* Empty space beside / above the game content. */
+    function sideMargin() { return Math.max(0, Math.round(contentRect().left)); }
+    function vertMargin() { return Math.max(0, Math.round(contentRect().top)); }
+
+    /* ---------------------------------------------------- repo badge / link */
+    function setupRepo() {
+        var url = CONFIG.repo || '';
+        var badge = document.getElementById('repobadge');
+        var label = document.getElementById('repobadgeLabel');
+        var splash = document.getElementById('splashRepo');
+
+        if (label) { label.textContent = CONFIG.repoLabel || 'GitHub'; }
+        if (splash) {
+            if (url) {
+                splash.href = url;
+                splash.textContent = 'GitHub · ' + (CONFIG.repoLabel || url.replace(/^https?:\/\//, ''));
+            } else {
+                splash.style.display = 'none';
+            }
+        }
+        if (!badge) { return; }
+        if (!url || !CONFIG.repoBadge) { badge.style.display = 'none'; return; }
+        badge.href = url;
+        badge.style.display = 'inline-flex';
+    }
+
+    function placeBadge() {
+        var badge = document.getElementById('repobadge');
+        if (!badge || badge.style.display === 'none') { return; }
+
+        var fs = frameSize();
+        var margin = sideMargin();
+        var pos = CONFIG.repoBadgePosition || 'auto';
+        var inMargin = margin >= 88;          // enough room for a pill beside the game
+
+        if (pos === 'auto') { pos = inMargin ? 'margin' : 'top-left'; }
+        if (pos === 'margin' && !inMargin) { pos = 'top-left'; }
+
+        var gap = 10;
+        badge.style.left = badge.style.right = badge.style.top = badge.style.bottom = 'auto';
+        if (pos === 'margin') {
+            // bottom of the right-hand gutter, vertically clear of the game UI
+            badge.style.right = Math.max(gap, Math.round(margin * 0.18)) + 'px';
+            badge.style.bottom = '18px';
+            badge.style.maxWidth = Math.max(60, margin - gap * 2) + 'px';
+        } else if (pos === 'top-right') {
+            badge.style.right = gap + 'px'; badge.style.top = gap + 'px';
+        } else if (pos === 'bottom-left') {
+            badge.style.left = gap + 'px'; badge.style.bottom = gap + 'px';
+        } else if (pos === 'bottom-right') {
+            badge.style.right = gap + 'px'; badge.style.bottom = gap + 'px';
+        } else {
+            badge.style.left = gap + 'px'; badge.style.top = gap + 'px';
+        }
+        badge.style.opacity = inMargin ? '' : '0.34';
+    }
+
+    function placeKeyHint() {
+        var el = document.getElementById('keyhint');
+        if (!el) { return; }
+        var margin = sideMargin();
+        // keep it out of the gameplay area when possible
+        el.style.bottom = 'auto';
+        el.style.top = '12px';
+    }
+
+    function relayout() {
+        placeBadge();
+        placeKeyHint();
+    }
+    layoutListeners.push(relayout);
+
+    /* ---------------------------------------------------------- scene hooks */
+    function onSceneChanged() {
+        applyFit();
+        applyBackground();
+        relayout();
+    }
+
+    try {
+        cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, onSceneChanged);
+    } catch (e) {
+        console.warn('[maze-dash-port] could not hook scene launch:', e);
+    }
+
+    /* keep the letterbox/tint in sync while the player browses worlds */
+    setInterval(function () {
+        if (!window.cc || !cc.director) { return; }
+        applyBackground();
+    }, 1200);
+
+    /* window resize / rotation → re-fit and re-place the shell UI */
+    var resizeTimer = null;
+    function onWindowResize() {
+        if (resizeTimer) { clearTimeout(resizeTimer); }
+        resizeTimer = setTimeout(function () {
+            applyFit();
+            applyBackground();
+            relayout();
+        }, 120);
+    }
+    window.addEventListener('resize', onWindowResize, false);
+    window.addEventListener('orientationchange', onWindowResize, false);
+
+    setupRepo();
+
 
     /* =====================================================================
      * 1. Economy adaptation
@@ -304,11 +602,13 @@
         setTimeout(function () { el.classList.remove('show'); }, 9000);
     }
 
-    /* Called by main.js once the launch scene is live. */
+    /* Called by main.js once the launch scene is live (and on every scene
+       change through the director hook above). */
     PORT.onSceneLaunched = function (scene) {
         applyEconomy();
         showKeyHint();
         unlockAudio();
+        onSceneChanged();
     };
 
     /* =====================================================================
@@ -334,4 +634,7 @@
     PORT.applyEconomy = applyEconomy;
     PORT.unlockAudio = unlockAudio;
     PORT.installResilientAudio = installResilientAudio;
+    PORT.applyFit = applyFit;
+    PORT.applyBackground = applyBackground;
+    PORT.relayout = relayout;
 })();
