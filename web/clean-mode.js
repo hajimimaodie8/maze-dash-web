@@ -191,7 +191,7 @@
        methods off is not enough. Deliberately a short allow-list: hiding anything
        named "*Complete*" would also hide the level-complete panel the player
        needs in order to continue. */
-    var NUISANCE_RE = /^(guid_tips|QuestTips)$/i;
+    var NUISANCE_RE = /^(guid_tips|QuestTips|levelAd)$/i;
     /* Guarded by a flag so the effect of hiding these can be bisected at runtime. */
 
     function silenceComponent(comp, names) {
@@ -272,6 +272,32 @@
         return hidden;
     }
 
+    /* 关掉通关后的广告层：游戏自己在代码里检查 localStorage 的 showAd 开关，
+       设成 'false' 就从源头不显示；再按名字兜底隐藏 levelAd 节点。 */
+    function quietAds() {
+        if (stats.adsOff) { return; }
+        stats.adsOff = true;
+        try { if (typeof setLocalStorage === 'function') { setLocalStorage('showAd', 'false'); } } catch (e) {}
+        try { localStorage.setItem('showAd', 'false'); } catch (e) {}
+    }
+
+    /* 任务页（中间那一格）整个去掉，与商店同样处理：停用标签项与整页，
+       索引与数组结构不变，游戏里对 3 号视图的引用不会失效。 */
+    var QUEST_INDEX = 3;
+
+    function hideQuestTab(hall) {
+        var hidden = 0;
+        var bar = hall && hall.tabBar;
+        if (bar && bar.children && bar.children.length > QUEST_INDEX) {
+            var tab = bar.children[QUEST_INDEX];
+            if (tab && tab.active) { tab.active = false; hidden++; }
+        }
+        var v = hall && hall.viewGroup && hall.viewGroup[QUEST_INDEX];
+        if (v && v.isValid && v.active) { v.active = false; hidden++; }
+        if (hidden && window.MazeDashCustomTab && MazeDashCustomTab.relayout) { MazeDashCustomTab.relayout(); }
+        return hidden;
+    }
+
     var SHOP_INDEX = 0;   // 原版最左边的商店
     var FACE_INDEX = 1;   // 皮肤页
     function quietScene() {
@@ -280,6 +306,8 @@
             if (!s) { return; }
             if (s.name === 'HallScene') { silenceComponent(window.hallScene, SCENE_QUIET.HallScene); }
             if (s.name === 'gameScene') { silenceComponent(window.gameScene, SCENE_QUIET.gameScene); }
+            quietAds();
+            if (window.hallScene && window.hallScene.node && window.hallScene.node.isValid) { hideQuestTab(window.hallScene); }
             hidePurchaseUI();
             (function walk(n) {
                 if (CFG.hideNuisanceNodes !== false && n !== s && n.active && NUISANCE_RE.test(n.name)) {

@@ -177,6 +177,16 @@
         var n = content.children.length;
         var changed = 0;
 
+        // capture where the pager is now, before the page width changes
+        var pager = window.hallScene.StageSelectLayer || null;
+        var oldPageW = content.width / n;
+        var currentIndex = 0;
+        try {
+            var off = -content.x;                       // the pager scrolls by moving content
+            currentIndex = Math.max(0, Math.round(off / oldPageW));
+        } catch (e) {}
+        var hadPageWish = false;
+
         // spread the pages across the new width
         content.width = W * n;
         content.children.forEach(function (p, i) {
@@ -184,6 +194,39 @@
             p.x = -content.width / 2 + W / 2 + W * i;
         });
 
+        /* The pager caches its own page width from when the pages were 720 wide, so
+           after widening it scrolls to "half a page" - which is why the hall came back
+           showing something between two worlds. Update any numeric page-width field on
+           it (whatever it is called) and re-align to the page it was on. */
+        if (pager) {
+            Object.keys(pager).forEach(function (k) {
+                if (!/page/i.test(k)) { return; }
+                var v = pager[k];
+                if (typeof v === 'number' && oldPageW > 0 && Math.abs(v - oldPageW) < 1) {
+                    pager[k] = W;
+                    hadPageWish = true;
+                }
+            });
+            /* scrollToPage() uses the pager's own cached page width, which is why the
+               hall still came back parked half a page off (measured: offset 3072 with a
+               2048 page width = exactly 1.5 pages). Scroll it for the animation, then
+               place the content on the exact page boundary once it has settled. */
+            var target = currentIndex;
+            try {
+                var lastWorld = (typeof gamemain.getLastWordId === 'function') ? gamemain.getLastWordId() : 0;
+                if (lastWorld > 0) { target = lastWorld - 1; }
+            } catch (e) {}
+            if (typeof pager.scrollToPage === 'function') {
+                try { pager.scrollToPage(target); stats.pagerRealigned = (stats.pagerRealigned || 0) + 1; } catch (e) {}
+            }
+            (function (c, t, w) {
+                setTimeout(function () {
+                    try {
+                        if (c && c.isValid) { c.x = -Math.round(t * w); stats.pagerSnapped = (stats.pagerSnapped || 0) + 1; }
+                    } catch (e) {}
+                }, 400);
+            })(content, target, W);
+        }
         pages.forEach(function (page) {
             var c = page.getComponent('StageSelectLayer');
             if (!c) { return; }

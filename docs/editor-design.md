@@ -204,3 +204,38 @@ hallScene.StageSelectLayer.insertPage(page, index)   // 插入整页
 
 - **传送门配对逻辑**：还没读源码（`§4` 的彩色传送门方案依赖它）；
 - **双蛇头的实际行为**（推进、过关判定）——依赖 7.4。
+---
+
+## 8. 追加的三项修复（用户反馈）
+
+### ✅ 8.1 任务标签已删除
+
+与商店同样的处理：`tabBar.children[3].active = false` + `viewGroup[3].active = false`，
+索引与数组结构保持不变。标签栏按可见格数自动平分，实测剩 **4 格**：
+`faceBar`（皮肤）、`homeBar`（选关）、`settingBar`（设置）、`customBar`（自定义）。
+落在 `clean-mode.js` 的 `hideQuestTab()`。
+
+### ✅ 8.2 通关后的「关闭广告」按钮
+
+游戏代码里本来就有开关：`getLocalStorage("showAd") === "false"` 时不显示广告。
+所以从源头关掉（`setLocalStorage('showAd','false')`），并把 `levelAd` 加进按名字隐藏的名单兜底。
+实测关卡内 `cc.find('Canvas/levelAd')` 为 **missing**（该场景里不存在此节点）。
+
+### ❌ 8.3 「回到主界面后介于两个大关之间」——**尚未修复**
+
+**现象已精确定位**：回到大厅后翻页器偏移 **3072 / 1024**，而页宽是 **2048** ——
+**正好差半页**，所以看起来卡在两个世界中间。
+
+**已知原因**：翻页器内部缓存了自己的页宽（页面被我从 720 撑到 2048 之前的值），
+`scrollToPage(i)` 因此算出的是错的偏移。
+
+**已尝试且失败**（`tools/verify/probe-hall-align.js`）：
+
+1. 遍历翻页器上名字含 `page` 的数值属性，把等于旧页宽的那个改成新页宽 → 没匹配到有效字段
+   （实测它只有 `pageTurningSpeed=0.3`、`pageTurningEventTiming=0.1` 这类参数，没有页宽字段）；
+2. 先 `scrollToPage(target)` 走动画，再延时 400ms **直接把 `content.x` 写到页边界** →
+   写入后**又被翻页器自己覆盖回去**（`pagerSnapped: 5` 说明我的写入执行了，但结果仍是 1024）。
+
+**结论**：这个翻页器的滚动不是靠 `content.x` 表达的，或不接受外部写入 ——
+**下一项测试必须先把它的滚动机制读出来**（读 `StageSelectLayer` / `NestablePageView_Outer`
+组件的源码，看它用什么字段记录页宽与偏移），再用它自己的 API 对齐，而不是从外面硬改。
