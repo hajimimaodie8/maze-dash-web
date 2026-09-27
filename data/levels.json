@@ -1,0 +1,2032 @@
+{
+ "1": {
+  "id": 1,
+  "wordId": 1,
+  "levelId": 1,
+  "mapId": 1,
+  "sz_solution": "R"
+ },
+ "2": {
+  "id": 2,
+  "wordId": 1,
+  "levelId": 2,
+  "mapId": 2,
+  "sz_solution": "RUL"
+ },
+ "3": {
+  "id": 3,
+  "wordId": 1,
+  "levelId": 3,
+  "mapId": 3,
+  "sz_solution": "LURD"
+ },
+ "4": {
+  "id": 4,
+  "wordId": 1,
+  "levelId": 4,
+  "mapId": 4,
+  "sz_solution": "LDRUL"
+ },
+ "5": {
+  "id": 5,
+  "wordId": 1,
+  "levelId": 5,
+  "mapId": 5,
+  "sz_solution": "LURDRDL"
+ },
+ "6": {
+  "id": 6,
+  "wordId": 1,
+  "levelId": 6,
+  "mapId": 6,
+  "sz_solution": "DLURDL"
+ },
+ "7": {
+  "id": 7,
+  "wordId": 1,
+  "levelId": 7,
+  "mapId": 7,
+  "sz_solution": "RULDLDR"
+ },
+ "8": {
+  "id": 8,
+  "wordId": 1,
+  "levelId": 8,
+  "mapId": 8,
+  "sz_solution": "RULDLDRUL"
+ },
+ "9": {
+  "id": 9,
+  "wordId": 1,
+  "levelId": 9,
+  "mapId": 9,
+  "sz_solution": "DLULURD"
+ },
+ "10": {
+  "id": 10,
+  "wordId": 1,
+  "levelId": 10,
+  "mapId": 10,
+  "sz_solution": "ULDRURUL"
+ },
+ "11": {
+  "id": 11,
+  "wordId": 1,
+  "levelId": 11,
+  "mapId": 11,
+  "sz_solution": "RULULDRDRDR"
+ },
+ "12": {
+  "id": 12,
+  "wordId": 1,
+  "levelId": 12,
+  "mapId": 12,
+  "sz_solution": "LURDLUL"
+ },
+ "13": {
+  "id": 13,
+  "wordId": 1,
+  "levelId": 13,
+  "mapId": 13,
+  "sz_solution": "DRURULDLD"
+ },
+ "14": {
+  "id": 14,
+  "wordId": 1,
+  "levelId": 14,
+  "mapId": 14,
+  "sz_solution": "DLURDRDLD"
+ },
+ "15": {
+  "id": 15,
+  "wordId": 1,
+  "levelId": 15,
+  "mapId": 15,
+  "sz_solution": "DRULDLDRU"
+ },
+ "16": {
+  "id": 16,
+  "wordId": 1,
+  "levelId": 16,
+  "mapId": 16,
+  "sz_solution": "RULDRDLDLU"
+ },
+ "17": {
+  "id": 17,
+  "wordId": 1,
+  "levelId": 17,
+  "mapId": 17,
+  "sz_solution": "RDLULULURDL"
+ },
+ "18": {
+  "id": 18,
+  "wordId": 1,
+  "levelId": 18,
+  "mapId": 18,
+  "sz_solution": "ULDRULDLDR"
+ },
+ "19": {
+  "id": 19,
+  "wordId": 1,
+  "levelId": 19,
+  "mapId": 19,
+  "sz_solution": "ULDRDRULURD"
+ },
+ "20": {
+  "id": 20,
+  "wordId": 1,
+  "levelId": 20,
+  "mapId": 20,
+  "sz_solution": "DLURDRDLULD"
+ },
+ "21": {
+  "id": 21,
+  "wordId": 2,
+  "levelId": 1,
+  "mapId": 21,
+  "sz_solution": "RDRUL"
+ },
+ "22": {
+  "id": 22,
+  "wordId": 2,
+  "levelId": 2,
+  "mapId": 22,
+  "sz_solution": "URULDLD"
+ },
+ "23": {
+  "id": 23,
+  "wordId": 2,
+  "levelId": 3,
+  "mapId": 23,
+  "sz_solution": "DRURULDL"
+ },
+ "24": {
+  "id": 24,
+  "wordId": 2,
+  "levelId": 4,
+  "mapId": 24,
+  "sz_solution": "LULURDRDL"
+ },
+ "25": {
+  "id": 25,
+  "wordId": 2,
+  "levelId": 5,
+  "mapId": 25,
+  "sz_solution": "LURDRDRU"
+ },
+ "26": {
+  "id": 26,
+  "wordId": 2,
+  "levelId": 6,
+  "mapId": 26,
+  "sz_solution": "LDRULURU"
+ },
+ "27": {
+  "id": 27,
+  "wordId": 2,
+  "levelId": 7,
+  "mapId": 27,
+  "sz_solution": "RULDRURDR"
+ },
+ "28": {
+  "id": 28,
+  "wordId": 2,
+  "levelId": 8,
+  "mapId": 28,
+  "sz_solution": "DLURDLDRU"
+ },
+ "29": {
+  "id": 29,
+  "wordId": 2,
+  "levelId": 9,
+  "mapId": 29,
+  "sz_solution": "UURDRU"
+ },
+ "30": {
+  "id": 30,
+  "wordId": 2,
+  "levelId": 10,
+  "mapId": 30,
+  "sz_solution": "DRDDRULUL"
+ },
+ "31": {
+  "id": 31,
+  "wordId": 2,
+  "levelId": 11,
+  "mapId": 31,
+  "sz_solution": "LDDLDRULDL"
+ },
+ "32": {
+  "id": 32,
+  "wordId": 2,
+  "levelId": 12,
+  "mapId": 32,
+  "sz_solution": "UURDLULURD"
+ },
+ "33": {
+  "id": 33,
+  "wordId": 2,
+  "levelId": 13,
+  "mapId": 33,
+  "sz_solution": "DRULDRURDR"
+ },
+ "34": {
+  "id": 34,
+  "wordId": 2,
+  "levelId": 14,
+  "mapId": 34,
+  "sz_solution": "RDRULDLUR"
+ },
+ "35": {
+  "id": 35,
+  "wordId": 2,
+  "levelId": 15,
+  "mapId": 35,
+  "sz_solution": "DDLULDRDRULU"
+ },
+ "36": {
+  "id": 36,
+  "wordId": 2,
+  "levelId": 16,
+  "mapId": 36,
+  "sz_solution": "DRDRURULDLUL"
+ },
+ "37": {
+  "id": 37,
+  "wordId": 2,
+  "levelId": 17,
+  "mapId": 37,
+  "sz_solution": "LURDLDRDRULU"
+ },
+ "38": {
+  "id": 38,
+  "wordId": 2,
+  "levelId": 18,
+  "mapId": 38,
+  "sz_solution": "LDRDRURULUR"
+ },
+ "39": {
+  "id": 39,
+  "wordId": 2,
+  "levelId": 19,
+  "mapId": 39,
+  "sz_solution": "DLDRULULDRDL"
+ },
+ "40": {
+  "id": 40,
+  "wordId": 2,
+  "levelId": 20,
+  "mapId": 40,
+  "sz_solution": "RDLDLURRULUR"
+ },
+ "41": {
+  "id": 41,
+  "wordId": 2,
+  "levelId": 21,
+  "mapId": 41,
+  "sz_solution": "DLLURURDRURD"
+ },
+ "42": {
+  "id": 42,
+  "wordId": 2,
+  "levelId": 22,
+  "mapId": 42,
+  "sz_solution": "RULDRRDLDRULLU"
+ },
+ "43": {
+  "id": 43,
+  "wordId": 2,
+  "levelId": 23,
+  "mapId": 43,
+  "sz_solution": "RDLDLURURDL"
+ },
+ "44": {
+  "id": 44,
+  "wordId": 2,
+  "levelId": 24,
+  "mapId": 44,
+  "sz_solution": "LLURDLLDLUR"
+ },
+ "45": {
+  "id": 45,
+  "wordId": 2,
+  "levelId": 25,
+  "mapId": 45,
+  "sz_solution": "LURDLURRRUU"
+ },
+ "46": {
+  "id": 46,
+  "wordId": 2,
+  "levelId": 26,
+  "mapId": 46,
+  "sz_solution": "DRULDLULDDRUR"
+ },
+ "47": {
+  "id": 47,
+  "wordId": 2,
+  "levelId": 27,
+  "mapId": 47,
+  "sz_solution": "DLURURDRDLURUL"
+ },
+ "48": {
+  "id": 48,
+  "wordId": 2,
+  "levelId": 28,
+  "mapId": 48,
+  "sz_solution": "RDLURURURDRULDLD"
+ },
+ "49": {
+  "id": 49,
+  "wordId": 2,
+  "levelId": 29,
+  "mapId": 49,
+  "sz_solution": "URDLURDLULDLLDRD"
+ },
+ "50": {
+  "id": 50,
+  "wordId": 2,
+  "levelId": 30,
+  "mapId": 50,
+  "sz_solution": "RDRDLULURDRDLUR"
+ },
+ "51": {
+  "id": 51,
+  "wordId": 3,
+  "levelId": 1,
+  "mapId": 51,
+  "sz_solution": "DRUUL"
+ },
+ "52": {
+  "id": 52,
+  "wordId": 3,
+  "levelId": 2,
+  "mapId": 52,
+  "sz_solution": "UULDLD"
+ },
+ "53": {
+  "id": 53,
+  "wordId": 3,
+  "levelId": 3,
+  "mapId": 53,
+  "sz_solution": "LUURURDL"
+ },
+ "54": {
+  "id": 54,
+  "wordId": 3,
+  "levelId": 4,
+  "mapId": 54,
+  "sz_solution": "ULDRRULULD"
+ },
+ "55": {
+  "id": 55,
+  "wordId": 3,
+  "levelId": 5,
+  "mapId": 55,
+  "sz_solution": "LDRUUL"
+ },
+ "56": {
+  "id": 56,
+  "wordId": 3,
+  "levelId": 6,
+  "mapId": 56,
+  "sz_solution": "ULDRDDR"
+ },
+ "57": {
+  "id": 57,
+  "wordId": 3,
+  "levelId": 7,
+  "mapId": 57,
+  "sz_solution": "LDRRUUULLDL"
+ },
+ "58": {
+  "id": 58,
+  "wordId": 3,
+  "levelId": 8,
+  "mapId": 58,
+  "sz_solution": "RULDRRUL"
+ },
+ "59": {
+  "id": 59,
+  "wordId": 3,
+  "levelId": 9,
+  "mapId": 59,
+  "sz_solution": "LURRDDLL"
+ },
+ "60": {
+  "id": 60,
+  "wordId": 3,
+  "levelId": 10,
+  "mapId": 60,
+  "sz_solution": "RULDRRDL"
+ },
+ "61": {
+  "id": 61,
+  "wordId": 3,
+  "levelId": 11,
+  "mapId": 61,
+  "sz_solution": "UURDRDLUR"
+ },
+ "62": {
+  "id": 62,
+  "wordId": 3,
+  "levelId": 12,
+  "mapId": 62,
+  "sz_solution": "URDDRULUUL"
+ },
+ "63": {
+  "id": 63,
+  "wordId": 3,
+  "levelId": 13,
+  "mapId": 63,
+  "sz_solution": "RULDRUR"
+ },
+ "64": {
+  "id": 64,
+  "wordId": 3,
+  "levelId": 14,
+  "mapId": 64,
+  "sz_solution": "RDULLULDRDR"
+ },
+ "65": {
+  "id": 65,
+  "wordId": 3,
+  "levelId": 15,
+  "mapId": 65,
+  "sz_solution": "DRDLULURRD"
+ },
+ "66": {
+  "id": 66,
+  "wordId": 3,
+  "levelId": 16,
+  "mapId": 66,
+  "sz_solution": "ULDRUULULDL"
+ },
+ "67": {
+  "id": 67,
+  "wordId": 3,
+  "levelId": 17,
+  "mapId": 67,
+  "sz_solution": "RULURULUR"
+ },
+ "68": {
+  "id": 68,
+  "wordId": 3,
+  "levelId": 18,
+  "mapId": 68,
+  "sz_solution": "DLULURDDDRUR"
+ },
+ "69": {
+  "id": 69,
+  "wordId": 3,
+  "levelId": 19,
+  "mapId": 69,
+  "sz_solution": "LDRULDDLULDR"
+ },
+ "70": {
+  "id": 70,
+  "wordId": 3,
+  "levelId": 20,
+  "mapId": 70,
+  "sz_solution": "RUDLDLULUR"
+ },
+ "71": {
+  "id": 71,
+  "wordId": 3,
+  "levelId": 21,
+  "mapId": 71,
+  "sz_solution": "DLUL"
+ },
+ "72": {
+  "id": 72,
+  "wordId": 3,
+  "levelId": 22,
+  "mapId": 72,
+  "sz_solution": "RUULLDDRUUU"
+ },
+ "73": {
+  "id": 73,
+  "wordId": 3,
+  "levelId": 23,
+  "mapId": 73,
+  "sz_solution": "DRULDLLUULUR"
+ },
+ "74": {
+  "id": 74,
+  "wordId": 3,
+  "levelId": 24,
+  "mapId": 74,
+  "sz_solution": "LRDRUURDLDLU"
+ },
+ "75": {
+  "id": 75,
+  "wordId": 3,
+  "levelId": 25,
+  "mapId": 75,
+  "sz_solution": "UDLULDLU"
+ },
+ "76": {
+  "id": 76,
+  "wordId": 3,
+  "levelId": 26,
+  "mapId": 76,
+  "sz_solution": "DRULULULULDDDLULU"
+ },
+ "77": {
+  "id": 77,
+  "wordId": 3,
+  "levelId": 27,
+  "mapId": 77,
+  "sz_solution": "LURDDRDLLDLURU"
+ },
+ "78": {
+  "id": 78,
+  "wordId": 3,
+  "levelId": 28,
+  "mapId": 78,
+  "sz_solution": "ULDRULDDLDRDLU"
+ },
+ "79": {
+  "id": 79,
+  "wordId": 3,
+  "levelId": 29,
+  "mapId": 79,
+  "sz_solution": "RRULDRUUL"
+ },
+ "80": {
+  "id": 80,
+  "wordId": 3,
+  "levelId": 30,
+  "mapId": 80,
+  "sz_solution": "ULDDRDRRDRURULLDR"
+ },
+ "81": {
+  "id": 81,
+  "wordId": 3,
+  "levelId": 31,
+  "mapId": 81,
+  "sz_solution": "DRULURULURULDRU"
+ },
+ "82": {
+  "id": 82,
+  "wordId": 3,
+  "levelId": 32,
+  "mapId": 82,
+  "sz_solution": "DDLURDLLURU"
+ },
+ "83": {
+  "id": 83,
+  "wordId": 3,
+  "levelId": 33,
+  "mapId": 83,
+  "sz_solution": "DDRULUULDRD"
+ },
+ "84": {
+  "id": 84,
+  "wordId": 3,
+  "levelId": 34,
+  "mapId": 84,
+  "sz_solution": "LURDLDULDRU"
+ },
+ "85": {
+  "id": 85,
+  "wordId": 3,
+  "levelId": 35,
+  "mapId": 85,
+  "sz_solution": "DRULLDRDLDLULUR"
+ },
+ "86": {
+  "id": 86,
+  "wordId": 3,
+  "levelId": 36,
+  "mapId": 86,
+  "sz_solution": "LDRRULLUULDLU"
+ },
+ "87": {
+  "id": 87,
+  "wordId": 3,
+  "levelId": 37,
+  "mapId": 87,
+  "sz_solution": "RULDLLDRDDRURRULULU"
+ },
+ "88": {
+  "id": 88,
+  "wordId": 3,
+  "levelId": 38,
+  "mapId": 88,
+  "sz_solution": "RDLURUURDLL"
+ },
+ "89": {
+  "id": 89,
+  "wordId": 3,
+  "levelId": 39,
+  "mapId": 89,
+  "sz_solution": "RDLURDLLDRRDLDLL"
+ },
+ "90": {
+  "id": 90,
+  "wordId": 3,
+  "levelId": 40,
+  "mapId": 90,
+  "sz_solution": "LDRDLURDRDRRD"
+ },
+ "91": {
+  "id": 91,
+  "wordId": 4,
+  "levelId": 1,
+  "mapId": 91,
+  "sz_solution": "DLUL"
+ },
+ "92": {
+  "id": 92,
+  "wordId": 4,
+  "levelId": 2,
+  "mapId": 92,
+  "sz_solution": "RULUR"
+ },
+ "93": {
+  "id": 93,
+  "wordId": 4,
+  "levelId": 3,
+  "mapId": 93,
+  "sz_solution": "RULURDR"
+ },
+ "94": {
+  "id": 94,
+  "wordId": 4,
+  "levelId": 4,
+  "mapId": 94,
+  "sz_solution": "RDLDRDL"
+ },
+ "95": {
+  "id": 95,
+  "wordId": 4,
+  "levelId": 5,
+  "mapId": 95,
+  "sz_solution": "RDLDRDL"
+ },
+ "96": {
+  "id": 96,
+  "wordId": 4,
+  "levelId": 6,
+  "mapId": 96,
+  "sz_solution": "LURURUL"
+ },
+ "97": {
+  "id": 97,
+  "wordId": 4,
+  "levelId": 7,
+  "mapId": 97,
+  "sz_solution": "RDLDLDRDL"
+ },
+ "98": {
+  "id": 98,
+  "wordId": 4,
+  "levelId": 8,
+  "mapId": 98,
+  "sz_solution": "URULDR"
+ },
+ "99": {
+  "id": 99,
+  "wordId": 4,
+  "levelId": 9,
+  "mapId": 99,
+  "sz_solution": "LDRDLDRDL"
+ },
+ "100": {
+  "id": 100,
+  "wordId": 4,
+  "levelId": 10,
+  "mapId": 100,
+  "sz_solution": "UURDDLDR"
+ },
+ "101": {
+  "id": 101,
+  "wordId": 4,
+  "levelId": 11,
+  "mapId": 101,
+  "sz_solution": "DLURULDLD"
+ },
+ "102": {
+  "id": 102,
+  "wordId": 4,
+  "levelId": 12,
+  "mapId": 102,
+  "sz_solution": "LLDRDLURURUL"
+ },
+ "103": {
+  "id": 103,
+  "wordId": 4,
+  "levelId": 13,
+  "mapId": 103,
+  "sz_solution": "RURULDRUR"
+ },
+ "104": {
+  "id": 104,
+  "wordId": 4,
+  "levelId": 14,
+  "mapId": 104,
+  "sz_solution": "ULDRURUL"
+ },
+ "105": {
+  "id": 105,
+  "wordId": 4,
+  "levelId": 15,
+  "mapId": 105,
+  "sz_solution": "RULDRULDLUL"
+ },
+ "106": {
+  "id": 106,
+  "wordId": 4,
+  "levelId": 16,
+  "mapId": 106,
+  "sz_solution": "RDDRDRURU"
+ },
+ "107": {
+  "id": 107,
+  "wordId": 4,
+  "levelId": 17,
+  "mapId": 107,
+  "sz_solution": "DLDRRURUL"
+ },
+ "108": {
+  "id": 108,
+  "wordId": 4,
+  "levelId": 18,
+  "mapId": 108,
+  "sz_solution": "URDLDRDLUR"
+ },
+ "109": {
+  "id": 109,
+  "wordId": 4,
+  "levelId": 19,
+  "mapId": 109,
+  "sz_solution": "DLDRURDRDLU"
+ },
+ "110": {
+  "id": 110,
+  "wordId": 4,
+  "levelId": 20,
+  "mapId": 110,
+  "sz_solution": "URDLURLDRD"
+ },
+ "111": {
+  "id": 111,
+  "wordId": 4,
+  "levelId": 21,
+  "mapId": 111,
+  "sz_solution": "DRURDRUR"
+ },
+ "112": {
+  "id": 112,
+  "wordId": 4,
+  "levelId": 22,
+  "mapId": 112,
+  "sz_solution": "LURURDDLDRDRDL"
+ },
+ "113": {
+  "id": 113,
+  "wordId": 4,
+  "levelId": 23,
+  "mapId": 113,
+  "sz_solution": "DLURDLURDLUL"
+ },
+ "114": {
+  "id": 114,
+  "wordId": 4,
+  "levelId": 24,
+  "mapId": 114,
+  "sz_solution": "LDRULDDRDLULU"
+ },
+ "115": {
+  "id": 115,
+  "wordId": 4,
+  "levelId": 25,
+  "mapId": 115,
+  "sz_solution": "URDULDDRDR"
+ },
+ "116": {
+  "id": 116,
+  "wordId": 4,
+  "levelId": 26,
+  "mapId": 116,
+  "sz_solution": "URULDLURD"
+ },
+ "117": {
+  "id": 117,
+  "wordId": 4,
+  "levelId": 27,
+  "mapId": 117,
+  "sz_solution": "DRULDLDDRDRDLD"
+ },
+ "118": {
+  "id": 118,
+  "wordId": 4,
+  "levelId": 28,
+  "mapId": 118,
+  "sz_solution": "ULDRULDLUR"
+ },
+ "119": {
+  "id": 119,
+  "wordId": 4,
+  "levelId": 29,
+  "mapId": 119,
+  "sz_solution": "ULDRULURDRU"
+ },
+ "120": {
+  "id": 120,
+  "wordId": 4,
+  "levelId": 30,
+  "mapId": 120,
+  "sz_solution": "RDLLUURDRDLUR"
+ },
+ "121": {
+  "id": 121,
+  "wordId": 4,
+  "levelId": 31,
+  "mapId": 121,
+  "sz_solution": "LURDRRU"
+ },
+ "122": {
+  "id": 122,
+  "wordId": 4,
+  "levelId": 32,
+  "mapId": 122,
+  "sz_solution": "RULDLLDRULD"
+ },
+ "123": {
+  "id": 123,
+  "wordId": 4,
+  "levelId": 33,
+  "mapId": 123,
+  "sz_solution": "ULDRDRUULULD"
+ },
+ "124": {
+  "id": 124,
+  "wordId": 4,
+  "levelId": 34,
+  "mapId": 124,
+  "sz_solution": "URURDLLDRDL"
+ },
+ "125": {
+  "id": 125,
+  "wordId": 4,
+  "levelId": 35,
+  "mapId": 125,
+  "sz_solution": "DRUDLURUR"
+ },
+ "126": {
+  "id": 126,
+  "wordId": 4,
+  "levelId": 36,
+  "mapId": 126,
+  "sz_solution": "RULDRULDDRULUR"
+ },
+ "127": {
+  "id": 127,
+  "wordId": 4,
+  "levelId": 37,
+  "mapId": 127,
+  "sz_solution": "UURDRDLULURU"
+ },
+ "128": {
+  "id": 128,
+  "wordId": 4,
+  "levelId": 38,
+  "mapId": 128,
+  "sz_solution": "RDLRDLLDR"
+ },
+ "129": {
+  "id": 129,
+  "wordId": 4,
+  "levelId": 39,
+  "mapId": 129,
+  "sz_solution": "DRULLURURULDLULDDRU"
+ },
+ "130": {
+  "id": 130,
+  "wordId": 4,
+  "levelId": 40,
+  "mapId": 130,
+  "sz_solution": "DRULLDRURDRURD"
+ },
+ "131": {
+  "id": 131,
+  "wordId": 5,
+  "levelId": 1,
+  "mapId": 131,
+  "sz_solution": "RUL"
+ },
+ "132": {
+  "id": 132,
+  "wordId": 5,
+  "levelId": 2,
+  "mapId": 132,
+  "sz_solution": "ULDL"
+ },
+ "133": {
+  "id": 133,
+  "wordId": 5,
+  "levelId": 3,
+  "mapId": 133,
+  "sz_solution": "LDLUR"
+ },
+ "134": {
+  "id": 134,
+  "wordId": 5,
+  "levelId": 4,
+  "mapId": 134,
+  "sz_solution": "DLULD"
+ },
+ "135": {
+  "id": 135,
+  "wordId": 5,
+  "levelId": 5,
+  "mapId": 135,
+  "sz_solution": "DRULDDRD"
+ },
+ "136": {
+  "id": 136,
+  "wordId": 5,
+  "levelId": 6,
+  "mapId": 136,
+  "sz_solution": "URLDRUR"
+ },
+ "137": {
+  "id": 137,
+  "wordId": 5,
+  "levelId": 7,
+  "mapId": 137,
+  "sz_solution": "RDLULURU"
+ },
+ "138": {
+  "id": 138,
+  "wordId": 5,
+  "levelId": 8,
+  "mapId": 138,
+  "sz_solution": "RULDLDRUR"
+ },
+ "139": {
+  "id": 139,
+  "wordId": 5,
+  "levelId": 9,
+  "mapId": 139,
+  "sz_solution": "RULDRDR"
+ },
+ "140": {
+  "id": 140,
+  "wordId": 5,
+  "levelId": 10,
+  "mapId": 140,
+  "sz_solution": "ULDRDL"
+ },
+ "141": {
+  "id": 141,
+  "wordId": 5,
+  "levelId": 11,
+  "mapId": 141,
+  "sz_solution": "RDLDRU"
+ },
+ "142": {
+  "id": 142,
+  "wordId": 5,
+  "levelId": 12,
+  "mapId": 142,
+  "sz_solution": "DRULURDUR"
+ },
+ "143": {
+  "id": 143,
+  "wordId": 5,
+  "levelId": 13,
+  "mapId": 143,
+  "sz_solution": "RRDLULD"
+ },
+ "144": {
+  "id": 144,
+  "wordId": 5,
+  "levelId": 14,
+  "mapId": 144,
+  "sz_solution": "LDLURURUL"
+ },
+ "145": {
+  "id": 145,
+  "wordId": 5,
+  "levelId": 15,
+  "mapId": 145,
+  "sz_solution": "DLURUDRULL"
+ },
+ "146": {
+  "id": 146,
+  "wordId": 5,
+  "levelId": 16,
+  "mapId": 146,
+  "sz_solution": "DRUURULD"
+ },
+ "147": {
+  "id": 147,
+  "wordId": 5,
+  "levelId": 17,
+  "mapId": 147,
+  "sz_solution": "DLUDLDLDRD"
+ },
+ "148": {
+  "id": 148,
+  "wordId": 5,
+  "levelId": 18,
+  "mapId": 148,
+  "sz_solution": "RDLURLD"
+ },
+ "149": {
+  "id": 149,
+  "wordId": 5,
+  "levelId": 19,
+  "mapId": 149,
+  "sz_solution": "LURDLU"
+ },
+ "150": {
+  "id": 150,
+  "wordId": 5,
+  "levelId": 20,
+  "mapId": 150,
+  "sz_solution": "DRUURLDR"
+ },
+ "151": {
+  "id": 151,
+  "wordId": 5,
+  "levelId": 21,
+  "mapId": 151,
+  "sz_solution": "DULRDULR"
+ },
+ "152": {
+  "id": 152,
+  "wordId": 5,
+  "levelId": 22,
+  "mapId": 152,
+  "sz_solution": "DRURULDLULD"
+ },
+ "153": {
+  "id": 153,
+  "wordId": 5,
+  "levelId": 23,
+  "mapId": 153,
+  "sz_solution": "LURDRURDLLDL"
+ },
+ "154": {
+  "id": 154,
+  "wordId": 5,
+  "levelId": 24,
+  "mapId": 154,
+  "sz_solution": "LURRDLDRUR"
+ },
+ "155": {
+  "id": 155,
+  "wordId": 5,
+  "levelId": 25,
+  "mapId": 155,
+  "sz_solution": "RDLURLDRU"
+ },
+ "156": {
+  "id": 156,
+  "wordId": 5,
+  "levelId": 26,
+  "mapId": 156,
+  "sz_solution": "RULDDRLDR"
+ },
+ "157": {
+  "id": 157,
+  "wordId": 5,
+  "levelId": 27,
+  "mapId": 157,
+  "sz_solution": "RLLRURLDRLU"
+ },
+ "158": {
+  "id": 158,
+  "wordId": 5,
+  "levelId": 28,
+  "mapId": 158,
+  "sz_solution": "LDRULDLLU"
+ },
+ "159": {
+  "id": 159,
+  "wordId": 5,
+  "levelId": 29,
+  "mapId": 159,
+  "sz_solution": "URDLDRULU"
+ },
+ "160": {
+  "id": 160,
+  "wordId": 5,
+  "levelId": 30,
+  "mapId": 160,
+  "sz_solution": "LDRDRUL"
+ },
+ "161": {
+  "id": 161,
+  "wordId": 5,
+  "levelId": 31,
+  "mapId": 161,
+  "sz_solution": "LUDLDRRU"
+ },
+ "162": {
+  "id": 162,
+  "wordId": 5,
+  "levelId": 32,
+  "mapId": 162,
+  "sz_solution": "DLULURDLUDLURD"
+ },
+ "163": {
+  "id": 163,
+  "wordId": 5,
+  "levelId": 33,
+  "mapId": 163,
+  "sz_solution": "RLDRUURLU"
+ },
+ "164": {
+  "id": 164,
+  "wordId": 5,
+  "levelId": 34,
+  "mapId": 164,
+  "sz_solution": "ULDDRRU"
+ },
+ "165": {
+  "id": 165,
+  "wordId": 5,
+  "levelId": 35,
+  "mapId": 165,
+  "sz_solution": "RURDLDDLD"
+ },
+ "166": {
+  "id": 166,
+  "wordId": 5,
+  "levelId": 36,
+  "mapId": 166,
+  "sz_solution": "RDLDULLD"
+ },
+ "167": {
+  "id": 167,
+  "wordId": 5,
+  "levelId": 37,
+  "mapId": 167,
+  "sz_solution": "DULDRULLDR"
+ },
+ "168": {
+  "id": 168,
+  "wordId": 5,
+  "levelId": 38,
+  "mapId": 168,
+  "sz_solution": "RRDLURULDDRU"
+ },
+ "169": {
+  "id": 169,
+  "wordId": 5,
+  "levelId": 39,
+  "mapId": 169,
+  "sz_solution": "RULDRLLULLDRDR"
+ },
+ "170": {
+  "id": 170,
+  "wordId": 5,
+  "levelId": 40,
+  "mapId": 170,
+  "sz_solution": "LDRUULRRDRU"
+ },
+ "171": {
+  "id": 171,
+  "wordId": 6,
+  "levelId": 1,
+  "mapId": 171,
+  "sz_solution": "DRUL"
+ },
+ "172": {
+  "id": 172,
+  "wordId": 6,
+  "levelId": 2,
+  "mapId": 172,
+  "sz_solution": "URURDL"
+ },
+ "173": {
+  "id": 173,
+  "wordId": 6,
+  "levelId": 3,
+  "mapId": 173,
+  "sz_solution": "ULDRDL"
+ },
+ "174": {
+  "id": 174,
+  "wordId": 6,
+  "levelId": 4,
+  "mapId": 174,
+  "sz_solution": "DRULDRUR"
+ },
+ "175": {
+  "id": 175,
+  "wordId": 6,
+  "levelId": 5,
+  "mapId": 175,
+  "sz_solution": "RDLURULUR"
+ },
+ "176": {
+  "id": 176,
+  "wordId": 6,
+  "levelId": 6,
+  "mapId": 176,
+  "sz_solution": "LURDLDRURD"
+ },
+ "177": {
+  "id": 177,
+  "wordId": 6,
+  "levelId": 7,
+  "mapId": 177,
+  "sz_solution": "DRULULDRU"
+ },
+ "178": {
+  "id": 178,
+  "wordId": 6,
+  "levelId": 8,
+  "mapId": 178,
+  "sz_solution": "URDLDLURDRUL"
+ },
+ "179": {
+  "id": 179,
+  "wordId": 6,
+  "levelId": 9,
+  "mapId": 179,
+  "sz_solution": "RULDRDRURUL"
+ },
+ "180": {
+  "id": 180,
+  "wordId": 6,
+  "levelId": 10,
+  "mapId": 180,
+  "sz_solution": "LURDRRDLDR"
+ },
+ "181": {
+  "id": 181,
+  "wordId": 6,
+  "levelId": 11,
+  "mapId": 181,
+  "sz_solution": "RURULDDLDR"
+ },
+ "182": {
+  "id": 182,
+  "wordId": 6,
+  "levelId": 12,
+  "mapId": 182,
+  "sz_solution": "LURDLLURUL"
+ },
+ "183": {
+  "id": 183,
+  "wordId": 6,
+  "levelId": 13,
+  "mapId": 183,
+  "sz_solution": "DLURULUU"
+ },
+ "184": {
+  "id": 184,
+  "wordId": 6,
+  "levelId": 14,
+  "mapId": 184,
+  "sz_solution": "LDRURD"
+ },
+ "185": {
+  "id": 185,
+  "wordId": 6,
+  "levelId": 15,
+  "mapId": 185,
+  "sz_solution": "RRDLLURDL"
+ },
+ "186": {
+  "id": 186,
+  "wordId": 6,
+  "levelId": 16,
+  "mapId": 186,
+  "sz_solution": "RULLDLU"
+ },
+ "187": {
+  "id": 187,
+  "wordId": 6,
+  "levelId": 17,
+  "mapId": 187,
+  "sz_solution": "URDLULULURDRD"
+ },
+ "188": {
+  "id": 188,
+  "wordId": 6,
+  "levelId": 18,
+  "mapId": 188,
+  "sz_solution": "RDLLURULL"
+ },
+ "189": {
+  "id": 189,
+  "wordId": 6,
+  "levelId": 19,
+  "mapId": 189,
+  "sz_solution": "LULURDLDRDLDL"
+ },
+ "190": {
+  "id": 190,
+  "wordId": 6,
+  "levelId": 20,
+  "mapId": 190,
+  "sz_solution": "LDRUULDRD"
+ },
+ "191": {
+  "id": 191,
+  "wordId": 6,
+  "levelId": 21,
+  "mapId": 191,
+  "sz_solution": "LDRULDRDL"
+ },
+ "192": {
+  "id": 192,
+  "wordId": 6,
+  "levelId": 22,
+  "mapId": 192,
+  "sz_solution": "RULDLUR"
+ },
+ "193": {
+  "id": 193,
+  "wordId": 6,
+  "levelId": 23,
+  "mapId": 193,
+  "sz_solution": "DRURULDRURU"
+ },
+ "194": {
+  "id": 194,
+  "wordId": 6,
+  "levelId": 24,
+  "mapId": 194,
+  "sz_solution": "RULDDRULURULU"
+ },
+ "195": {
+  "id": 195,
+  "wordId": 6,
+  "levelId": 25,
+  "mapId": 195,
+  "sz_solution": "URULDRDLDRUL"
+ },
+ "196": {
+  "id": 196,
+  "wordId": 6,
+  "levelId": 26,
+  "mapId": 196,
+  "sz_solution": "ULDLURDLULDLDL"
+ },
+ "197": {
+  "id": 197,
+  "wordId": 6,
+  "levelId": 27,
+  "mapId": 197,
+  "sz_solution": "DRULDRRURU"
+ },
+ "198": {
+  "id": 198,
+  "wordId": 6,
+  "levelId": 28,
+  "mapId": 198,
+  "sz_solution": "RUURDLU"
+ },
+ "199": {
+  "id": 199,
+  "wordId": 6,
+  "levelId": 29,
+  "mapId": 199,
+  "sz_solution": "DRULDLU"
+ },
+ "200": {
+  "id": 200,
+  "wordId": 6,
+  "levelId": 30,
+  "mapId": 200,
+  "sz_solution": "RULDRULDRUUR"
+ },
+ "201": {
+  "id": 201,
+  "wordId": 6,
+  "levelId": 31,
+  "mapId": 201,
+  "sz_solution": "RDLURDLULD"
+ },
+ "202": {
+  "id": 202,
+  "wordId": 6,
+  "levelId": 32,
+  "mapId": 202,
+  "sz_solution": "LURDLURDLUL"
+ },
+ "203": {
+  "id": 203,
+  "wordId": 6,
+  "levelId": 33,
+  "mapId": 203,
+  "sz_solution": "RULURDLDRDLULLDR"
+ },
+ "204": {
+  "id": 204,
+  "wordId": 6,
+  "levelId": 34,
+  "mapId": 204,
+  "sz_solution": "RDLULDRRD"
+ },
+ "205": {
+  "id": 205,
+  "wordId": 6,
+  "levelId": 35,
+  "mapId": 205,
+  "sz_solution": "RULDDRDL"
+ },
+ "206": {
+  "id": 206,
+  "wordId": 6,
+  "levelId": 36,
+  "mapId": 206,
+  "sz_solution": "URDLDRULRULDR"
+ },
+ "207": {
+  "id": 207,
+  "wordId": 6,
+  "levelId": 37,
+  "mapId": 207,
+  "sz_solution": "LDRULDLUULDR"
+ },
+ "208": {
+  "id": 208,
+  "wordId": 6,
+  "levelId": 38,
+  "mapId": 208,
+  "sz_solution": "DLULDLULDRDLD"
+ },
+ "209": {
+  "id": 209,
+  "wordId": 6,
+  "levelId": 39,
+  "mapId": 209,
+  "sz_solution": "LDRDLURULUL"
+ },
+ "210": {
+  "id": 210,
+  "wordId": 6,
+  "levelId": 40,
+  "mapId": 210,
+  "sz_solution": "DRDRDLUDLULRD"
+ },
+ "211": {
+  "id": 211,
+  "wordId": 7,
+  "levelId": 1,
+  "mapId": 211,
+  "sz_solution": "UDRUL"
+ },
+ "212": {
+  "id": 212,
+  "wordId": 7,
+  "levelId": 2,
+  "mapId": 212,
+  "sz_solution": "LDDRUURU"
+ },
+ "213": {
+  "id": 213,
+  "wordId": 7,
+  "levelId": 3,
+  "mapId": 213,
+  "sz_solution": "LDRDRULD"
+ },
+ "214": {
+  "id": 214,
+  "wordId": 7,
+  "levelId": 4,
+  "mapId": 214,
+  "sz_solution": "DRURRUL"
+ },
+ "215": {
+  "id": 215,
+  "wordId": 7,
+  "levelId": 5,
+  "mapId": 215,
+  "sz_solution": "RLDLDRU"
+ },
+ "216": {
+  "id": 216,
+  "wordId": 7,
+  "levelId": 6,
+  "mapId": 216,
+  "sz_solution": "DRLULULULD"
+ },
+ "217": {
+  "id": 217,
+  "wordId": 7,
+  "levelId": 7,
+  "mapId": 217,
+  "sz_solution": "RULDLUR"
+ },
+ "218": {
+  "id": 218,
+  "wordId": 7,
+  "levelId": 8,
+  "mapId": 218,
+  "sz_solution": "DLLULURDRUL"
+ },
+ "219": {
+  "id": 219,
+  "wordId": 7,
+  "levelId": 9,
+  "mapId": 219,
+  "sz_solution": "URDLDLLURURULD"
+ },
+ "220": {
+  "id": 220,
+  "wordId": 7,
+  "levelId": 10,
+  "mapId": 220,
+  "sz_solution": "DLULURULDLRDL"
+ },
+ "221": {
+  "id": 221,
+  "wordId": 7,
+  "levelId": 11,
+  "mapId": 221,
+  "sz_solution": "LURDRDLUR"
+ },
+ "222": {
+  "id": 222,
+  "wordId": 7,
+  "levelId": 12,
+  "mapId": 222,
+  "sz_solution": "LLURURULDDR"
+ },
+ "223": {
+  "id": 223,
+  "wordId": 7,
+  "levelId": 13,
+  "mapId": 223,
+  "sz_solution": "RULDLDRRURL"
+ },
+ "224": {
+  "id": 224,
+  "wordId": 7,
+  "levelId": 14,
+  "mapId": 224,
+  "sz_solution": "LURDLURURDDLDR"
+ },
+ "225": {
+  "id": 225,
+  "wordId": 7,
+  "levelId": 15,
+  "mapId": 225,
+  "sz_solution": "LRULURDRDLLUL"
+ },
+ "226": {
+  "id": 226,
+  "wordId": 7,
+  "levelId": 16,
+  "mapId": 226,
+  "sz_solution": "DRUURDLD"
+ },
+ "227": {
+  "id": 227,
+  "wordId": 7,
+  "levelId": 17,
+  "mapId": 227,
+  "sz_solution": "LDRULDDLULDDRUR"
+ },
+ "228": {
+  "id": 228,
+  "wordId": 7,
+  "levelId": 18,
+  "mapId": 228,
+  "sz_solution": "DDRULDDRUUL"
+ },
+ "229": {
+  "id": 229,
+  "wordId": 7,
+  "levelId": 19,
+  "mapId": 229,
+  "sz_solution": "URDRULUURU"
+ },
+ "230": {
+  "id": 230,
+  "wordId": 7,
+  "levelId": 20,
+  "mapId": 230,
+  "sz_solution": "URDDRLLLDDRU"
+ },
+ "231": {
+  "id": 231,
+  "wordId": 7,
+  "levelId": 21,
+  "mapId": 231,
+  "sz_solution": "LDDRURRULUULDLLDRRD"
+ },
+ "232": {
+  "id": 232,
+  "wordId": 7,
+  "levelId": 22,
+  "mapId": 232,
+  "sz_solution": "UURDRDLU"
+ },
+ "233": {
+  "id": 233,
+  "wordId": 7,
+  "levelId": 23,
+  "mapId": 233,
+  "sz_solution": "DLURULURRDDRU"
+ },
+ "234": {
+  "id": 234,
+  "wordId": 7,
+  "levelId": 24,
+  "mapId": 234,
+  "sz_solution": "LDRDLUURDLDDRD"
+ },
+ "235": {
+  "id": 235,
+  "wordId": 7,
+  "levelId": 25,
+  "mapId": 235,
+  "sz_solution": "ULDDLU"
+ },
+ "236": {
+  "id": 236,
+  "wordId": 7,
+  "levelId": 26,
+  "mapId": 236,
+  "sz_solution": "UULDRURDR"
+ },
+ "237": {
+  "id": 237,
+  "wordId": 7,
+  "levelId": 27,
+  "mapId": 237,
+  "sz_solution": "ULULDRDLULDLU"
+ },
+ "238": {
+  "id": 238,
+  "wordId": 7,
+  "levelId": 28,
+  "mapId": 238,
+  "sz_solution": "UDUDLRUDLLRRURULLDRU"
+ },
+ "239": {
+  "id": 239,
+  "wordId": 7,
+  "levelId": 29,
+  "mapId": 239,
+  "sz_solution": "ULRRDLDLDRRURD"
+ },
+ "240": {
+  "id": 240,
+  "wordId": 7,
+  "levelId": 30,
+  "mapId": 240,
+  "sz_solution": "URDLURURU"
+ },
+ "241": {
+  "id": 241,
+  "wordId": 7,
+  "levelId": 31,
+  "mapId": 241,
+  "sz_solution": "RDLLURRDLURRDLDD"
+ },
+ "242": {
+  "id": 242,
+  "wordId": 7,
+  "levelId": 32,
+  "mapId": 242,
+  "sz_solution": "URDRULDRDLU"
+ },
+ "243": {
+  "id": 243,
+  "wordId": 7,
+  "levelId": 33,
+  "mapId": 243,
+  "sz_solution": "RULDLULD"
+ },
+ "244": {
+  "id": 244,
+  "wordId": 7,
+  "levelId": 34,
+  "mapId": 244,
+  "sz_solution": "RULULDUR"
+ },
+ "245": {
+  "id": 245,
+  "wordId": 7,
+  "levelId": 35,
+  "mapId": 245,
+  "sz_solution": "DLULURDRDLDRDDLLDR"
+ },
+ "246": {
+  "id": 246,
+  "wordId": 7,
+  "levelId": 36,
+  "mapId": 246,
+  "sz_solution": "LULDDRDLLDULDR"
+ },
+ "247": {
+  "id": 247,
+  "wordId": 7,
+  "levelId": 37,
+  "mapId": 247,
+  "sz_solution": "RDDULDLULDRDR"
+ },
+ "248": {
+  "id": 248,
+  "wordId": 7,
+  "levelId": 38,
+  "mapId": 248,
+  "sz_solution": "DLDRULDR"
+ },
+ "249": {
+  "id": 249,
+  "wordId": 7,
+  "levelId": 39,
+  "mapId": 249,
+  "sz_solution": "UDULUDRULU"
+ },
+ "250": {
+  "id": 250,
+  "wordId": 7,
+  "levelId": 40,
+  "mapId": 250,
+  "sz_solution": "DRDLLUDL"
+ },
+ "251": {
+  "id": 251,
+  "wordId": 8,
+  "levelId": 1,
+  "mapId": 251,
+  "sz_solution": "RULDRUL"
+ },
+ "252": {
+  "id": 252,
+  "wordId": 8,
+  "levelId": 2,
+  "mapId": 252,
+  "sz_solution": "LDRURDLDL"
+ },
+ "253": {
+  "id": 253,
+  "wordId": 8,
+  "levelId": 3,
+  "mapId": 253,
+  "sz_solution": "RUURUDDLD"
+ },
+ "254": {
+  "id": 254,
+  "wordId": 8,
+  "levelId": 4,
+  "mapId": 254,
+  "sz_solution": "UULULDRDRU"
+ },
+ "255": {
+  "id": 255,
+  "wordId": 8,
+  "levelId": 5,
+  "mapId": 255,
+  "sz_solution": "RULDRULD"
+ },
+ "256": {
+  "id": 256,
+  "wordId": 8,
+  "levelId": 6,
+  "mapId": 256,
+  "sz_solution": "LURDR"
+ },
+ "257": {
+  "id": 257,
+  "wordId": 8,
+  "levelId": 7,
+  "mapId": 257,
+  "sz_solution": "DRUURURDL"
+ },
+ "258": {
+  "id": 258,
+  "wordId": 8,
+  "levelId": 8,
+  "mapId": 258,
+  "sz_solution": "DDRULDDRURD"
+ },
+ "259": {
+  "id": 259,
+  "wordId": 8,
+  "levelId": 9,
+  "mapId": 259,
+  "sz_solution": "LDRULURULUL"
+ },
+ "260": {
+  "id": 260,
+  "wordId": 8,
+  "levelId": 10,
+  "mapId": 260,
+  "sz_solution": "URDLDLURURULD"
+ },
+ "261": {
+  "id": 261,
+  "wordId": 8,
+  "levelId": 11,
+  "mapId": 261,
+  "sz_solution": "RDLURDRULDR"
+ },
+ "262": {
+  "id": 262,
+  "wordId": 8,
+  "levelId": 12,
+  "mapId": 262,
+  "sz_solution": "DRURDRDLDLD"
+ },
+ "263": {
+  "id": 263,
+  "wordId": 8,
+  "levelId": 13,
+  "mapId": 263,
+  "sz_solution": "RDLURUURULLLDRDLU"
+ },
+ "264": {
+  "id": 264,
+  "wordId": 8,
+  "levelId": 14,
+  "mapId": 264,
+  "sz_solution": "RUULDRULR"
+ },
+ "265": {
+  "id": 265,
+  "wordId": 8,
+  "levelId": 15,
+  "mapId": 265,
+  "sz_solution": "ULDLRULDRUL"
+ },
+ "266": {
+  "id": 266,
+  "wordId": 8,
+  "levelId": 16,
+  "mapId": 266,
+  "sz_solution": "DLDRULULDLDLUR"
+ },
+ "267": {
+  "id": 267,
+  "wordId": 8,
+  "levelId": 17,
+  "mapId": 267,
+  "sz_solution": "LDRULDR"
+ },
+ "268": {
+  "id": 268,
+  "wordId": 8,
+  "levelId": 18,
+  "mapId": 268,
+  "sz_solution": "DRULDRUL"
+ },
+ "269": {
+  "id": 269,
+  "wordId": 8,
+  "levelId": 19,
+  "mapId": 269,
+  "sz_solution": "DRULDLDURD"
+ },
+ "270": {
+  "id": 270,
+  "wordId": 8,
+  "levelId": 20,
+  "mapId": 270,
+  "sz_solution": "UURDLLLULDLLURRRRDLU"
+ },
+ "271": {
+  "id": 271,
+  "wordId": 8,
+  "levelId": 21,
+  "mapId": 271,
+  "sz_solution": "ULURULDLULDRDLDRURD"
+ },
+ "272": {
+  "id": 272,
+  "wordId": 8,
+  "levelId": 22,
+  "mapId": 272,
+  "sz_solution": "RDLURULDLD"
+ },
+ "273": {
+  "id": 273,
+  "wordId": 8,
+  "levelId": 23,
+  "mapId": 273,
+  "sz_solution": "LULDRULLUURULLULUL"
+ },
+ "274": {
+  "id": 274,
+  "wordId": 8,
+  "levelId": 24,
+  "mapId": 274,
+  "sz_solution": "RDDLLURDRUL"
+ },
+ "275": {
+  "id": 275,
+  "wordId": 8,
+  "levelId": 25,
+  "mapId": 275,
+  "sz_solution": "LLDLULURDRRUL"
+ },
+ "276": {
+  "id": 276,
+  "wordId": 8,
+  "levelId": 26,
+  "mapId": 276,
+  "sz_solution": "RDRDLUDLULDRR"
+ },
+ "277": {
+  "id": 277,
+  "wordId": 8,
+  "levelId": 27,
+  "mapId": 277,
+  "sz_solution": "UDUDLDRURLDL"
+ },
+ "278": {
+  "id": 278,
+  "wordId": 8,
+  "levelId": 28,
+  "mapId": 278,
+  "sz_solution": "RURDLURULUR"
+ },
+ "279": {
+  "id": 279,
+  "wordId": 8,
+  "levelId": 29,
+  "mapId": 279,
+  "sz_solution": "URDLURDLRU"
+ },
+ "280": {
+  "id": 280,
+  "wordId": 8,
+  "levelId": 30,
+  "mapId": 280,
+  "sz_solution": "DURDLURDLR"
+ },
+ "281": {
+  "id": 281,
+  "wordId": 8,
+  "levelId": 31,
+  "mapId": 281,
+  "sz_solution": "LDRULURDRDLUD"
+ },
+ "282": {
+  "id": 282,
+  "wordId": 8,
+  "levelId": 32,
+  "mapId": 282,
+  "sz_solution": "URDLULDRUL"
+ },
+ "283": {
+  "id": 283,
+  "wordId": 8,
+  "levelId": 33,
+  "mapId": 283,
+  "sz_solution": "LDRRULRLUD"
+ },
+ "284": {
+  "id": 284,
+  "wordId": 8,
+  "levelId": 34,
+  "mapId": 284,
+  "sz_solution": "LUURRDRDDLURUUL"
+ },
+ "285": {
+  "id": 285,
+  "wordId": 8,
+  "levelId": 35,
+  "mapId": 285,
+  "sz_solution": "LLURDRDLDDULU"
+ },
+ "286": {
+  "id": 286,
+  "wordId": 8,
+  "levelId": 36,
+  "mapId": 286,
+  "sz_solution": "DRULDRDRRUULULD"
+ },
+ "287": {
+  "id": 287,
+  "wordId": 8,
+  "levelId": 37,
+  "mapId": 287,
+  "sz_solution": "URDLURLURDRURDL"
+ },
+ "288": {
+  "id": 288,
+  "wordId": 8,
+  "levelId": 38,
+  "mapId": 288,
+  "sz_solution": "DRDRRDURULURURRD"
+ },
+ "289": {
+  "id": 289,
+  "wordId": 8,
+  "levelId": 39,
+  "mapId": 289,
+  "sz_solution": "URDRULDDLLUULDLUR"
+ },
+ "290": {
+  "id": 290,
+  "wordId": 8,
+  "levelId": 40,
+  "mapId": 290,
+  "sz_solution": "LURDLDLDRURUULLDRDLURDL"
+ }
+}

@@ -1,0 +1,34 @@
+{
+ "1": {
+  "id": 1,
+  "sz_title": "Origin"
+ },
+ "2": {
+  "id": 2,
+  "sz_title": "Break"
+ },
+ "3": {
+  "id": 3,
+  "sz_title": "Lost"
+ },
+ "4": {
+  "id": 4,
+  "sz_title": "Other Side"
+ },
+ "5": {
+  "id": 5,
+  "sz_title": "Friendship"
+ },
+ "6": {
+  "id": 6,
+  "sz_title": "Gate"
+ },
+ "7": {
+  "id": 7,
+  "sz_title": "Variant"
+ },
+ "8": {
+  "id": 8,
+  "sz_title": "Deep"
+ }
+}

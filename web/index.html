@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>冲撞迷阵 Maze Dash — 网页版</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="theme-color" content="#12131a">
+    <link rel="icon" href="data:,">
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: #12131a;
+            background-image: radial-gradient(circle at 50% 0%, #232739 0%, #12131a 60%);
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none; user-select: none;
+            font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+        }
+
+        /* Portrait stage for a 720x1280 design resolution */
+        #GameDiv {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            margin: auto;
+            /* exact 720x1280 (9:16) portrait stage, letterboxed inside the viewport */
+            width: min(100vw, calc(100vh * 720 / 1280));
+            height: min(100vh, calc(100vw * 1280 / 720));
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 0 48px rgba(0, 0, 0, .75);
+        }
+        #GameCanvas {
+            display: block;
+            width: 100%; height: 100%;
+            outline: none; border: none;
+            touch-action: none;
+        }
+
+        /* Loading splash (main.js drives .progress-bar span) */
+        #splash {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 26px;
+            background: #12131a;
+            color: #eef0f6;
+            text-align: center;
+        }
+        #splash .title { font-size: 22px; letter-spacing: .18em; font-weight: 600; opacity: .95; }
+        #splash .subtitle { font-size: 12px; letter-spacing: .3em; opacity: .45; text-transform: uppercase; }
+        #splash .progress-bar {
+            width: 208px; height: 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, .14);
+            overflow: hidden;
+        }
+        #splash .progress-bar span {
+            display: block;
+            width: 0%; height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #7ee0c0, #69a7ff);
+            transition: width .18s ease-out;
+        }
+
+        /* Optional hint strip for desktop users */
+        #keyhint {
+            position: absolute;
+            left: 50%; bottom: 10px;
+            transform: translateX(-50%);
+            z-index: 15;
+            padding: 5px 12px;
+            border-radius: 999px;
+            font-size: 11px;
+            letter-spacing: .06em;
+            color: #cfd6e6;
+            background: rgba(20, 22, 32, .62);
+            border: 1px solid rgba(255, 255, 255, .1);
+            backdrop-filter: blur(6px);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .5s ease;
+        }
+        #keyhint.show { opacity: 1; }
+
+        #fatal {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 30;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 32px;
+            background: #1b1116;
+            color: #ffd9d9;
+            font-size: 13px;
+            line-height: 1.7;
+            text-align: center;
+            white-space: pre-wrap;
+            overflow: auto;
+        }
+        #fatal b { color: #ff8f8f; font-size: 15px; }
+
+        /* when startup failed, the loading splash must never cover the message,
+           even though the boot sequence re-shows it inline */
+        body.boot-failed #splash { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="GameDiv">
+        <canvas id="GameCanvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+    </div>
+
+    <div id="fatal"></div>
+
+    <div id="keyhint">方向键 / WASD 或直接拖动鼠标滑动</div>
+
+    <div id="splash">
+        <div class="title">冲撞迷阵</div>
+        <div class="subtitle">Maze Dash</div>
+        <div class="progress-bar"><span></span></div>
+    </div>
+
+    <!-- 0) record asset-request failures as early as possible, so that a boot
+            failure can tell the user what actually went wrong (most commonly:
+            the page was opened from disk via file://, where the browser blocks
+            every XHR the game needs to read res/) -->
+    <script charset="utf-8">
+        (function () {
+            var net = window.__mazeDashNet = { failed: [], ok: 0, started: 0 };
+            try {
+                var proto = XMLHttpRequest.prototype;
+                var rawOpen = proto.open, rawSend = proto.send;
+                proto.open = function (method, url) { this.__mazeUrl = url; return rawOpen.apply(this, arguments); };
+                proto.send = function () {
+                    var self = this;
+                    net.started++;
+                    this.addEventListener('loadend', function () {
+                        var s = self.status;
+                        if (s === 0 || s >= 400) {
+                            if (net.failed.length < 40) {
+                                net.failed.push((s || 'blocked') + ' ' + self.__mazeUrl);
+                            }
+                        } else { net.ok++; }
+                    });
+                    return rawSend.apply(this, arguments);
+                };
+            } catch (e) { /* non-fatal */ }
+            window.addEventListener('error', function (ev) {
+                var t = ev && ev.target;
+                if (t && t.tagName && /^(IMG|AUDIO|SCRIPT|LINK)$/.test(t.tagName)) {
+                    if (net.failed.length < 40) { net.failed.push('resource ' + (t.src || t.href || t.tagName)); }
+                }
+            }, true);
+        })();
+    </script>
+
+    <!-- 1) build settings (defines window._CCSettings) -->
+    <script src="src/settings.js" charset="utf-8"></script>
+    <!-- 2) Cocos Creator 2.0.2 browser engine -->
+    <script src="cocos2d-js.js" charset="utf-8"></script>
+    <!-- 3) port-specific shims / adaptations (must be before boot) -->
+    <script src="web-port.js" charset="utf-8"></script>
+    <!-- 4) boot -->
+    <script src="main.js" charset="utf-8"></script>
+</body>
+</html>
