@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const { spawn } = require('child_process');
 const puppeteer = require('puppeteer-core');
 const WEB = 'E:\\maze_dash\\web';
@@ -64,6 +64,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate(() => { try { gamemain.enterHallScene(); } catch (e) {} });
     for (let i = 0; i < 30; i++) { if ((await scene()) === 'HallScene') { break; } await sleep(500); }
     await sleep(5000);
+    await page.screenshot({ path: path.join(__dirname, 'shots', 't4-back-in-hall.png') });
     const back = await probe();
     console.log('BACK IN HALL:', JSON.stringify({ aligned: back.aligned, off: back.off, pageW: back.pageW, pageIndex: back.pageIndex, offsetMod: back.offsetMod, realigned: back.stats && back.stats.pagerRealigned, tabs: back.tabsActive }, null, 1));
     console.log('errors:', JSON.stringify(errs.slice(0, 5)));

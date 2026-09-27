@@ -211,21 +211,37 @@
                hall still came back parked half a page off (measured: offset 3072 with a
                2048 page width = exactly 1.5 pages). Scroll it for the animation, then
                place the content on the exact page boundary once it has settled. */
+            /* Root cause, from the engine source (CCPageView.js): NestablePageView_Outer
+               extends cc.PageView, and in SizeMode.Free _moveOffsetValue(idx) reads the
+               CACHED per-page centre offsets _scrollCenterOffsetX[], filled by
+               _updatePageView() back when the pages were still 720 wide. That is why
+               scrollToPage() landed exactly half a page off (2048 px pages, 1024 px
+               error) and why patching content.x from outside was overwritten.
+               The fix is to make the engine recompute those offsets after the pages are
+               widened, then scroll. Deferred so the widening below has already landed. */
             var target = currentIndex;
             try {
                 var lastWorld = (typeof gamemain.getLastWordId === 'function') ? gamemain.getLastWordId() : 0;
                 if (lastWorld > 0) { target = lastWorld - 1; }
             } catch (e) {}
-            if (typeof pager.scrollToPage === 'function') {
-                try { pager.scrollToPage(target); stats.pagerRealigned = (stats.pagerRealigned || 0) + 1; } catch (e) {}
-            }
-            (function (c, t, w) {
+            (function (pg, t) {
                 setTimeout(function () {
                     try {
-                        if (c && c.isValid) { c.x = -Math.round(t * w); stats.pagerSnapped = (stats.pagerSnapped || 0) + 1; }
+                        if (!pg || !pg.node || !pg.node.isValid) { return; }
+                        if (typeof pg._updatePageView === 'function') {
+                            pg._updatePageView();
+                            stats.pagerRecomputed = (stats.pagerRecomputed || 0) + 1;
+                        } else if (typeof pg._initPages === 'function') {
+                            pg._initPages();
+                            stats.pagerRecomputed = (stats.pagerRecomputed || 0) + 1;
+                        }
+                        if (typeof pg.scrollToPage === 'function') {
+                            pg.scrollToPage(t);
+                            stats.pagerRealigned = (stats.pagerRealigned || 0) + 1;
+                        }
                     } catch (e) {}
-                }, 400);
-            })(content, target, W);
+                }, 500);
+            })(pager, target);
         }
         pages.forEach(function (page) {
             var c = page.getComponent('StageSelectLayer');

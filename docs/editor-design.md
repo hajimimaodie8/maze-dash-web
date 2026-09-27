@@ -239,3 +239,17 @@ hallScene.StageSelectLayer.insertPage(page, index)   // 插入整页
 **结论**：这个翻页器的滚动不是靠 `content.x` 表达的，或不接受外部写入 ——
 **下一项测试必须先把它的滚动机制读出来**（读 `StageSelectLayer` / `NestablePageView_Outer`
 组件的源码，看它用什么字段记录页宽与偏移），再用它自己的 API 对齐，而不是从外面硬改。
+### ✅ 8.4 结论修正：翻页器**实际是对齐的**（我上一轮的判定错了）
+
+上一轮我依据 `content.x` 得出"偏移差半页、未修复"。**这个度量是错的** ——
+读了引擎源码才知道 `NestablePageView_Outer extends cc.PageView`，
+`scrollToPage(idx)` → `scrollToOffset(this._moveOffsetValue(idx))`，
+而在 `SizeMode.Free` 下 `_moveOffsetValue` 读的是**引擎缓存的 `_scrollCenterOffsetX[]`**，
+不是 `content.x`。`content.x` 含内容自身的锚点基准，所以"1024"并不代表半页错位。
+
+**以画面为准的判定**（`tools/verify/probe-hall-align.js` 会存图）：从关卡返回大厅后截图显示
+**世界 1「Origin」居中、20 关完整铺开、右侧箭头贴边**，即**正确对齐**，没有卡在两个世界之间。
+
+而本轮加的**引擎级修复依然是有意义的正确做法**：撑宽页面后调用 `pager._updatePageView()`
+重算 `_scrollCenterOffsetX[]`，再 `scrollToPage()` —— 这是引擎自己在布局变化后会做的事，
+比从外部猜偏移量可靠。（`stats.pagerRecomputed` 记录次数。）
