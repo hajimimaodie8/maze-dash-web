@@ -23,6 +23,9 @@
         unlimitedHints: true,      // 提示不再消耗
         unlimitedRestarts: true,   // 重开不再消耗
         pageMargin: 60,            // 网格与页边的水平留白
+        listMargin: 70,            // 皮肤列表与页边的水平留白
+        widenListPages: ['faceView'],   // 只撑宽皮肤页列表
+        skipPages: ['questView'],       // 任务页保持原样（撑宽会触发游戏自身空指针）
         log: true,
     };
 
@@ -102,8 +105,49 @@
        whole level-select (and the view backgrounds) to a phone-sized strip in the
        middle of a wide window, and it is also why dragging looked like a 720
        window sliding over a 2048 page. Widen the pager chrome too. */
+    /* widenPageChrome() already stretches the page's scrollview / Mask / background.
+       The *content* inside keeps its authored width, which is why the skin list still
+       looked phone-sized: 12 skins clustered in a 610 px strip inside a 2048 px page.
+       Widen the content too and let its Layout recompute the columns. A Layout with
+       resizeMode = CHILDREN would immediately shrink it back, so that is relaxed for
+       this container only. */
+    /* Only the faces list is widened for now: doing the same to the quests page made
+       the game's own showBarView() throw when that tab is opened (a component under
+       the quest list reads a missing field once its content width changes). Keeping
+       the change to the page the user reported is safer than shipping that. */
+    function widenScrollContent(page, W) {
+        if (!page || !page.isValid) { return 0; }
+        if (CFG.widenListPages.indexOf(page.name) === -1) { return 0; }
+        var n = 0;
+        try {
+        ['scrollview', 'scrollView'].forEach(function (name) {
+            var sv = page.getChildByName(name);
+            var sc = sv && sv.getComponent(cc.ScrollView);
+            var content = sc && sc.content;
+            if (!content || !content.isValid) { return; }
+            var target = W - CFG.listMargin * 2;
+            if (content.width >= target) { return; }
+            var layout = content.getComponent(cc.Layout);
+            if (layout) {
+                if (layout.resizeMode === 2) { layout.resizeMode = 0; }   // CHILDREN -> NONE
+                content.width = target;
+                if (layout.updateLayout) { layout.updateLayout(); }
+            } else {
+                content.width = target;
+            }
+            n++;
+        });
+        } catch (e) { log('widening', page.name, 'failed:', e); return 0; }
+        return n;
+    }
     function widenPageChrome(page, W) {
         if (!page || !page.isValid) { return 0; }
+        /* The quests page is left completely alone: opening its tab threw
+           "Cannot read properties of undefined (reading 'count')" once its
+           scrollview/view were widened but its content (authored 610 wide) was not,
+           and the same mismatch produced _assembler null errors. A page that works
+           at its authored width beats one that half-fits and crashes. */
+        if (CFG.skipPages.indexOf(page.name) !== -1) { return 0; }
         var n = 0;
         ['scrollview', 'scrollView'].forEach(function (name) {
             var sv = page.getChildByName(name);
@@ -124,6 +168,7 @@
         if (!content) { return 0; }
 
         (window.hallScene.viewGroup || []).forEach(function (v) { widenPageChrome(v, W); });
+        (window.hallScene.viewGroup || []).forEach(function (v) { widenScrollContent(v, W); });
 
         var pages = (content.children || []).filter(function (p) { return hasComp(p, 'StageSelectLayer'); });
         if (!pages.length) { return 0; }
