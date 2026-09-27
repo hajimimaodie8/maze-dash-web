@@ -97,12 +97,33 @@
     /* The grid is authored 720 wide. Widening the container and letting the game
        recompute the grid (columns = floor(contentWidth / buttonWidth)) is enough,
        so no level data changes. */
+    /* The pager that hosts the world pages was still 720 wide and, worse, its
+       "view" node carries a cc.Mask of 720x1280 - that single Mask clipped the
+       whole level-select (and the view backgrounds) to a phone-sized strip in the
+       middle of a wide window, and it is also why dragging looked like a 720
+       window sliding over a 2048 page. Widen the pager chrome too. */
+    function widenPageChrome(page, W) {
+        if (!page || !page.isValid) { return 0; }
+        var n = 0;
+        ['scrollview', 'scrollView'].forEach(function (name) {
+            var sv = page.getChildByName(name);
+            if (!sv || !sv.isValid) { return; }
+            if (sv.width < W) { sv.width = W; n++; }
+            var view = sv.getChildByName('view');
+            if (view && view.isValid && view.width < W) { view.width = W; n++; }
+            var bg = sv.getChildByName('background');
+            if (bg && bg.isValid && bg.width < W) { bg.width = W; n++; }
+        });
+        return n;
+    }
     function widenSelectPage() {
         var W = visibleWidth();
         var sv = cc.find('Canvas/gameView/scrollView');
         var scv = sv ? sv.getComponent(cc.ScrollView) : null;
         var content = scv ? scv.content : null;
         if (!content) { return 0; }
+
+        (window.hallScene.viewGroup || []).forEach(function (v) { widenPageChrome(v, W); });
 
         var pages = (content.children || []).filter(function (p) { return hasComp(p, 'StageSelectLayer'); });
         if (!pages.length) { return 0; }
