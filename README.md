@@ -180,6 +180,28 @@ node tools/make-wrench-icon.js --color '#FF8A3D' --out dist/w.png --print-dataur
 
 ---
 
+## 清静模式（`web/clean-mode.js`）
+
+原版被广告、内购、礼包、评分、任务恭喜、世界解锁这些弹窗包着。移植层把它们全部接管了，
+并且**皮肤全解锁**：
+
+| 处理 | 做法 |
+| --- | --- |
+| 12 张皮肤全部解锁 | `gamemain.setFaceInfo([0..11])`，皮肤页里 0 个上锁 |
+| 通用弹窗（提示 / 警告 / 评分） | 接管 `gamemain.showTips` / `showGameAlert` / `showRateUs` |
+| 任务恭喜、世界解锁 / 通关世界弹窗 | 接管 `gameScene.showQuestTick / showCompleteQuest / showUnlockWorld / showWorldCompleted`（这些挂在**场景组件**上，不在 `gamemain`） |
+| 皮肤解锁弹窗 | 接管 `showFaceUnlock`，并让 `checkFaceUnLock` 返回 null |
+| 首次进入的「+1H」礼包窗 | 接管 `setInfinityTicketExpiryTime`，无限体力下本就不需要它 |
+| 任务 / 世界解锁的判定 | `checkQuest` 恒返回 `[]`、`checkNewWorld` 恒返回 `null` |
+| 广告 / 内购入口 | `showVideoAd` / `showInterstitialAd` / `show*Ad` / `pay` 全部空操作 |
+| 两个引导浮层 | `guid_tips` / `QuestTips` 被直接关掉（只列这两个，避免误伤通关面板） |
+
+**回调会原样转发** —— 弹窗的完成回调若不调用，调用方会一直等下去。
+每个被接管的函数都打了 `__cleanMode` 标记，`window.MazeDashClean.stats` 里能看到
+接管清单、被拦下的调用次数和被关掉的节点数。开关都在文件顶部的 `CFG`。
+
+---
+
 ## 验证情况
 
 | 项目 | 结果 |
@@ -195,6 +217,7 @@ node tools/make-wrench-icon.js --color '#FF8A3D' --out dist/w.png --print-dataur
 | 服务器版验收 | `node tools/verify/acceptance.js` → **17/17** |
 | 直装版验收 | `node tools/verify/standalone.js` → **14/14**，且网络请求数为 **0** |
 | 在线版验收 | 直接加载 `https://hajimimaodie8.github.io/maze-dash-web/` → **10/10**（含真实滑动通关） |
+| 清静模式 | 皮肤 12/12 解锁、皮肤页 0 上锁、礼包窗不再出现、通关第 1 关后无任何弹窗、10 个弹窗入口 + 5 个场景级入口被接管 → `tools/verify/clean.js` **13/13** |
 | 第 6 个标签 | 6 格 × 120 = 720 均分、扳手图标生效、页面滑入居中、高亮唯一、来回切换与连点都稳定 → 	ools/verify/customtab.js **17/17** |
 | 一致性 | `web/src/`、`web/res/` 与 APK 内文件逐字节一致 |
 
