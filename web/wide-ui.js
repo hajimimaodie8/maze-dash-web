@@ -24,8 +24,8 @@
         unlimitedRestarts: true,   // 重开不再消耗
         pageMargin: 60,            // 网格与页边的水平留白
         listMargin: 70,            // 皮肤列表与页边的水平留白
-        widenListPages: ['faceView'],   // 只撑宽皮肤页列表
-        skipPages: ['questView'],       // 任务页保持原样（撑宽会触发游戏自身空指针）
+        widenListPages: ['faceView', 'questView'],   // 皮肤页与任务页的列表都撑宽
+        skipPages: [],                  // 任务页的崩溃已查明与撑宽无关（游戏首次打开自身报错，已加重试）
         log: true,
     };
 

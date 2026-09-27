@@ -29,6 +29,7 @@
         quietPopups: true,        // 封死所有弹窗入口
         quietQuests: true,        // 任务不再弹提示
         quietWorldUnlock: true,   // 世界解锁 / 通关世界不再弹窗
+        hideNuisanceNodes: true,  // 关掉 guid_tips / QuestTips（可关闭以便二分定位）
         quietGift: true,          // 关掉首次进入的 +1H 礼包弹窗
         log: true,
     };
@@ -191,6 +192,7 @@
        named "*Complete*" would also hide the level-complete panel the player
        needs in order to continue. */
     var NUISANCE_RE = /^(guid_tips|QuestTips)$/i;
+    /* Guarded by a flag so the effect of hiding these can be bisected at runtime. */
 
     function silenceComponent(comp, names) {
         if (!comp) { return; }
@@ -280,7 +282,7 @@
             if (s.name === 'gameScene') { silenceComponent(window.gameScene, SCENE_QUIET.gameScene); }
             hidePurchaseUI();
             (function walk(n) {
-                if (n !== s && n.active && NUISANCE_RE.test(n.name)) {
+                if (CFG.hideNuisanceNodes !== false && n !== s && n.active && NUISANCE_RE.test(n.name)) {
                     n.active = false;
                     stats.hiddenNodes = (stats.hiddenNodes || 0) + 1;
                 }

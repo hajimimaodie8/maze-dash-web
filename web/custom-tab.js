@@ -58,6 +58,8 @@
         try { return Math.max(1280, Math.round(cc.view.getVisibleSize().height)); } catch (e) { return 1280; }
     }
 
+    var stats = { showBarViewRetries: 0 };
+
     function log() {
         try {
             console.log.apply(console, ['[custom-tab]'].concat([].slice.call(arguments)));
@@ -113,6 +115,26 @@
     }
 
     /* ------------------------------------------------- 1. the 6th tab item */
+    /* The game's own showBarView() throws on the *first* open of the quests tab
+       ("Cannot read properties of undefined (reading 'count')"), which aborts the
+       tab switch. A bisect showed this is not the wide design and not clean mode:
+       it reproduces at the authored 720 design on a fresh session, and the very
+       next attempt always succeeds. Wrap it with a single retry. */
+    function makeShowBarViewResilient(hall) {
+        if (!hall || typeof hall.showBarView !== 'function' || hall.showBarView.__retryable) { return false; }
+        var orig = hall.showBarView;
+        hall.showBarView = function () {
+            try {
+                return orig.apply(this, arguments);
+            } catch (e) {
+                stats.showBarViewRetries = (stats.showBarViewRetries || 0) + 1;
+                log('showBarView threw (retrying once):', e && e.message);
+                return orig.apply(this, arguments);
+            }
+        };
+        hall.showBarView.__retryable = true;
+        return true;
+    }
     function addTabItem(hall) {
         var bar = hall.tabBar;
         var proto = bar.children[bar.children.length - 1];
@@ -460,6 +482,7 @@
         if (!hall.tabBar || !hall.viewGroup || hall.viewGroup.length < 5) { return false; }
         hall.__customTabInstalled = true;
 
+        makeShowBarViewResilient(hall);
         var item = addTabItem(hall);
         layoutTabs(hall);
         var freed = freeTabBarArea();
@@ -530,6 +553,7 @@
         /** re-divide the bar, e.g. after slots are hidden */
         relayout: function () { try { layoutTabs(window.hallScene); } catch (e) {} },
         install: tryInstall,
+        stats: stats,
         /** switch 闯关模式 / 解锁模式 (persisted) */
         applyMode: applyMode,
         /** re-run the game's lock/grid decision for every world page */
