@@ -171,6 +171,7 @@
         (window.hallScene.viewGroup || []).forEach(function (v) { widenScrollContent(v, W); });
 
         var pages = (content.children || []).filter(function (p) { return hasComp(p, 'StageSelectLayer'); });
+        pages.forEach(function (p) { var cc2 = p.getComponent('StageSelectLayer'); if (cc2) { centerGridVertically(cc2); } });
         if (!pages.length) { return 0; }
 
         var n = content.children.length;
@@ -241,6 +242,7 @@
                 // their level grid, which is the leak that was reported.
                 try {
                     c.showLockLayer();
+                    centerGridVertically(c);
                     stats.gridsRegenerated++;
                 } catch (e) {
                     log('showLockLayer failed:', e);
@@ -250,6 +252,25 @@
         return changed;
     }
 
+    /* The grid sits at the top of its scroll window and, with only a row or two of
+       levels, leaves a large empty area below. Nothing to scroll, so centring the
+       content inside the mask is safe. Measured rather than computed from anchors,
+       so it works whatever the content's anchor is; the correction is idempotent. */
+    function centerGridVertically(c) {
+        try {
+            var sv = c.SV;
+            if (!sv || !sv.content || !sv.content.parent) { return 0; }
+            var content = sv.content, view = content.parent;
+            if (!content.isValid || !view.isValid) { return 0; }
+            var cb = content.getBoundingBoxToWorld();
+            var vb = view.getBoundingBoxToWorld();
+            var delta = Math.round((vb.y + vb.height / 2) - (cb.y + cb.height / 2));
+            if (Math.abs(delta) <= 2) { return 0; }
+            content.y += delta;
+            stats.gridCentered = (stats.gridCentered || 0) + 1;
+            return delta;
+        } catch (e) { return 0; }
+    }
     /* ============================ 3. 关卡内 HUD 撑宽 ============================ */
     function widenLevelHud() {
         var gs = window.gameScene;
