@@ -219,6 +219,34 @@
         return W;
     }
 
+    /* The placeholder page paints a full-screen background. Its tint used to be
+       sampled from a sibling view at install time - which is white before the game
+       has coloured that view - so the page came out as one big white sheet over the
+       scene (the "white fog" that was reported). Take the colour from the camera
+       instead, which this port keeps in sync with the theme, and if that is not
+       usable, draw no background at all rather than a white one. */
+    function applyPageTint() {
+        var hall = window.hallScene;
+        var page = hall && hall.viewGroup ? hall.viewGroup[CFG.index] : null;
+        if (!page || !page.isValid) { return false; }
+        var sp = page.getComponent(cc.Sprite);
+        if (!sp) { return false; }
+        var col = null;
+        try {
+            var cam = cc.Camera.main || (cc.Camera.cameras && cc.Camera.cameras[0]);
+            if (cam && cam.backgroundColor) { col = cam.backgroundColor; }
+        } catch (e) {}
+        var usable = !!col && !(col.r === 255 && col.g === 255 && col.b === 255);
+        if (usable) {
+            if (!sp.enabled) { sp.enabled = true; }
+            page.color = cc.color(col.r, col.g, col.b, 255);
+            stats.pageTinted = (stats.pageTinted || 0) + 1;
+        } else {
+            sp.enabled = false;          // transparent beats a white sheet
+            stats.pageTintSkipped = (stats.pageTintSkipped || 0) + 1;
+        }
+        return usable;
+    }
     function layoutTabs(hall) {
         var bar = hall.tabBar;
         var kids = bar.children || [];
@@ -438,6 +466,8 @@
     }
 
     function buildModeSelector(view) {
+        if (view.__modeSelectorBuilt) { return null; }   // the call site got duplicated once; never build twice
+        view.__modeSelectorBuilt = true;
         var modes = [
             { id: 'progression', label: '闯关模式', desc: '按进度解锁（默认）' },
             { id: 'unlocked', label: '解锁模式', desc: '全关卡解锁（便于调试）' },
@@ -543,7 +573,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); }
         } catch (e) {}
     }, 1500);
 

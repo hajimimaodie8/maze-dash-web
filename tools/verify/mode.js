@@ -84,10 +84,24 @@ function pageState() {
         const v = window.hallScene.viewGroup[5];
         const names = [];
         (function walk(n) { names.push(n.name); (n.children || []).forEach(walk); })(v);
-        return { names: names.slice(0, 12), hasProg: names.indexOf('mode_progression') >= 0, hasUnl: names.indexOf('mode_unlocked') >= 0 };
+        const count = (k) => names.filter((x) => x === k).length;
+        return { names: names.slice(0, 14), hasProg: count('mode_progression') === 1, hasUnl: count('mode_unlocked') === 1, titleCount: count('modeTitle'), total: names.length };
     });
+    const tint = await page.evaluate(() => {
+        const v = window.hallScene.viewGroup[5];
+        const sp = v.getComponent(cc.Sprite);
+        const cam = cc.Camera.main || (cc.Camera.cameras && cc.Camera.cameras[0]);
+        return {
+            pageRgb: [v.color.r, v.color.g, v.color.b], spriteEnabled: sp ? sp.enabled : null,
+            cameraRgb: cam && cam.backgroundColor ? [cam.backgroundColor.r, cam.backgroundColor.g, cam.backgroundColor.b] : null,
+            stats: window.MazeDashCustomTab.stats,
+        };
+    });
+    console.log('custom page tint:', JSON.stringify(tint));
+    check('the placeholder page is not painted white', !(tint.pageRgb[0] === 255 && tint.pageRgb[1] === 255 && tint.pageRgb[2] === 255) || tint.spriteEnabled === false, tint);
+    check('the placeholder page matches the theme background', !!tint.cameraRgb && (tint.spriteEnabled === false || tint.pageRgb.join() === tint.cameraRgb.join()), tint);
     console.log('custom page nodes:', JSON.stringify(ui.names));
-    check('the mode selector is on the custom-levels page', ui.hasProg && ui.hasUnl, ui);
+    check('the mode selector is on the custom-levels page (exactly once)', ui.hasProg && ui.hasUnl && ui.titleCount === 1, ui);
     await page.screenshot({ path: path.join(SHOTS, 'mode-02-selector.png') });
 
     // wide in-level: the board fills the width now
