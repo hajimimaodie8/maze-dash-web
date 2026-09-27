@@ -49,6 +49,7 @@
          *   'stretch' → 拉伸填满，会变形
          */
         fit: 'auto',
+        wideMode: true,        // 宽窗口：设计分辨率跟着窗口宽高比变宽（否则 720 竖条居中）
 
         /* 游戏外围留白的颜色：'auto' = 跟随当前场景/世界的主题底色 */
         background: 'auto',
@@ -96,11 +97,38 @@
     var layoutListeners = [];
     var activePolicy = null;
 
+    /* Wide mode: keep the design 1280 tall but let it be as wide as the window's
+       aspect ratio. Then the whole browser window is game space - nothing is
+       letterboxed, nothing is cropped, and the scale stays uniform - and the UI
+       can be laid out across the full width. Falls back to the authored 720 x
+       1280 whenever the window is not wider than that. */
+    /* Window changes must not leave a stale wide design: at 2048 design width on a
+       phone-shaped window the content would be cropped. Cheap drift check. */
+    setInterval(function () {
+        try {
+            if (!cc.view || !window.cc) { return; }
+            var d = designSizeForWindow();
+            var cur = cc.view.getDesignResolutionSize();
+            if (Math.round(cur.width) !== d.w || Math.round(cur.height) !== d.h) { applyFit(); }
+        } catch (e) {}
+    }, 1000);
+    var wideModeDriftCheck = true;
+    function designSizeForWindow() {
+        var fs = frameSize();
+        var w = CONFIG.designWidth;
+        if (CONFIG.wideMode !== false && fs.height > 0 && fs.width > 0) {
+            w = Math.round(CONFIG.designHeight * fs.width / fs.height);
+            w = Math.max(CONFIG.designWidth, Math.min(w, Math.round(CONFIG.designHeight * 3)));
+        }
+        return { w: w, h: CONFIG.designHeight, wide: w > CONFIG.designWidth };
+    }
+
     function applyFit() {
         var p = policyForWindow();
         if (p === undefined || p === null) { return; }
         try {
-            cc.view.setDesignResolutionSize(CONFIG.designWidth, CONFIG.designHeight, p);
+            var d = designSizeForWindow();
+            cc.view.setDesignResolutionSize(d.w, d.h, d.wide ? RP.FIXED_HEIGHT : p);
             activePolicy = p;
             applyFit._pending = false;
         } catch (e) {

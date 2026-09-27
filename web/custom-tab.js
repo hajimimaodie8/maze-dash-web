@@ -49,7 +49,14 @@
     var WRENCH_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAFHUlEQVR42u2dzY3bMBBGtxA1YrgEH3LSLR3kpHuQEnRIGbqmBYONqIM04CCANsgubGmGM/wR+QbgbdcW/D2OyI/k8O2NIAiCIAiCIAiCIAiCIAgie9yu9+F2vY+3632+Xe/L7XoPt+v98aKF7W/m7X8GfsFzij5uQq47Ykvbun3WyC9bt+iXrec+Ere/33HhF69L+JBB+GevC0Ao/G4vIfwzEBgrZBY/KtV//fJL1GJfDSiTp9ev3oI7ArGSDdKO7LOJboSBGYOz+JOH8N+//RY1JxAmlPMRf4kVXiq4BYgDCBYULCC+RNSfPx7idgQCEBRI+zHCa0TfaxEQ8DrwHPBphPcSXQICA0O/qZ6516cU3pANmCIKAFgtPT+X8JGZYEXhSIevVvEjIMAxtKb+GPG1hk9iCHgVPAEgpBDf6vwlgiCg+EfxL97ie1vACSBgKVnT+z3Ety4ixUJAFkjQ+50MmigYyAIZRv41iO8JATOC1wCoer+TK2eGwCsLYPkm6P3CbVzLpxZSQ4BFLFzt0/R+pfjz3hx88yJmTwgEz7b0DMDq2fu9Nm4ebTh1zgJrr+IPnr0/xXr83n4E5yww9AjAmAGA4PCcIQMAY48AzBYAhO/+IUemOoKA6aAwvTr3/tkpS+V4DSw9AhASAzAYevys9QY0i1LYwgIDyAhAiHymKdYcMgLwAIAXAORIqVuvXyzuoPF5AaAUANrjZgDQEABS8TWnjgDgJABIxNdsGAGAugAIgu9fPA+YAkCiaWAKe3VvtG89Y8g00NkI8nbXvA6eOAPQpRE0W+bWsVaw5Hu9j5thBRsWg7w3XmqmdF4HTwTPOfUIwJABgA/pVQKddB+CMwDdrgiuFgC0G0K0O5C8jpspdi2NvQGweGaBmM2gqcWPeMaBcYAhC2ghyAGA9gRxbxBk24JtXYEEgkLTwURlW7IDAATPAbikygISCDTmUwEIll6yQPDIAjGHQ0sAAAQJs4DleHjp+kK9QxC8IdCCUKLUjAKCqXUABs8zeTEglKo1hFF0MCPwguD/qp+lagsCQYQ97A3BEQiVA9B2YQnten3J0nB4BJkt4hSZAAjqhWBKUbYFCBpYLfSs5tUABG17BJYLI4Cgk9eBdCu3xTMAgsoHhjkujToBBF24hdmvjTsZBO1vK8t5cSQQ1J0Nsl0dWwMEuIWvl5IDELC3MMv18UBwnhnDElv4AQjaGyuMW3Y4qgn8XkN41lrRlUPA3QQ5FqVKgIBRBARAUNqAOhkEXFIBBFxjm8yKPhEE74PeiXsM9RAstUJgOCg7A4IOhBYhAAQg+GcecaWdEIKpUQgYLLbgFUiXvYGgUwiEMACBYkVybRQCxgRnN4w+H4JVQrAyO2jAMHp2IhobuTPD6Nn3KiAgC5zdK3j1GhJCQBYAArJAE4aRBAKKWzfsFRimhmwxawGCvdNPXHHTgWFkAQBjqAHDKOaoHPZwQ4bRZ5EBoBwEoQQEANC5VwAAHUPwTGQAqAOCOfXA8JXAAFC5V7C3iucp/ufPZhpYBgIVABII9nq3FgAUSg9ASF33SPKZWMHlAJhisoC1BpIw/bMYlMkfEM0EUonPcnClMwINBJpb0tkQcpIs4JEJDPsC6f21+gIxELAp9BxZIGrV8OhuJLaFnweCS46SuBwMOaE76AUBR8MagMBSExnxG4PAqSF+xWOCNaHwFIg4yewgRW1kSsR0CgLCNwDCpCydT5m4xscJ44vG+50gCIIgCILwiz9+YBCAWlDB2QAAAABJRU5ErkJggg==';
     /* @generated-icon-end */
 
-    var DESIGN_W = 720, DESIGN_H = 1280;
+    /* In wide mode the design is as wide as the browser window, so these are live
+       lookups rather than the authored 720 x 1280 constants. */
+    function visibleWidth() {
+        try { return Math.max(720, Math.round(cc.view.getVisibleSize().width)); } catch (e) { return 720; }
+    }
+    function visibleHeight() {
+        try { return Math.max(1280, Math.round(cc.view.getVisibleSize().height)); } catch (e) { return 1280; }
+    }
 
     function log() {
         try {
@@ -167,16 +174,40 @@
     }
 
     /* ------------------------------- 2. divide the bar evenly (6 x 120) */
+    /* Widen the bar and the full-screen pages to the viewport, so on a wide
+       window they no longer stay a centred 720 column. */
+    function widenToViewport(hall) {
+        var W = visibleWidth();
+        var bar = hall.tabBar;
+        if (!bar) { return W; }
+        var bottom = bar.parent;
+        if (bottom) { bottom.width = W; bottom.x = 0; bottom.y = -visibleHeight() / 2 + bottom.height / 2; }
+        bar.width = W;
+        bar.x = 0;
+        var views = hall.viewGroup || [];
+        for (var i = 0; i < views.length; i++) {
+            var v = views[i];
+            if (v && v.isValid) {
+                v.width = W;
+                v.height = visibleHeight();
+                // parked pages must stay fully off-screen, so -720 is not enough
+                if (!v.activeInHierarchy) { v.x = -W; }
+            }
+        }
+        return W;
+    }
+
     function layoutTabs(hall) {
         var bar = hall.tabBar;
         var kids = bar.children || [];
+        var barW = widenToViewport(hall);
         // Only active slots are laid out, so divide the bar between those — that
         // keeps 6 slots at 120 px, or 5 at 144 px once the shop tab is hidden.
         var active = 0;
         for (var a = 0; a < kids.length; a++) {
             if (kids[a].activeInHierarchy) { active++; }
         }
-        var slot = active > 0 ? Math.round(CFG.barWidth / active) : CFG.slotWidth;
+        var slot = active > 0 ? Math.round(barW / active) : CFG.slotWidth;
         for (var i = 0; i < kids.length; i++) {
             kids[i].width = slot;
             var bg = childByName(kids[i], 'bg');
@@ -194,7 +225,7 @@
             layout.paddingRight = 0;
             if (layout.updateLayout) { layout.updateLayout(); }
         }
-        log('laid out', active, 'visible slots of', slot, 'px (bar', CFG.barWidth, ')');
+        log('laid out', active, 'visible slots of', slot, 'px (bar', barW, ')');
     }
 
     /* --------------------------------- 3. the placeholder page for index 5 */
@@ -230,10 +261,10 @@
 
         var view = new cc.Node(CFG.viewName);
         view.parent = sample.parent;
-        view.setContentSize(DESIGN_W, DESIGN_H);
+        view.setContentSize(visibleWidth(), visibleHeight());
         view.anchorX = 0.5;
         view.anchorY = 0.5;
-        view.x = -DESIGN_W;      // parked off-screen left, like the others
+        view.x = -visibleWidth();      // parked off-screen left, like the others
         view.y = 0;
         view.active = false;     // parked views are inactive, like the game's own
 
@@ -275,10 +306,10 @@
                 n.y = 0;
                 n.zIndex = zIndex;
                 if (dir === 1) {
-                    n.x = -DESIGN_W;
+                    n.x = -visibleWidth();
                     n.runAction(cc.moveTo(0.22, cc.v2(0, 0)));
                 } else if (dir === 2) {
-                    n.x = DESIGN_W;
+                    n.x = visibleWidth();
                     n.runAction(cc.moveTo(0.22, cc.v2(0, 0)));
                 } else {
                     n.x = 0;
@@ -290,11 +321,11 @@
                 n.stopAllActions();
                 n.zIndex = zIndex;
                 if (dir === 1) {
-                    n.runAction(cc.sequence([cc.moveTo(0.22, cc.v2(DESIGN_W, 0)),
-                        cc.callFunc(function () { n.active = false; n.x = -DESIGN_W; })]));
+                    n.runAction(cc.sequence([cc.moveTo(0.22, cc.v2(visibleWidth(), 0)),
+                        cc.callFunc(function () { n.active = false; n.x = -visibleWidth(); })]));
                 } else if (dir === 2) {
-                    n.runAction(cc.sequence([cc.moveTo(0.22, cc.v2(-DESIGN_W, 0)),
-                        cc.callFunc(function () { n.active = false; n.x = -DESIGN_W; })]));
+                    n.runAction(cc.sequence([cc.moveTo(0.22, cc.v2(-visibleWidth(), 0)),
+                        cc.callFunc(function () { n.active = false; n.x = -visibleWidth(); })]));
                 }
                 // dir 0: no direction information — stay put; the incoming page
                 // is opaque and covers us, which is what the original game does
@@ -365,7 +396,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); }
         } catch (e) {}
     }, 1500);
 
