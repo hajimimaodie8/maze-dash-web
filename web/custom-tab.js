@@ -214,8 +214,25 @@
             if (bg) { bg.width = slot; }
             var icon = childByName(kids[i], 'icon');
             if (icon) {
-                icon.width = CFG.iconNodeSize;
-                icon.height = CFG.iconNodeSize;
+                /* Size each icon from its own sprite frame instead of forcing a
+                   square: the flag art is 83x101 and squaring it stretched it ~22%
+                   sideways, while the near-square icons hid the problem. Keep the
+                   longer side at iconNodeSize. */
+                var sp = icon.getComponent(cc.Sprite);
+                var rect = sp && sp.spriteFrame ? sp.spriteFrame.getRect() : null;
+                var box = CFG.iconNodeSize;
+                if (rect && rect.width > 0 && rect.height > 0) {
+                    if (rect.width >= rect.height) {
+                        icon.width = box;
+                        icon.height = Math.max(1, Math.round(box * rect.height / rect.width));
+                    } else {
+                        icon.height = box;
+                        icon.width = Math.max(1, Math.round(box * rect.width / rect.height));
+                    }
+                } else {
+                    icon.width = box;
+                    icon.height = box;
+                }
             }
         }
         var layout = bar.getComponent(cc.Layout);
