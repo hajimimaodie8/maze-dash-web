@@ -107,9 +107,9 @@
 （实测 0 个网络请求 + 65 个内存 `data:` URL），虚拟文件系统命中统计为
 文本 48 / 图片 63 / 音频 11 / 字体 2，**未命中 0**。
 
-## 8. 自适应布局与在线发布
+## 7. 自适应布局与在线发布
 
-### 8.1 舞台铺满窗口 + 自适应分辨率策略
+### 7.1 舞台铺满窗口 + 自适应分辨率策略
 
 最初把舞台锁成固定 9:16 方框，结果是窗口一拉大就出现黑边、宽度用不上。改为：
 
@@ -129,7 +129,7 @@
 一开始写错导致策略静默不生效（所有 `RP.*` 都是 `undefined`，`applyFit` 直接 return）。
 另外第一次场景启动时 `setDesignResolutionSize` 可能抛错，已加一次重试。
 
-### 8.2 GitHub 角标
+### 7.2 GitHub 角标
 
 `web-port.js` 顶部的 `CONFIG` 集中了所有可调项（仓库地址、角标位置、fit 策略、背景色、设计分辨率）。
 角标用 `contentRect()` 算出游戏内容实际占据的区域：`SHOW_ALL` 时才真的有侧边留白，
@@ -137,7 +137,7 @@
 加载页另有仓库链接。`sideMargin()` 早期版本错误地按设计宽度估算，
 在 `FIXED_HEIGHT` 下会误判出留白，已改为只在 `SHOW_ALL` 下计算。
 
-### 8.3 在线发布（GitHub Pages）
+### 7.3 在线发布（GitHub Pages）
 
 `.github/workflows/pages.yml` 把 `web/` 作为站点发布到
 <https://hajimimaodie8.github.io/maze-dash-web/>，推送到 `main` 且改动落在 `web/**` 时自动重新部署。
@@ -150,7 +150,7 @@ Pages 的 source 设为 `build_type: workflow`（通过 API `PUT /repos/{o}/{r}/
 所以重放后 SHA 会变（内容一致，可用 tree 比对验证）。
 `github.com` 恢复后执行 `git fetch origin && git reset --hard origin/main` 即可完全对齐。
 
-## 9. 产物位置
+## 8. 产物位置
 
 ```
 E:\maze_dash\
@@ -165,7 +165,7 @@ E:\maze_dash\
 └── _work\                       ← 过程产物（APK 解包、引擎源码、分析脚本、测试套件）
 ```
 
-## 10. 版本库
+## 9. 版本库
 
 代码已推送到 GitHub：**https://github.com/hajimimaodie8/maze-dash-web**
 
@@ -175,7 +175,7 @@ E:\maze_dash\
   （`MazeDash-standalone.html` 9.72 MB、`maze-dash-web.zip` 4.22 MB）。
 - `.gitignore` 排除了 `_work/`、`dist/`、`*.zip`、`*.apk` 与解压出来的副本目录。
 
-## 11. 授权与许可说明
+## 10. 授权与许可说明
 
 - 游戏代码、素材、关卡数据版权归原开发者所有，本次移植基于你已取得的原开发者授权。
 - 随附的 `web/cocos2d-js.js` 由 Cocos 官方引擎仓库 `cocos/cocos-engine` 的 `2.0.2` 标签源码构建，
