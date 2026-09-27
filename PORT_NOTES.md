@@ -82,22 +82,57 @@
 （重放后仍有 4 格未填）。用 BFS 独立求解得 `RDLULD`，说明该关本身可解，
 问题只出在原版内置的这条解法串上（只影响该关的提示链）。其余 289 关的内置解全部有效。
 
-## 6. 产物位置
+## 6. 单文件直装版（零网络请求）
+
+服务器版要求用户起一个 HTTP 服务，对只想「点开就玩」的场景不友好（`file://` 下浏览器会拦截
+资源 XHR，这也是最初踩到的坑）。因此额外做了自包含构建：
+
+`node tools/build-standalone.js` → `dist/MazeDash-standalone.html`（9.72 MB，单文件）。
+
+做法是把引擎、6 个脚本和 350 个资源全部内联，并用一套虚拟文件系统替换引擎的四个网络加载器：
+
+| 引擎加载器 | 替代实现 |
+| --- | --- |
+| `downloadText`（json / txt / plist / xml） | 直接返回内存中的字符串 |
+| `downloadBinary` | 返回内存 `ArrayBuffer` |
+| `downloadImage`（`new Image()` + `src`） | 内联 `data:` URI |
+| `downloadAudio`（WebAudio / DOM 两种模式） | base64 → `ArrayBuffer` → `decodeAudioData`；DOM 模式用 `data:` URI |
+| `fontLoader.loadFont`（注入 `@font-face`） | 自行注入带 `data:` URI 的 `@font-face`，复刻引擎的 `xxx_LABEL` 字族命名 |
+
+同一份源码通过两个开关同时服务两种形态（由构建脚本设置）：
+`window.__MAZE_DASH_INLINE_ASSETS` 让 `main.js` 跳过 `file://` 盘符拦截与 jsList 拉取、
+让 `web-port.js` 跳过网络重试包装；`window.__MAZE_DASH_VFS` 存放内联资源表。
+
+验证：`tools/verify/standalone.js` —— **14/14 通过**，其中断言「除文档自身外网络请求数为 0」
+（实测 0 个网络请求 + 65 个内存 `data:` URL），虚拟文件系统命中统计为
+文本 48 / 图片 63 / 音频 11 / 字体 2，**未命中 0**。
+
+## 7. 产物位置
 
 ```
 E:\maze_dash\
-├── web\                         ← 交付物：网页版游戏（见 web/README.md）
-├── PORT_NOTES.md                ← 本文件
-├── docs\screenshots\            ← 运行截图
+├── web\                         ← 服务器版（见 web/README.md）
+├── dist\MazeDash-standalone.html ← 单文件直装版（构建产物）
+├── maze-dash-web.zip            ← 服务器版打包（构建产物）
+├── tools\                        ← 构建与验证脚本
+├── data\                         ← 关卡与配置数据（关卡编辑器地基）
+├── docs\screenshots\             ← 运行截图
+├── README.md / PORT_NOTES.md / NOTICE.md
 ├── mazedash（冲撞迷阵）(1).apk    ← 原始 APK
-└── _work\                       ← 过程产物
-    ├── apk\                     APK 解包结果
-    ├── analysis\                逆向脚本、提取出的配置/美术、反编译可读化的 project.js
-    ├── engine\                  引擎源码、便携 Node 10、构建产物与 ENGINE_REPORT.md
-    └── test\                    puppeteer 验证脚本与截图（acceptance / gameplay / solver / alllevels）
+└── _work\                       ← 过程产物（APK 解包、引擎源码、分析脚本、测试套件）
 ```
 
-## 7. 授权与许可说明
+## 8. 版本库
+
+代码已推送到 GitHub：**https://github.com/hajimimaodie8/maze-dash-web**
+
+- 仓库只含源码与数据（`web/`、`tools/`、`data/`、`docs/`），共 405 个文件 / 8.56 MB。
+- 两个可直接运行的成品作为 **Release 资产**分发：
+  [v1.0.0](https://github.com/hajimimaodie8/maze-dash-web/releases/tag/v1.0.0)
+  （`MazeDash-standalone.html` 9.72 MB、`maze-dash-web.zip` 4.22 MB）。
+- `.gitignore` 排除了 `_work/`、`dist/`、`*.zip`、`*.apk` 与解压出来的副本目录。
+
+## 9. 授权与许可说明
 
 - 游戏代码、素材、关卡数据版权归原开发者所有，本次移植基于你已取得的原开发者授权。
 - 随附的 `web/cocos2d-js.js` 由 Cocos 官方引擎仓库 `cocos/cocos-engine` 的 `2.0.2` 标签源码构建，

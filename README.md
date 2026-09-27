@@ -7,6 +7,13 @@
 
 原游戏代码 **一行未改**：`web/src/` 与 `web/res/` 下的每个文件都与 APK 内文件 SHA-256 一致。
 
+## 直接下载（不想自己构建的话）
+
+到 [**Releases**](https://github.com/hajimimaodie8/maze-dash-web/releases/latest) 下载：
+
+- **`MazeDash-standalone.html`** —— 单文件直装版，**下载后双击就能玩**，不需要服务器、不需要解压。
+- **`maze-dash-web.zip`** —— 服务器版，解压后双击 `start.bat` 或执行 `node serve.js`。
+
 ---
 
 ## 两种形态，按需取用
