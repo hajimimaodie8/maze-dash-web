@@ -153,3 +153,54 @@ conf.stage_level_cfg[worldId][String(id)] = conf.level_cfg[id]; // 选关界面�
 > 关于「每一步操作对应出 JSON 哪一部分」：第 9 项的只读回显就是这个需求的实现 ——
 > 每次操作后显示 `grid`、以及受影响的 `level_cfg` / `theme_cfg` 片段，
 > 相当于编辑器自己把「操作 → JSON」的映射演示出来。
+
+---
+
+## 7. 验证记录（实测，用于替换上文所有"待验证"标记）
+
+### ✅ 7.1 新建自定义世界页：**配方已确认可用**
+
+从函数源码读出接口（`tools/verify/probe-stage-fns.js`）：
+
+```js
+hallScene.createStageLayer(stageId, index)   // 实例化一页、initStageLayer(stageId)、接管翻页按钮
+hallScene.StageSelectLayer.insertPage(page, index)   // 插入整页
+```
+
+实测（`tools/verify/probe-custom-world.js`）用 `createStageLayer(100, 8)` + `insertPage(page, 8)`：
+
+| 项 | 结果 |
+| --- | --- |
+| 页数 | 9 → **10** ✓ |
+| 翻页器 content 宽 | 6480 → **20480**（= 2048 × 10）✓ |
+| 新页宽度 | **2048**（被 wide-ui 自动撑宽）✓ |
+| 新页 `m_stageId` | **100** ✓ |
+| 新页关卡按钮 | **1 个**（即新建的那一关）✓ |
+| 解锁状态 | `SelectLayer.active = true`、`LockLayer.active = false` ✓（`require: 0`） |
+
+### ⚠️ 7.2 一个必须避免的坑
+
+`hallScene.initStageLayer()`（**无参**）是"按 `conf.stage_cfg` **重建全部页**"。
+**重复调用会把所有页再建一遍** —— 我在测试中误调一次，页数从 9 变成 **18**。
+编辑器**只能**用 `createStageLayer` + `insertPage`，**绝不要调 `initStageLayer()`**。
+
+### ✅ 7.3 自定义关卡可以进入游玩
+
+`gamemain.enterEnterGameScene(10001)` → 进入 `gameScene`，`worldId = 100`、`level = 1`，
+**零报错**。说明数据层的三处写入 + 进入流程是通的。
+
+### ⚠️ 7.4 双主角：**未判定**（需要先找到运行期网格）
+
+放两个 `-1` 的关卡**能进入、零报错**，但我**没能数出蛇头数量**：
+`game_map` 组件上**没有**二维数组属性的网格数据，它只有这些**图层节点**
+（名字含游戏自身的拼写错误，编辑器要照着写）：
+`tile_item_layer`、`spaceTile`、`fllor_space_layer`、`shadow_layer`、
+`SankeHead`、`Brick`、`Arrow`、`Lock`、`Key`、`Portal`、`Prortal_out`。
+
+→ **下一项测试：定位运行期网格存在哪里**（可能在别的组件或数据模块上，也可能是扁平数组）。
+在找到它之前，「多主角运行时是否支持」不能下结论。
+
+### ⏳ 7.5 仍未做
+
+- **传送门配对逻辑**：还没读源码（`§4` 的彩色传送门方案依赖它）；
+- **双蛇头的实际行为**（推进、过关判定）——依赖 7.4。
