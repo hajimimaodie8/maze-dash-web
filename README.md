@@ -7,24 +7,26 @@
 
 原游戏代码 **一行未改**：`web/src/` 与 `web/res/` 下的每个文件都与 APK 内文件 SHA-256 一致。
 
-## 直接下载（不想自己构建的话）
+## 🎮 直接开玩（在线，无需下载）
 
-到 [**Releases**](https://github.com/hajimimaodie8/maze-dash-web/releases/latest) 下载：
+> ### **<https://hajimimaodie8.github.io/maze-dash-web/>**
+>
+> 点开就能玩，不用下载、不用解压、不用起服务器。手机浏览器也可以直接打开。
 
-- **`MazeDash-standalone.html`** —— 单文件直装版，**下载后双击就能玩**，不需要服务器、不需要解压。
-- **`maze-dash-web.zip`** —— 服务器版，解压后双击 `start.bat` 或执行 `node serve.js`。
+## 三种形态，按需取用
 
----
+| | 🎮 在线版（Pages） | 🖱️ 单文件直装版 | 🌐 服务器版 |
+| --- | --- | --- | --- |
+| 打开方式 | **点链接直接玩** | **双击 HTML** | 需本地 HTTP 服务器 |
+| 位置 | `web/` 由 GitHub Actions 发布 | `dist/MazeDash-standalone.html`（9.74 MB） | `web/` 整个目录（8 MB，361 文件） |
+| 网络请求 | 按需加载 `res/` | **零**（资源全部内嵌） | 按需加载 `res/` |
+| 适合 | 分享给别人 / 随手玩 | 离线、发给别人、单文件存档 | 二次开发、改资源、自部署 |
+| 构建 | push 到 `main` 自动发布 | `node tools/build-standalone.js` | 直接用 |
 
-## 两种形态，按需取用
+### 在线版（GitHub Pages）
 
-| | 🖱️ 单文件直装版 | 🌐 服务器版 |
-| --- | --- | --- |
-| 打开方式 | **双击 HTML 即可** | 需要本地 HTTP 服务器 |
-| 文件 | `dist/MazeDash-standalone.html`（约 9.7 MB，单文件） | `web/` 整个目录（约 8 MB，361 个文件） |
-| 网络请求 | **零**（资源全部内嵌） | 通过 HTTP 读取 `res/` |
-| 适合 | 发给别人玩、离线、手机浏览器 | 二次开发、改资源、部署到网站 |
-| 构建 | `node tools/build-standalone.js` | 直接用 |
+`web/` 目录通过 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) 自动发布到
+GitHub Pages：推送到 `main` 就会重新部署，无需手动操作。
 
 ### 单文件直装版
 
@@ -34,7 +36,7 @@ node tools/build-standalone.js          # 输出 dist/MazeDash-standalone.html
 
 生成的 HTML 里内嵌了引擎、全部游戏脚本和 350 个资源文件；运行时用一套内存文件系统
 替换了引擎的四个网络加载器（文本/JSON/二进制、图片、音频、字体），所以**不发出任何网络请求**，
-双击即可运行。
+双击即可运行。也作为 Release 资产提供下载。
 
 ### 服务器版
 
@@ -100,6 +102,46 @@ Windows 可直接双击 `web/start.bat`（macOS / Linux 用 `./web/start.sh`）�
 
 ---
 
+## 自定义：都在 `web/web-port.js` 顶部
+
+移植层把所有可调项集中在一个 `CONFIG` 块里，改完（单文件版重新跑一次构建）即可生效：
+
+```js
+var CONFIG = {
+    repo: 'https://github.com/hajimimaodie8/maze-dash-web',  // 留空 '' 则不显示
+    repoLabel: 'maze-dash-web',
+    repoBadge: true,
+    repoBadgePosition: 'auto',   // auto | margin | top-left | top-right | bottom-left | bottom-right
+    fit: 'auto',                 // auto | contain | width | height | cover | stretch
+    background: 'auto',          // 'auto' = 跟随当前场景/世界的主题底色
+    backgroundFallback: '#1d7a5f',
+    designWidth: 720,
+    designHeight: 1280,
+};
+```
+
+### 画面自适应（拖拽窗口即可看到效果）
+
+舞台现在**铺满整个浏览器窗口**，不再是固定的 9:16 方框。`fit: 'auto'` 的规则是：
+
+| 窗口 | 策略 | 效果 |
+| --- | --- | --- |
+| 比 9:16 更窄/更高（手机竖屏） | `FIXED_WIDTH` | 铺满宽度，画布纵向延展 → **满屏无黑边**，底部标签栏贴到屏幕底边 |
+| 比 9:16 更宽（桌面横屏） | `SHOW_ALL` | 完整显示、不裁切；两侧用**场景自己的背景色**填充（同时改页面背景与相机清屏色），视觉上无缝 |
+
+窗口缩放、旋转屏幕都会自动重算。想强制某种策略就改 `fit`：
+`contain`（永远完整显示）、`width`（永远铺满宽度）、`height`（永远铺满高度）、
+`cover`（铺满可能裁切）、`stretch`（拉伸会变形）。
+
+### GitHub 角标
+
+- **宽窗口**：角标落在游戏两侧的留白里（不挡任何操作），鼠标悬停变亮。
+- **窄窗口/手机**：退化为左上角的 GitHub 图标（窄屏自动隐藏文字）。
+- **加载页**：标题下方也有一条仓库链接。
+- 位置可用 `repoBadgePosition` 强制指定；`repo: ''` 可完全关掉。
+
+---
+
 ## 验证情况
 
 | 项目 | 结果 |
@@ -111,9 +153,12 @@ Windows 可直接双击 `web/start.bat`（macOS / Linux 用 `./web/start.sh`）�
 | 玩法 | 真实滑动通关 1-1 ~ 1-4，进度写入 `pass_info`，自动/手动进入下一关 |
 | 全关卡回归 | 290 关各自的 `sz_solution` 灌入真实引擎重放：**289/290 通关**（覆盖传送门、箭头、钥匙、锁、可碎砖、多头棋盘） |
 | 音频 | 43/43 可解码，BGM 实际播放中 |
+| 画面自适应 | 手机竖屏 / 9:16 / 桌面横屏 / 超宽屏 **冷启动 3/3** 布局正确；运行中改窗口大小也能正确重排 |
 | 服务器版验收 | `node tools/verify/acceptance.js` → **17/17** |
 | 直装版验收 | `node tools/verify/standalone.js` → **14/14**，且网络请求数为 **0** |
+| 在线版验收 | 直接加载 `https://hajimimaodie8.github.io/maze-dash-web/` → **10/10**（含真实滑动通关） |
 | 一致性 | `web/src/`、`web/res/` 与 APK 内文件逐字节一致 |
+
 
 ### 已知的原版数据瑕疵
 

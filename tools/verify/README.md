@@ -21,6 +21,9 @@ npm install
 | `standalone.js` | `npm run test:standalone` | 单文件版 14 项验收：同样覆盖，另加**网络请求数必须为 0**、虚拟文件系统命中统计、内嵌字体可用性 |
 | `alllevels.js` | `npm run test:alllevels` | 直接驱动真实 `game_map`：重建全部 290 张棋盘，灌入各自 `sz_solution` 重放，逐关校验 `checkClearSatge()` |
 | `solver.js` | `npm run test:solver -- 10` | 通过**真实滑动**自动通关：读当前关的 `sz_solution`，逐步滑动并校验每一步是否真的移动了蛇头 |
+| `responsive.js` | `npm run test:responsive` | 在 5 种窗口尺寸下（手机竖屏 / 9:16 / 桌面横屏 / 超宽 / 高窄）截图并核对画布尺寸、缩放、可见区、背景色与角标位置；包含运行中改窗口大小 |
+| `coldstart.js` | `npm run test:coldstart` | **冷启动**（直接用某个窗口尺寸打开，而不是先开后缩放）时的自适应策略是否正确 |
+| `live.js` | `npm run test:live` | 加载已部署的 Pages 站点，跑一遍引擎/数据/场景流程/真实滑动通关，并检查页面无报错、无失败请求 |
 | `filetest.js` | `npm run test:file-guard` | 故意用 `file://` 打开服务器版，验证出现的是可操作的提示页而不是卡死的进度条 |
 | `gameplay.js` | `node gameplay.js` | 较早的单关细粒度检查（棋盘布局、格子数、通关流程） |
 

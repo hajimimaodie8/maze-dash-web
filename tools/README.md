@@ -3,8 +3,23 @@
 | 目录 / 文件 | 作用 |
 | --- | --- |
 | `build-standalone.js` | 把 `web/` 打包成一个自包含的单文件 HTML（`dist/MazeDash-standalone.html`），内嵌引擎、脚本与全部 350 个资源，运行时零网络请求，双击即可玩。 |
-| `verify/` | puppeteer 无头验证套件：服务器版验收、单文件版验收、290 关全量回归、自动通关。 |
+| `push-via-api.js` | **当 `git push` 连不上 github.com 时**，改用 GitHub REST API 把本地提交推上去（有些网络只屏蔽 `github.com:443`，`api.github.com` 仍可用）。 |
+| `verify/` | puppeteer 无头验证套件：服务器版验收、单文件版验收、290 关全量回归、自动通关、自适应布局、冷启动、线上站点检查。 |
 | `apk/` | 从原始 APK 提取游戏数据的 Python 脚本。 |
+
+> 线上站点由 `.github/workflows/pages.yml` 在每次推送到 `main` 时自动发布，
+> 不需要手动构建。
+
+## 网络受限时怎么推送
+
+```bash
+node tools/push-via-api.js
+```
+
+它会从本地 HEAD 往回找，直到找到一个与远端 HEAD **tree 相同**的提交作为共同点，
+然后把之后的提交用 Git Data API 逐个重放。因为 GitHub 会重写 API 创建提交的
+author/committer，重放后的 SHA 会变（**内容完全一致，可用 tree 比对验证**）。
+等 `github.com` 恢复可访问后，执行 `git fetch origin && git reset --hard origin/main` 即可完全对齐。
 
 ## 构建单文件直装版
 

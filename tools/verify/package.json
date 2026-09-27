@@ -1,1 +1,16 @@
-{"name":"maze-dash-verify","private":true,"dependencies":{"puppeteer-core":"^23.11.1"}}
+﻿{
+  "name": "maze-dash-verify",
+  "private": true,
+  "description": "Headless verification harness for the Maze Dash web port",
+  "scripts": {
+    "test:http": "node acceptance.js",
+    "test:standalone": "node standalone.js",
+    "test:solver": "node solver.js 10",
+    "test:alllevels": "node alllevels.js",
+    "test:file-guard": "node filetest.js",
+    "test:responsive": "node responsive.js",
+    "test:coldstart": "node coldstart.js",
+    "test:live": "node live.js"
+  },
+  "dependencies": { "puppeteer-core": "^23.0.0" }
+}
