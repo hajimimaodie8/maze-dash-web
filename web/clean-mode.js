@@ -102,7 +102,12 @@
 
         if (CFG.quietPopups) {
             // generic dialogs
-            ['showTips', 'showGameAlert', 'showModalBox', 'showRateUs',
+             /* showGameAlert is deliberately NOT silenced: the game uses it as a
+                flow gate, not decoration. In-level "back to main" calls it with a
+                confirmation whose OK callback performs the actual quit, so
+                silencing it made that button do nothing at all. (Found by tracing
+                gameScene.clickEnterHallScene.) */
+             ['showTips', 'showModalBox', 'showRateUs',
              // progression interruptions
              'showWorldCompleted', 'showUnlockWorld', 'showFaceUnlock',
              'showQuestTick', 'showCompleteQuest',
@@ -114,6 +119,14 @@
                 inactive, so "back to main" could not be clicked. */
              'pay'
             ].forEach(function (n) { silence(gm, n); });
+        }
+
+        /* The level's "back to main" asks for confirmation only when the infinity
+           ticket has expired. Keep the gift popup suppressed, but report an
+           infinity expiry far in the future so quitting is immediate and never
+           costs a ticket. */
+        if (typeof gm.getInfinityTicketExpiryTime === 'function') {
+            gm.getInfinityTicketExpiryTime = function () { return 4102444800000; };   // 2100-01-01
         }
 
         if (CFG.quietGift) {
