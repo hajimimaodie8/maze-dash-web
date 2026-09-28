@@ -535,11 +535,11 @@
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
                      customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
                      worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Type a hex code, e.g. #2AA886', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
-                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet' },
+                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
                      customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
                      worldName: '世界名称', themeColour: '主题色', hexHint: '也可直接输入色码，如 #2AA886', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
-                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界' },
+                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
@@ -993,8 +993,33 @@
         root.zIndex = 998;
         fullSprite(root, W, H, cc.color(24, 22, 28, 255));      // opaque
 
-        var stack = new cc.Node('previewPages');
-        stack.parent = root;
+        /* Same component the original level select is built on (NestablePageView_Outer extends
+           cc.PageView), with the built-in pager's own settings copied across, so the swipe,
+           inertia and snapping feel identical instead of my hand-made arrow buttons. */
+        var pagerNode = new cc.Node('previewPager');
+        pagerNode.parent = root;
+        pagerNode.setContentSize(W, H);
+        var pv = pagerNode.addComponent(cc.PageView);
+        var ref2 = window.hallScene && window.hallScene.StageSelectLayer;
+        if (ref2) {
+            ['horizontal', 'vertical', 'inertia', 'brake', 'elastic', 'bounceDuration', 'scrollDuration', 'scrollToTop'].forEach(function (k) {
+                try { if (ref2[k] !== undefined) { pv[k] = ref2[k]; } } catch (e) {}
+            });
+        } else {
+            pv.horizontal = true; pv.vertical = false; pv.inertia = true; pv.elastic = true;
+        }
+        /* Lay the content out exactly the way the built-in pager does - anchor centred,
+           pages at -contentW/2 + W/2 + i*W - because that is the geometry cc.PageView
+           derives its page offsets and boundaries from. With the old anchor-at-left layout
+           it saw nothing to scroll and the swipe did nothing. */
+        var content = new cc.Node('content');
+        content.parent = pagerNode;
+        content.setAnchorPoint(0.5, 0.5);
+        var n2 = Math.max(1, ids.length);
+        content.setContentSize(W * n2, H);
+        content.x = 0;
+        content.y = 0;
+        pv.content = content;
         var pages = [];
 
         /* the world name sits where the level select puts it */
@@ -1008,8 +1033,11 @@
         ids.forEach(function (id) {
             var d = worlds[String(id)] || {};
             var page = new cc.Node('previewPage_' + id);
-            page.parent = stack;
+            page.parent = content;
             page.setContentSize(W, H);
+            page.setAnchorPoint(0.5, 0.5);
+            page.x = -W * Math.max(1, ids.length) / 2 + W / 2 + ids.indexOf(id) * W;
+            page.y = 0;
             fullSprite(page, W, H, cc.color(hsvaToHex(d.base || [160, 60, 80, 1])));
             var title = makeLabel(page, String(d.name || id), refY, refSize, cc.color(255, 255, 255, 255));
             title.name = 'previewPageTitle';
@@ -1027,50 +1055,82 @@
                 tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
                 tile.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(tile, false); editorAction(s.id); });
             });
+            /* delete this world - red, with a confirmation step */
+            var del = new cc.Node('previewDelete');
+            del.parent = page;
+            del.setContentSize(360, 130);
+            del.x = W / 2 - 30 - 180;
+            /* keep it clear of the bottom tab bar, which sits over the page's lower edge */
+            del.y = -H / 2 + 230;
+            roundedPanel(del, cc.color(196, 58, 58, 255), 360, 130);
+            makeLabel(del, t('deleteWorld'), 0, 32, cc.color(255, 255, 255, 255)).name = 'previewDeleteLabel';
+            del.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(del, true); });
+            del.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(del, false); });
+            del.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(del, false); confirmDeleteWorld(id); });
+            if (pv.addPage) { try { pv.addPage(page); } catch (e) { warn('addPage failed:', e && e.message); } }
             pages.push(page);
             animateIn(page);
         });
 
-        function show(i) {
-            if (!pages.length) { return; }
-            idx = Math.max(0, Math.min(pages.length - 1, i));
-            pages.forEach(function (p, k) { p.x = (k - idx) * W; });
-            if (leftArrow) { leftArrow.active = idx > 0; }
-            if (rightArrow) { rightArrow.active = idx < pages.length - 1; }
-            stats.previewPage = idx;
-        }
-
-        if (!ids.length) {
-            makeLabel(root, t('noWorldsYet'), 0, 34, cc.color(255, 255, 255, 210)).name = 'previewEmpty';
-        }
-
-        /* arrows at the page edges, exactly where the level select has them */
-        function arrow(side) {
-            var n = new cc.Node(side < 0 ? 'previewLeft' : 'previewRight');
-            n.parent = root;
-            n.setContentSize(140, 140);
-            n.x = side * (W / 2 - 90);
-            n.y = 0;
-            roundedPanel(n, cc.color(30, 26, 34, 210), 140, 140);
-            makeLabel(n, side < 0 ? '\u2190' : '\u2192', 0, 64, cc.color(255, 255, 255, 255)).name = 'glyph';
-            n.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(n, false); show(idx + side); });
-            n.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(n, true); });
-            return n;
-        }
-        var leftArrow = arrow(-1), rightArrow = arrow(1);
-
-        var close = new cc.Node('previewClose');
-        close.parent = root;
-        close.setContentSize(150, 150);
-        close.x = -W / 2 + 30 + 75;
-        close.y = H / 2 - 24 - 75;
-        roundedPanel(close, cc.color(30, 26, 34, 230), 150, 150);
-        makeLabel(close, '\u2190', 0, 72, cc.color(255, 255, 255, 255)).name = 'previewCloseGlyph';
-        close.on(cc.Node.EventType.TOUCH_END, function () { closePreview(); backToEditor(); });
-
-        show(0);
+        if (pages.length) { pv.scrollToPage(0, 0); }
+        if (pv._updatePageView) { try { pv._updatePageView(); } catch (e) {} }
         stats.previewsOpened = (stats.previewsOpened || 0) + 1;
         return root;
+    }
+    /* 删除世界：先确认，再真的从数据和本地存储里移除 */
+    function confirmDeleteWorld(id) {
+        var host = cc.find('Canvas');
+        if (!host) { return; }
+        var old = host.getChildByName('editorConfirm');
+        if (old && old.isValid) { old.destroy(); }
+        var W = visibleWidth(), H = visibleHeight();
+        var modal = new cc.Node('editorConfirm');
+        modal.parent = host;
+        modal.setContentSize(W, H);
+        modal.zIndex = 1000;
+        var dim = new cc.Node('dim');
+        dim.parent = modal;
+        fullSprite(dim, W, H, cc.color(0, 0, 0, 190));
+        var panelW = 900, panelH = 420;
+        var panel = new cc.Node('panel');
+        panel.parent = modal;
+        panel.setContentSize(panelW, panelH);
+        roundedPanel(panel, cc.color(40, 36, 44, 255), panelW, panelH);
+        makeLabel(panel, t('confirmDeleteWorld'), 0, 70, 38, cc.color(255, 255, 255, 255)).name = 'confirmText';
+        makeDialogButton(panel, t('cancel'), -1, -90, cc.color(90, 84, 96, 255), function () { modal.destroy(); });
+        makeDialogButton(panel, t('confirmDelete'), 1, -90, cc.color(196, 58, 58, 255), function () {
+            deleteCustomWorld(id);
+            modal.destroy();
+            closePreview();
+            openWorldPreview();
+        });
+        modal.opacity = 0;
+        panel.scale = 0.88;
+        modal.runAction(cc.fadeTo(0.14, 255));
+        panel.runAction(cc.scaleTo(0.16, 1, 1));
+        return modal;
+    }
+
+    function deleteCustomWorld(id) {
+        try {
+            var all = customWorlds();
+            delete all[String(id)];
+            localStorage.setItem(CUSTOM_KEY, JSON.stringify(all));
+        } catch (e) {}
+        try {
+            var cfg = conf.stage_level_cfg[id] || {};
+            Object.keys(cfg).forEach(function (k) {
+                var lv = cfg[k];
+                if (lv && conf.all_Level) { delete conf.all_Level[lv.mapId]; }
+                if (conf.level_cfg) { delete conf.level_cfg[k]; }
+            });
+            delete conf.stage_level_cfg[id];
+            delete conf.stage_cfg[id];
+            delete conf.theme_cfg[id];
+            delete conf.worlds[id];
+        } catch (e) {}
+        stats.worldsDeleted = (stats.worldsDeleted || 0) + 1;
+        log('deleted world', id);
     }
     function firstCustomWorldId() {
         var ids = Object.keys(customWorlds()).map(Number).sort(function (a, b) { return a - b; });

@@ -86773,16 +86773,17 @@ cc._RF.pop();
             stats['editorBtn_' + s.id] = true;
         });
         /* a row of smaller buttons under the icon: the two previews asked for, plus export */
+        var H_BOTTOM_ROW = 210;   // one row above the two big corner buttons
         [{ id: 'previewWorld', key: 'previewWorld', x: -470 },
          { id: 'previewLevel', key: 'previewLevel', x: 0 },
          { id: 'exportJson', key: 'exportJson', x: 470 }].forEach(function (s) {
             var btn = new cc.Node('editorSmall_' + s.id);
             btn.parent = view;
-            btn.setContentSize(430, 116);
-            btn.x = s.x;
-            btn.y = 60;
-            roundedPanel(btn, cc.color(60, 54, 66, 235), 430, 116);
-            var lb = makeLabel(btn, t(s.key), 0, 26, cc.color(255, 255, 255, 235));
+            btn.setContentSize(600, 150);
+            btn.x = s.x * 1.28;
+            btn.y = -H_BOTTOM_ROW;
+            roundedPanel(btn, cc.color(60, 54, 66, 235), 600, 150);
+            var lb = makeLabel(btn, t(s.key), 0, 32, cc.color(255, 255, 255, 235));
             lb.name = 'editorSmallLabel_' + s.id;
             btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
             btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
@@ -86799,8 +86800,8 @@ cc._RF.pop();
         return !!p;
     }
 
-    /* The editor's own world preview: a full-screen overlay in the game's style listing the
-       worlds created here. Kept separate from the built-in level select on purpose. */
+    /* 编辑器自己的世界预览：**整页翻页**，与选关界面同构
+       （每页一个自定义世界、主题色背景、左上角返回、两侧箭头换页），不再是我之前那个列表。 */
     function openWorldPreview() {
         var host = cc.find('Canvas');
         if (!host) { return null; }
@@ -86808,53 +86809,79 @@ cc._RF.pop();
         var W = visibleWidth(), H = visibleHeight();
         var worlds = customWorlds();
         var ids = Object.keys(worlds).map(Number).sort(function (a, b) { return a - b; });
+        var idx = 0;
 
         var root = new cc.Node(PREVIEW_NAME);
         root.parent = host;
         root.setContentSize(W, H);
         root.zIndex = 998;
-        var dim = new cc.Node('dim');
-        dim.parent = root;
-        dim.setContentSize(W, H);
-        var dsp = dim.addComponent(cc.Sprite);
-        dsp.spriteFrame = whiteFrame();
-        dsp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-        dsp.type = cc.Sprite.Type.SIMPLE;
-        dim.color = cc.color(0, 0, 0, 200);
+        fullSprite(root, W, H, cc.color(24, 22, 28, 255));      // opaque
 
-        makeLabel(root, t('previewWorld'), H / 2 - 90, 52, cc.color(255, 255, 255, 255)).name = 'previewTitle';
+        var stack = new cc.Node('previewPages');
+        stack.parent = root;
+        var pages = [];
+
+        /* the world name sits where the level select puts it */
+        var refY = H / 2 - 200, refSize = 92;
+        var ref = worldTitleRef();
+        if (ref && ref.node && ref.node.isValid) {
+            var wp = ref.node.convertToWorldSpaceAR(cc.v2(0, 0));
+            refY = wp.y; if (ref.fontSize) { refSize = Math.round(ref.fontSize * 1.15); }
+        }
+
+        ids.forEach(function (id) {
+            var d = worlds[String(id)] || {};
+            var page = new cc.Node('previewPage_' + id);
+            page.parent = stack;
+            page.setContentSize(W, H);
+            fullSprite(page, W, H, cc.color(hsvaToHex(d.base || [160, 60, 80, 1])));
+            var title = makeLabel(page, String(d.name || id), refY, refSize, cc.color(255, 255, 255, 255));
+            title.name = 'previewPageTitle';
+            [{ id: 'newLevel', key: 'tileNewLevel', x: -330, slot: 'list_level_next' },
+             { id: 'moveLevels', key: 'tileMoveLevels', x: 330, slot: 'list_level_complete' }].forEach(function (s) {
+                var tile = new cc.Node('previewTile_' + s.id);
+                tile.parent = page;
+                tile.setContentSize(560, 190);
+                tile.x = s.x;
+                tile.y = -160;
+                roundedPanel(tile, cc.color(163, 75, 67, 255), 560, 190);
+                applyThemeColour(tile, id, s.slot, cc.color(220, 190, 110, 255));
+                makeLabel(tile, t(s.key), 0, 34, cc.color(40, 32, 20, 255)).name = 'previewTileLabel_' + s.id;
+                tile.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(tile, true); });
+                tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
+                tile.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(tile, false); editorAction(s.id); });
+            });
+            pages.push(page);
+            animateIn(page);
+        });
+
+        function show(i) {
+            if (!pages.length) { return; }
+            idx = Math.max(0, Math.min(pages.length - 1, i));
+            pages.forEach(function (p, k) { p.x = (k - idx) * W; });
+            if (leftArrow) { leftArrow.active = idx > 0; }
+            if (rightArrow) { rightArrow.active = idx < pages.length - 1; }
+            stats.previewPage = idx;
+        }
 
         if (!ids.length) {
-            makeLabel(root, t('noWorldsYet'), 0, 30, cc.color(255, 255, 255, 200)).name = 'previewEmpty';
+            makeLabel(root, t('noWorldsYet'), 0, 34, cc.color(255, 255, 255, 210)).name = 'previewEmpty';
         }
-        ids.forEach(function (id, i) {
-            var d = worlds[String(id)] || {};
-            var row = new cc.Node('previewRow_' + id);
-            row.parent = root;
-            row.setContentSize(760, 150);
-            row.x = 0;
-            row.y = H / 2 - 220 - i * 175;
-            roundedPanel(row, cc.color(70, 62, 76, 245), 760, 150);
-            var sw = new cc.Node('previewSwatch');
-            sw.parent = row;
-            sw.setContentSize(110, 110);
-            sw.x = -300;
-            var ssp = sw.addComponent(cc.Sprite);
-            ssp.spriteFrame = whiteFrame();
-            ssp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-            ssp.type = cc.Sprite.Type.SIMPLE;
-            sw.color = cc.color(hsvaToHex(d.base || [160, 60, 80, 1]));
-            var lb = makeLabel(row, String(d.name || id), 40, 34, cc.color(255, 255, 255, 250));
-            lb.name = 'previewName';
-            row.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(row, true); });
-            row.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(row, false); });
-            row.on(cc.Node.EventType.TOUCH_END, function () {
-                pressFeedback(row, false);
-                stats.previewPicked = id;
-                log('preview picked world', id);
-            });
-            animateIn(row);
-        });
+
+        /* arrows at the page edges, exactly where the level select has them */
+        function arrow(side) {
+            var n = new cc.Node(side < 0 ? 'previewLeft' : 'previewRight');
+            n.parent = root;
+            n.setContentSize(140, 140);
+            n.x = side * (W / 2 - 90);
+            n.y = 0;
+            roundedPanel(n, cc.color(30, 26, 34, 210), 140, 140);
+            makeLabel(n, side < 0 ? '\u2190' : '\u2192', 0, 64, cc.color(255, 255, 255, 255)).name = 'glyph';
+            n.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(n, false); show(idx + side); });
+            n.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(n, true); });
+            return n;
+        }
+        var leftArrow = arrow(-1), rightArrow = arrow(1);
 
         var close = new cc.Node('previewClose');
         close.parent = root;
@@ -86864,6 +86891,8 @@ cc._RF.pop();
         roundedPanel(close, cc.color(30, 26, 34, 230), 150, 150);
         makeLabel(close, '\u2190', 0, 72, cc.color(255, 255, 255, 255)).name = 'previewCloseGlyph';
         close.on(cc.Node.EventType.TOUCH_END, function () { closePreview(); backToEditor(); });
+
+        show(0);
         stats.previewsOpened = (stats.previewsOpened || 0) + 1;
         return root;
     }
@@ -86956,6 +86985,42 @@ cc._RF.pop();
             var by = -H / 2 + 60 + btn.height / 2;
             if (Math.abs(btn.x - bx) > 1 || Math.abs(btn.y - by) > 1) { btn.x = bx; btn.y = by; }
         });
+    }
+    /* The built-in flow reads conf.worlds[wordId].require when you tap "next level"; a
+       custom world with a single level makes that id undefined and the game throws
+       "Cannot read properties of undefined (reading 'require')". A Proxy keeps every
+       lookup safe (missing worlds behave as require: 0 = unlocked) without touching the
+       shipped data. */
+    function guardWorldTable() {
+        try {
+            if (!conf.worlds || conf.worlds.__guarded) { return; }
+            var raw = conf.worlds;
+            conf.worlds = new Proxy(raw, {
+                get: function (t, k) {
+                    var v = t[k];
+                    if (v === undefined && k !== '__guarded' && String(k) !== 'Symbol(Symbol.toStringTag)') {
+                        return { id: Number(k) || 0, require: 0, __fallback: true };
+                    }
+                    return v;
+                },
+            });
+            conf.worlds.__guarded = true;
+            stats.worldsGuarded = 1;
+        } catch (e) { warn('world table guard failed:', e && e.message); }
+    }
+    /* One correct way to make a full-area coloured sprite. Order matters: cc.Sprite
+       defaults to sizeMode TRIMMED, so assigning the spriteFrame resizes the node to the
+       texture's own size (the 2x2 white texture) - which is how the dialog's dimming layer
+       ended up 2x2 and let the editor page show through, and why the input backgrounds
+       were invisible. CUSTOM first, frame second, size re-asserted last. */
+    function fullSprite(node, w, h, colour) {
+        var sp = node.getComponent(cc.Sprite) || node.addComponent(cc.Sprite);
+        sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        sp.type = cc.Sprite.Type.SIMPLE;
+        sp.spriteFrame = whiteFrame();
+        node.setContentSize(w, h);
+        if (colour) { node.color = colour; }
+        return sp;
     }
     /* ============ 颜色工具：主题色在 conf 里是 HSVA 数组（H 0-360, S/V 0-100, A 0-1） ============ */
     function hexToHsva(hex) {
@@ -87141,11 +87206,7 @@ cc._RF.pop();
         node.parent = parent;
         node.setContentSize(w, h);
         node.x = x; node.y = y;
-        var sp = node.addComponent(cc.Sprite);
-        sp.spriteFrame = whiteFrame();
-        sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-        sp.type = cc.Sprite.Type.SIMPLE;
-        node.color = cc.color(255, 255, 255, 46);
+        fullSprite(node, w, h, cc.color(255, 255, 255, 46));
         var eb = node.addComponent(cc.EditBox);
         eb.string = '';
         eb.placeholder = placeholder || '';
@@ -87306,6 +87367,7 @@ cc._RF.pop();
         hall.__customTabInstalled = true;
 
         makeShowBarViewResilient(hall);
+        guardWorldTable();
         try { buildModeSwitch(hall); } catch (e) { warn('mode switch failed:', e); }
         try { buildEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); } catch (e) { warn('editor home failed:', e && e.message ? e.message : e); }
         var item = addTabItem(hall);
