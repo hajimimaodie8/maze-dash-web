@@ -535,11 +535,11 @@
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
                      customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
                      worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Type a hex code, e.g. #2AA886', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
-                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete' },
+                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete', backToEditor: 'Editor', emptyHint: 'Create one from the editor' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
                      customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
                      worldName: '世界名称', themeColour: '主题色', hexHint: '也可直接输入色码，如 #2AA886', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
-                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除' },
+                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除', backToEditor: '返回编辑器', emptyHint: '在编辑器里创建一个世界' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
@@ -992,6 +992,29 @@
         root.setContentSize(W, H);
         root.zIndex = 998;
         fullSprite(root, W, H, cc.color(24, 22, 28, 255));      // opaque
+        /* The way back is created first and unconditionally - it must exist even when there
+           are no worlds, which is exactly the state this was missing in. */
+        var close = new cc.Node('previewClose');
+        close.parent = root;
+        close.setContentSize(300, 130);
+        close.x = -W / 2 + 30 + 150;
+        close.y = H / 2 - 24 - 65;
+        roundedPanel(close, cc.color(30, 26, 34, 235), 300, 130);
+        makeLabel(close, '\u2190 ' + t('backToEditor'), 0, 30, cc.color(255, 255, 255, 255)).name = 'previewCloseLabel';
+        close.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(close, true); });
+        close.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(close, false); });
+        close.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(close, false); closePreview(); backToEditor(); });
+
+        if (!ids.length) {
+            /* empty state, with an entrance rather than a blank grey screen */
+            var empty = makeLabel(root, t('noWorldsYet'), 40, 40, cc.color(255, 255, 255, 225));
+            empty.name = 'previewEmpty';
+            var hint = makeLabel(root, t('emptyHint'), -70, 26, cc.color(255, 255, 255, 170));
+            hint.name = 'previewEmptyHint';
+            empty.opacity = 0; hint.opacity = 0;
+            empty.runAction(cc.sequence(cc.delayTime(0.08), cc.fadeTo(0.24, 225)));
+            hint.runAction(cc.sequence(cc.delayTime(0.16), cc.fadeTo(0.24, 170)));
+        }
 
         /* Same component the original level select is built on (NestablePageView_Outer extends
            cc.PageView), with the built-in pager's own settings copied across, so the swipe,
@@ -1111,6 +1134,11 @@
         });
 
         if (pages.length) { show(0, false); }
+        /* the game's own entrance idiom: fade in, and ease the content up */
+        root.opacity = 0;
+        content.scale = 0.96;
+        root.runAction(cc.fadeTo(0.18, 255));
+        content.runAction(cc.scaleTo(0.22, 1, 1).easing(cc.easeSineOut()));
         stats.previewsOpened = (stats.previewsOpened || 0) + 1;
         stats.previewBuiltW = W;
         return root;
@@ -1140,7 +1168,7 @@
             deleteCustomWorld(id);
             modal.destroy();
             closePreview();
-            openWorldPreview();
+            if (!Object.keys(customWorlds()).length) { backToEditor(); } else { openWorldPreview(); }
         });
         modal.opacity = 0;
         panel.scale = 0.88;

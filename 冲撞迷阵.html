@@ -86820,30 +86820,56 @@ cc._RF.pop();
         /* Same component the original level select is built on (NestablePageView_Outer extends
            cc.PageView), with the built-in pager's own settings copied across, so the swipe,
            inertia and snapping feel identical instead of my hand-made arrow buttons. */
+        /* A pager whose behaviour is guaranteed rather than guessed: the view node carries a
+           RECT Mask (two worlds can never be visible at once) and the content always snaps to
+           an exact page offset, so it can never rest between two pages. Pages sit at
+           (i - (n-1)/2) * W, so page i is centred when content.x = -(i - (n-1)/2) * W. */
         var pagerNode = new cc.Node('previewPager');
         pagerNode.parent = root;
         pagerNode.setContentSize(W, H);
-        var pv = pagerNode.addComponent(cc.PageView);
-        var ref2 = window.hallScene && window.hallScene.StageSelectLayer;
-        if (ref2) {
-            ['horizontal', 'vertical', 'inertia', 'brake', 'elastic', 'bounceDuration', 'scrollDuration', 'scrollToTop'].forEach(function (k) {
-                try { if (ref2[k] !== undefined) { pv[k] = ref2[k]; } } catch (e) {}
-            });
-        } else {
-            pv.horizontal = true; pv.vertical = false; pv.inertia = true; pv.elastic = true;
-        }
-        /* Lay the content out exactly the way the built-in pager does - anchor centred,
-           pages at -contentW/2 + W/2 + i*W - because that is the geometry cc.PageView
-           derives its page offsets and boundaries from. With the old anchor-at-left layout
-           it saw nothing to scroll and the swipe did nothing. */
+        var pagerMask = pagerNode.addComponent(cc.Mask);
+        pagerMask.type = cc.Mask.Type.RECT;
         var content = new cc.Node('content');
         content.parent = pagerNode;
         content.setAnchorPoint(0.5, 0.5);
         var n2 = Math.max(1, ids.length);
         content.setContentSize(W * n2, H);
-        content.x = 0;
-        content.y = 0;
-        pv.content = content;
+        content.x = 0; content.y = 0;
+        var pages = [];
+        function pageOffset(i) { return -(i - (n2 - 1) / 2) * W; }
+
+        function show(i, animate) {
+            idx = Math.max(0, Math.min(pages.length - 1, i));
+            stats.previewPage = idx;
+            var tx = pageOffset(idx);
+            content.stopAllActions();
+            if (animate === false) { content.x = tx; }
+            else { content.runAction(cc.moveTo(0.22, tx, 0).easing(cc.easeSineInOut())); }
+        }
+
+        var dragFrom = null, dragBase = 0;
+        pagerNode.on(cc.Node.EventType.TOUCH_START, function (e) {
+            content.stopAllActions();
+            dragFrom = e.getLocation().x;
+            dragBase = content.x;
+        });
+        pagerNode.on(cc.Node.EventType.TOUCH_MOVE, function (e) {
+            if (dragFrom === null) { return; }
+            var dx = e.getLocation().x - dragFrom;
+            var min = pageOffset(pages.length - 1), max = pageOffset(0);
+            var want = dragBase + dx;
+            if (want > max) { want = max + (want - max) * 0.35; }
+            if (want < min) { want = min + (want - min) * 0.35; }
+            content.x = want;
+        });
+        var endDrag = function (e) {
+            if (dragFrom === null) { return; }
+            var dx = (e && e.getLocation ? e.getLocation().x : dragFrom) - dragFrom;
+            dragFrom = null;
+            show(idx + ((Math.abs(dx) > W * 0.10) ? (dx < 0 ? 1 : -1) : 0));
+        };
+        pagerNode.on(cc.Node.EventType.TOUCH_END, endDrag);
+        pagerNode.on(cc.Node.EventType.TOUCH_CANCEL, endDrag);
         var pages = [];
 
         /* the world name sits where the level select puts it */
@@ -86873,7 +86899,7 @@ cc._RF.pop();
             page.parent = content;
             page.setContentSize(W, H);
             page.setAnchorPoint(0.5, 0.5);
-            page.x = -W * Math.max(1, ids.length) / 2 + W / 2 + ids.indexOf(id) * W;
+            page.x = (ids.indexOf(id) - (n2 - 1) / 2) * W;
             page.y = 0;
             fullSprite(page, W, H, cc.color(hsvaToHex(d.base || [160, 60, 80, 1])));
             var title = makeLabel(page, String(d.name || id), refY, refSize, cc.color(255, 255, 255, 255));
@@ -86904,13 +86930,11 @@ cc._RF.pop();
             del.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(del, true); });
             del.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(del, false); });
             del.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(del, false); confirmDeleteWorld(id); });
-            if (pv.addPage) { try { pv.addPage(page); } catch (e) { warn('addPage failed:', e && e.message); } }
             pages.push(page);
             animateIn(page);
         });
 
-        if (pages.length) { pv.scrollToPage(0, 0); }
-        if (pv._updatePageView) { try { pv._updatePageView(); } catch (e) {} }
+        if (pages.length) { show(0, false); }
         stats.previewsOpened = (stats.previewsOpened || 0) + 1;
         stats.previewBuiltW = W;
         return root;
@@ -86984,7 +87008,6 @@ cc._RF.pop();
         openWorldPreview();
         try {
             var pv = cc.find('Canvas').getChildByName(PREVIEW_NAME).getChildByName('previewPager').getComponent(cc.PageView);
-            if (pv) { pv.scrollToPage(Math.max(0, keep), 0); }
         } catch (e) {}
         stats.previewRebuilt = (stats.previewRebuilt || 0) + 1;
     }
