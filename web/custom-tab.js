@@ -1377,12 +1377,37 @@
         return '#' + hx(rgb[0]) + hx(rgb[1]) + hx(rgb[2]);
     }
     /* the eight shipped worlds double as a preset palette */
+    /* The eight shipped worlds give eight colours, which the report rightly called monotonous;
+       these extras are a curated palette so there is something for every taste. */
+    var EXTRA_PRESETS = [
+        ['#4CAF50', 'grass green', '草原绿'], ['#4FC3F7', 'sky blue', '天空蓝'],
+        ['#1565C0', 'deep blue', '深海蓝'], ['#FF7043', 'sunset orange', '日落橙'],
+        ['#EC407A', 'rose pink', '玫瑰粉'], ['#9C6ADE', 'lavender', '薰衣草紫'],
+        ['#26A69A', 'mint teal', '薄荷青'], ['#D4A537', 'sand gold', '沙金'],
+        ['#2E7D32', 'forest', '森林绿'], ['#FF8A80', 'coral', '珊瑚'],
+        ['#607D8B', 'slate', '石板灰'], ['#7B1FA2', 'plum', '李子紫'],
+        ['#FFB300', 'amber', '琥珀'], ['#00ACC1', 'lagoon', '湖蓝'],
+        ['#B03A2E', 'brick', '砖红'], ['#EFEBE0', 'ivory', '乳白'],
+    ];
+
+    function langName(en, zh) {
+        var l = currentLang();
+        return (l === 'zh-Hans' || l === 'zh-Hant') ? zh : en;
+    }
+
     function presetThemes() {
         var out = [];
         for (var i = 1; i <= 8; i++) {
             var t = conf.theme_cfg[i];
-            if (t && t.list_background) { out.push({ id: i, hsva: t.list_background, name: (conf.stage_cfg[i] && conf.stage_cfg[i].sz_title) || ('W' + i) }); }
+            if (t && t.list_background) {
+                out.push({ id: i, hsva: t.list_background, hex: hsvaToHex(t.list_background),
+                           name: (conf.stage_cfg[i] && conf.stage_cfg[i].sz_title) || ('W' + i) });
+            }
         }
+        EXTRA_PRESETS.forEach(function (p) {
+            var h = hexToHsva(p[0]);
+            if (h) { out.push({ id: null, hsva: h, hex: p[0], name: langName(p[1], p[2]) }); }
+        });
         return out;
     }
 
@@ -1436,7 +1461,7 @@
         dim.on(cc.Node.EventType.TOUCH_END, function () { closeDialog(); });
 
         // the panel
-        var panelW = 900, panelH = 720;
+        var panelW = 960, panelH = 900;
         var panel = new cc.Node('panel');
         panel.parent = modal;
         panel.setContentSize(panelW, panelH);
@@ -1449,12 +1474,12 @@
 
         // --- world name ---
         makeLabel(panel, t('worldName'), panelH / 2 - 140, 26, cc.color(255, 255, 255, 210)).name = 'dlgNameLabel';
-        var nameBox = makeEditBox(panel, 'worldNameInput', 0, panelH / 2 - 200, 720, 78, 'My World');
+        var nameBox = makeEditBox(panel, 'worldNameInput', 0, panelH / 2 - 200, 780, 108, 'My World', 44);
 
         // --- preset swatches (the eight shipped themes + the current custom colour) ---
         makeLabel(panel, t('themeColour'), panelH / 2 - 280, 26, cc.color(255, 255, 255, 210)).name = 'dlgColourLabel';
         var presets = presetThemes();
-        var swatchY = panelH / 2 - 350;
+        var swatchY = panelH / 2 - 340;
         var chosen = { hsva: presets.length ? presets[0].hsva.slice() : [160, 60, 80, 1] };
         var swatches = [];
         presets.forEach(function (p, i) {
@@ -1462,14 +1487,15 @@
             sw.parent = panel;
             sw.setContentSize(84, 84);
             var total = presets.length;
-            sw.x = (i - (total - 1) / 2) * 98;
-            sw.y = swatchY;
-            var sp = sw.addComponent(cc.Sprite);
+            var perRow = 8, row = Math.floor(i / perRow), col = i % perRow;
+            sw.x = (col - (perRow - 1) / 2) * 104;
+            sw.y = swatchY - row * 104;
             sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
             sp.type = cc.Sprite.Type.SLICED;
             sp.spriteFrame = panelFrame();
             sp.insetLeft = sp.insetRight = sp.insetTop = sp.insetBottom = 7;
-            applyThemeColour(sw, p.id, 'list_background', cc.color(120, 120, 120, 255));
+            if (p.id) { applyThemeColour(sw, p.id, 'list_background', cc.color(120, 120, 120, 255)); } else { sw.color = cc.color(p.hex); }
+
             sw.on(cc.Node.EventType.TOUCH_END, function () {
                 chosen.hsva = p.hsva.slice();
                 if (hexBox) { hexBox.string = hsvaToHex(chosen.hsva); }
@@ -1483,7 +1509,7 @@
         });
 
         // --- hex code input + live preview ---
-        var hexBox = makeEditBox(panel, 'hexInput', -230, swatchY - 100, 300, 70, '#RRGGBB');
+        var hexBox = makeEditBox(panel, 'hexInput', -220, swatchY - 150, 360, 96, '#RRGGBB', 40);
         markSwatch(swatches, swatches[0]);
         var preview = new cc.Node('preview');
         preview.parent = panel;
@@ -1498,7 +1524,7 @@
         makeLabel(panel, t('hexHint'), 260, swatchY - 100, 20, cc.color(255, 255, 255, 170)).name = 'dlgHexHint';
 
         // --- confirm / cancel ---
-        var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 230, cc.color(255, 210, 60, 255), function () {
+        var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 330, cc.color(255, 210, 60, 255), function () {
             var name = (nameBox && nameBox.string) || t('untitledWorld');
             var typed = hexToHsva(hexBox && hexBox.string);
             if (typed) { chosen.hsva = typed; }
@@ -1513,7 +1539,7 @@
                 warn('create world failed:', msg);
             }
         });
-        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, swatchY - 230, cc.color(90, 84, 96, 255), function () { closeDialog(); });
+        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, swatchY - 330, cc.color(90, 84, 96, 255), function () { closeDialog(); });
 
         /* the game's own entrance motion: fade + scale */
         modal.opacity = 0;
@@ -1533,30 +1559,42 @@
             n.runAction(cc.spawn(cc.scaleTo(0.12, on ? 1.22 : 1, on ? 1.22 : 1), cc.fadeTo(0.12, on ? 255 : 170)));
         });
     }
-    function makeEditBox(parent, name, x, y, w, h, placeholder) {
+    function makeEditBox(parent, name, x, y, w, h, placeholder, fontSize) {
         var node = new cc.Node(name);
         node.parent = parent;
         node.setContentSize(w, h);
         node.x = x; node.y = y;
         fullSprite(node, w, h, cc.color(255, 255, 255, 46));
         var eb = node.addComponent(cc.EditBox);
+        var fs = fontSize || 42;
         eb.string = '';
         eb.placeholder = placeholder || '';
-        eb.fontSize = 30;
+        eb.fontSize = fs;
         eb.maxLength = 24;
         eb.inputMode = cc.EditBox.InputMode.ANY;
         eb.returnType = cc.EditBox.KeyboardReturnType.DONE;
-        /* EditBox builds its own BACKGROUND_SPRITE / TEXT_LABEL / PLACEHOLDER_LABEL
-           children, and those labels default to the game's Latin-only TTF - which is what
-           rendered the Chinese hint as garbage. Force the system font on them. */
+        /* The typed text was rendering tiny and wrong. Two causes, both handled: the internal
+           labels (created lazily by the component) were never switched off the game's
+           Latin-only TTF, and nothing re-asserted their size. Address the component's own
+           label references directly AND walk whatever children already exist. */
+        function styleLabel(lb, isText) {
+            if (!lb) { return; }
+            try {
+                lb.useSystemFont = true;
+                lb.fontFamily = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
+                lb.fontSize = fs;
+                lb.lineHeight = Math.round(fs * 1.6);
+                if (lb.node) { lb.node.color = isText ? cc.color(255, 255, 255, 255) : cc.color(255, 255, 255, 130); }
+            } catch (e) {}
+        }
+        try {
+            styleLabel(eb._textLabel, true);
+            styleLabel(eb._placeholderLabel, false);
+            eb.fontColor = cc.color(255, 255, 255, 255);
+            eb.placeholderColor = cc.color(255, 255, 255, 130);
+        } catch (e) {}
         (function fixInner(n) {
-            var lb = n.getComponent && n.getComponent(cc.Label);
-            if (lb) {
-                try {
-                    if (lb.useSystemFont !== true) { lb.useSystemFont = true; }
-                    lb.fontFamily = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
-                } catch (e) {}
-            }
+            styleLabel(n.getComponent && n.getComponent(cc.Label), n.name === 'TEXT_LABEL');
             (n.children || []).forEach(fixInner);
         })(node);
         return eb;
