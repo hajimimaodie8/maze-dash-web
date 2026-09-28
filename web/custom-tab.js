@@ -282,6 +282,14 @@
             active.zIndex = maxZ + 1;
             stats.viewRaised = (stats.viewRaised || 0) + 1;
         }
+        /* Raising the page above its siblings also raised it above the tab bar, which
+           hid the whole bottom row until a swipe changed the layering. Keep the bar one
+           layer above whatever the visible page ends up at. */
+        var bottom = hall.tabBar && hall.tabBar.parent;
+        if (bottom && bottom.isValid && bottom.zIndex <= active.zIndex) {
+            bottom.zIndex = active.zIndex + 1;
+            stats.barRaised = (stats.barRaised || 0) + 1;
+        }
     }
     function applyPageTint() {
         var hall = window.hallScene;
