@@ -398,10 +398,15 @@
         if (!scene || scene.name !== 'LaunchScene') { return 0; }
         var W = visibleWidth();
         var done = 0;
+        /* Every camera, not just the main one: the launch scene does not necessarily
+           render through cc.Camera.main, which is why setting "the" camera to white did
+           not stick and the sides came back black. */
         try {
-            var cam = cc.Camera.main || (cc.Camera.cameras && cc.Camera.cameras[0]);
-            if (cam && cam.backgroundColor) {
-                if (cam.backgroundColor.r !== 255 || cam.backgroundColor.g !== 255 || cam.backgroundColor.b !== 255) {
+            var cams = cc.Camera.cameras || [];
+            for (var ci = 0; ci < cams.length; ci++) {
+                var cam = cams[ci];
+                if (cam && cam.backgroundColor &&
+                    (cam.backgroundColor.r !== 255 || cam.backgroundColor.g !== 255 || cam.backgroundColor.b !== 255)) {
                     cam.backgroundColor = cc.color(255, 255, 255, 255);
                     done++;
                 }
@@ -421,6 +426,18 @@
                 n.width = W;
                 n.x = 0;
                 done++;
+            }
+            /* A large, near-black backdrop node: the launch scene draws one behind its
+               white title card, and once the fill is widened it is what shows down the
+               sides (with the debris particles over it). Hide it so the sides are white,
+               which is what was asked for on this screen. */
+            if (n.activeInHierarchy && n.height > 300 && n.width > 300) {
+                var col = n.color;
+                if (col && col.r + col.g + col.b < 180 && n.opacity > 200 && frame !== 'default_sprite_splash') {
+                    n.active = false;
+                    stats.launchDarkHidden = (stats.launchDarkHidden || 0) + 1;
+                    done++;
+                }
             }
             (n.children || []).forEach(walk);
         })(scene);
