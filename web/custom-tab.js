@@ -534,10 +534,12 @@
     var TEXT = {
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
                      customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
-                     worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Type a hex code, e.g. #2AA886', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here' },
+                     worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Type a hex code, e.g. #2AA886', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
+                     tileNewLevel: 'New level', tileMoveLevels: 'Move in' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
                      customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
-                     worldName: '世界名称', themeColour: '主题色', hexHint: '也可直接输入色码，如 #2AA886', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界' },
+                     worldName: '世界名称', themeColour: '主题色', hexHint: '也可直接输入色码，如 #2AA886', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
+                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
@@ -1212,6 +1214,7 @@
                     title.string = name;              // raw name, no localisation key
                 }
                 decorateCustomWorldPage(page, id);
+                positionWorldBackButtons(hall);
             }
             if (window.MazeDashWide && MazeDashWide.widenSelectPage) { MazeDashWide.widenSelectPage(); }
             if (hall.StageSelectLayer && hall.StageSelectLayer.scrollToPage) { hall.StageSelectLayer.scrollToPage(index); }
@@ -1221,31 +1224,85 @@
         return id;
     }
 
-    /* inside a custom world: the two entries asked for */
+    /* ====== 自定义世界页：排版与内置选关界面完全一致 ======
+       两个入口不再是我自造的浮层，而是**克隆游戏自己的关卡格子（LevelBtnPrefab）**
+       放进同一个网格容器里，所以字号、配色、间距、圆角都和内建关卡按钮一模一样。
+       左上角另加一个返回按钮（只出现在自定义世界上）。 */
+    function backToEditor() {
+        var hall = window.hallScene;
+        try {
+            gamemain.showTabBarViewIndex = CFG.index;
+            hall.showBarView();
+        } catch (e) {}
+        stats.backToEditor = (stats.backToEditor || 0) + 1;
+        log('back to the editor');
+    }
+
     function decorateCustomWorldPage(page, worldId) {
         if (!page || !page.isValid) { return; }
         var c = page.getComponent('StageSelectLayer');
-        var host = (c && c.SelectLayer) ? c.SelectLayer : page;
-        if (host.getChildByName('customWorldActions')) { return; }
-        var box = new cc.Node('customWorldActions');
-        box.parent = host;
-        box.y = -240;
-        var specs = [
-            { id: 'newLevel', key: 'createLevel', x: -330 },
-            { id: 'moveLevels', key: 'moveLevels', x: 330 },
-        ];
-        specs.forEach(function (s) {
-            var btn = new cc.Node('cwa_' + s.id);
-            btn.parent = box;
-            btn.setContentSize(560, 150);
-            btn.x = s.x;
-            roundedPanel(btn, cc.color(163, 75, 67, 255), 560, 150);
-            applyThemeColour(btn, worldId, s.id === 'newLevel' ? 'list_level_next' : 'list_level_complete', cc.color(200, 170, 90, 255));
-            var lb = makeLabel(btn, t(s.key), 0, 32, cc.color(40, 32, 20, 255));
-            lb.name = 'cwaLabel_' + s.id;
-            btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
-            btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
-            btn.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(btn, false); editorAction(s.id); });
+        if (!c || !c.SelectLayer) { return; }
+        if (page.__decorated === worldId) { return; }
+        page.__decorated = worldId;
+
+        /* --- back button, top-left --- */
+        var back = c.SelectLayer.getChildByName('backToEditor');
+        if (!back) {
+            back = new cc.Node('backToEditor');
+            back.parent = c.SelectLayer;
+            back.setContentSize(150, 150);
+            roundedPanel(back, cc.color(30, 26, 34, 220), 150, 150);
+            var g = makeLabel(back, '\u2190', 0, 72, cc.color(255, 255, 255, 255));
+            g.name = 'backGlyph';
+            back.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(back, true); });
+            back.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(back, false); });
+            back.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(back, false); backToEditor(); });
+            animateIn(back);
+        }
+
+        /* --- the two entries, as the game's own grid tiles --- */
+        var host = c.SelectLevelLayer;
+        if (!host) { return; }
+        [{ id: 'newLevel', label: t('tileNewLevel') }, { id: 'moveLevels', label: t('tileMoveLevels') }].forEach(function (s) {
+            if (host.getChildByName('tile_' + s.id)) { return; }
+            var tile = null;
+            try { tile = cc.instantiate(c.LevelBtnPrefab); } catch (e) { warn('tile clone failed:', e && e.message); }
+            if (!tile) { return; }
+            tile.name = 'tile_' + s.id;
+            tile.parent = host;
+            var lb = tile.getComponent('LevelButton');
+            if (lb && lb.clickEvents) { lb.clickEvents.length = 0; }
+            var numNode = tile.getChildByName('Level');
+            if (numNode) {
+                var nl = numNode.getComponent(cc.Label);
+                if (nl) { nl.string = s.label; nl.fontSize = 26; }
+            }
+            tile.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(tile, true); });
+            tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
+            tile.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(tile, false); editorAction(s.id); });
+            tile.runAction(cc.repeatForever(cc.sequence(cc.scaleTo(0.9, 1.06, 1.06), cc.scaleTo(0.9, 1, 1))));
+            /* the game's palette for a playable level, so the tile reads like the others */
+            applyThemeColour(tile, worldId, s.id === 'newLevel' ? 'list_level_next' : 'list_level_complete', cc.color(240, 200, 90, 255));
+        });
+        var layout = host.getComponent(cc.Layout);
+        if (layout && layout.updateLayout) { layout.updateLayout(); }
+        stats.customWorldDecorated = (stats.customWorldDecorated || 0) + 1;
+    }
+
+    /* keep the back button at the page's top-left as the layout resizes */
+    function positionWorldBackButtons(hall) {
+        var pager = hall.StageSelectLayer;
+        var content = pager && pager.content;
+        if (!content) { return; }
+        var W = visibleWidth(), H = visibleHeight();
+        content.children.forEach(function (p) {
+            var c = p.getComponent && p.getComponent('StageSelectLayer');
+            if (!c || !c.SelectLayer || c.m_stageId < 100) { return; }
+            var back = c.SelectLayer.getChildByName('backToEditor');
+            if (!back || !back.isValid) { return; }
+            var bx = -W / 2 + 30 + back.width / 2;
+            var by = H / 2 - 24 - back.height / 2;
+            if (Math.abs(back.x - bx) > 1 || Math.abs(back.y - by) > 1) { back.x = bx; back.y = by; }
         });
     }
     /* ------------------------------------------------------------ install */
@@ -1321,7 +1378,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); }
         } catch (e) {}
     }, 1500);
 
