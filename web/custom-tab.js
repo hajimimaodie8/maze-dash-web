@@ -437,7 +437,6 @@
                 sp.type = cc.Sprite.Type.SIMPLE;
             });
         }
-        buildModeSelector(view);
         return view;
     }
 
@@ -522,10 +521,117 @@
 
         buildPlaceholderContent(view, tint);
         log('created placeholder view', view.name);
-        buildModeSelector(view);
         return view;
     }
 
+    /* ================= 选关页左上角的模式切换（用游戏自身语汇） =================
+       面板用游戏自己的 default_panel（20x20 圆角帧，按 SLICED 九宫格拉伸），
+       选中态用选关页的 list_level_next（亮金），未选态用 list_level_disabled（暗橄榄）
+       —— 这就是游戏自己在标签栏与"下一关"上表达"选中"的方式，不再是我自造的小方框。 */
+    function themeColour(worldId, key, fallback) {
+        try {
+            var t = conf.theme_cfg[worldId] || conf.theme_cfg[1];
+            var v = t && t[key];
+            if (!v || !cc.Color.fromHSV) { return fallback; }
+            var col = cc.Color.fromHSV(v[0], v[1], v[2]);
+            col.a = Math.round((v[3] === undefined ? 1 : v[3]) * 255);
+            return col;
+        } catch (e) { return fallback; }
+    }
+
+    /* the game's own rounded panel texture, taken from a world page */
+    function panelFrame() {
+        try {
+            var sv = cc.find('Canvas/gameView/scrollView');
+            var content = sv && sv.getComponent(cc.ScrollView).content;
+            var page = content && content.children.filter(function (p) { return p.getComponent('StageSelectLayer'); })[0];
+            var sp = page && page.getComponent(cc.Sprite);
+            return sp ? sp.spriteFrame : null;
+        } catch (e) { return null; }
+    }
+
+    /* Order matters: a cc.Sprite defaults to sizeMode TRIMMED, so assigning the
+       spriteFrame resizes the node back to the frame's own 20x20 - which is how the mode
+       rows ended up as tiny boxes. Set CUSTOM first, assign the frame, then re-assert the
+       size we actually want. */
+    function roundedPanel(node, colour, w, h) {
+        var sp = node.addComponent(cc.Sprite);
+        sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        sp.type = cc.Sprite.Type.SLICED;
+        sp.spriteFrame = panelFrame();
+        sp.insetLeft = sp.insetRight = sp.insetTop = sp.insetBottom = 7;
+        if (w && h) { node.setContentSize(w, h); }
+        node.color = colour;
+        return sp;
+    }
+
+    function buildModeSwitch(hall) {
+        var page = hall.viewGroup && hall.viewGroup[2];
+        if (!page || !page.isValid) { return null; }
+        if (page.getChildByName('modeSwitch')) { return page.getChildByName('modeSwitch'); }
+
+        var worldId = (typeof gamemain.getLastWordId === 'function' && gamemain.getLastWordId()) || 1;
+        var panelW = 620, panelH = 190, rowW = 270, rowH = 76;
+        var root = new cc.Node('modeSwitch');
+        root.parent = page;
+        root.setContentSize(panelW, panelH);
+        /* Anchor to the viewport, not to page.width: this runs during install, before
+           the page has been widened, so page.width was still 20 and the panel landed
+           near the middle. positionModeSwitch() re-asserts it every tick anyway. */
+        root.x = -visibleWidth() / 2 + 34 + panelW / 2;
+        root.y = visibleHeight() / 2 - 24 - panelH / 2;
+        roundedPanel(root, themeColour(worldId, 'list_level_background', cc.color(163, 75, 67, 255)), panelW, panelH);
+
+        var title = makeLabel(root, '模式', panelH / 2 - 34, 26, cc.color(255, 255, 255, 235));
+        title.name = 'modeSwitchTitle';
+
+        var modes = [
+            { id: 'progression', label: '闯关模式' },
+            { id: 'unlocked', label: '解锁模式' },
+        ];
+        var rows = [];
+        modes.forEach(function (m, i) {
+            var row = new cc.Node('modeRow_' + m.id);
+            row.parent = root;
+            row.setContentSize(rowW, rowH);
+            row.x = (i === 0 ? -1 : 1) * (rowW / 2 + 12);
+            row.y = -18;
+            roundedPanel(row, cc.color(0, 0, 0, 0), rowW, rowH);
+            var lb = makeLabel(row, m.label, 0, 30, cc.color(255, 255, 255, 255));
+            lb.name = 'label';
+            row.on(cc.Node.EventType.TOUCH_END, function () {
+                applyMode(m.id);
+                paintModeRows(rows, worldId);
+                log('mode switched to', m.id);
+            });
+            rows.push({ id: m.id, node: row });
+        });
+        paintModeRows(rows, worldId);
+        stats.modeSwitchBuilt = (stats.modeSwitchBuilt || 0) + 1;
+        return root;
+    }
+
+    /* keep the panel pinned to the top-left through resizes and page widening */
+    function positionModeSwitch(hall) {
+        var page = hall.viewGroup && hall.viewGroup[2];
+        var root = page && page.getChildByName('modeSwitch');
+        if (!root || !root.isValid) { return; }
+        var panelW = Math.round(root.width) || 620, panelH = Math.round(root.height) || 190;
+        var wantX = -visibleWidth() / 2 + 34 + panelW / 2;
+        var wantY = visibleHeight() / 2 - 24 - panelH / 2;
+        if (Math.abs(root.x - wantX) > 1 || Math.abs(root.y - wantY) > 1) { root.x = wantX; root.y = wantY; }
+    }
+    function paintModeRows(rows, worldId) {
+        var active = currentMode();
+        var on = themeColour(worldId, 'list_level_next', cc.color(255, 210, 60, 255));
+        var off = themeColour(worldId, 'list_level_disabled', cc.color(70, 60, 70, 255));
+        rows.forEach(function (r) {
+            var isOn = (r.id === active);
+            r.node.color = isOn ? on : cc.color(off.r, off.g, off.b, 200);
+            var lb = r.node.getChildByName('label');
+            if (lb) { lb.color = isOn ? cc.color(60, 40, 20, 255) : cc.color(255, 255, 255, 210); }
+        });
+    }
     /* ================== 模式选择：闯关模式 / 解锁模式 ==================
        解锁模式把所有世界与关卡都判为已通关（覆盖两个取值函数），方便调试与检查。
        选择结果存在 localStorage，重开页面仍然生效。 */
@@ -636,6 +742,7 @@
         hall.__customTabInstalled = true;
 
         makeShowBarViewResilient(hall);
+        try { buildModeSwitch(hall); } catch (e) { warn('mode switch failed:', e); }
         var item = addTabItem(hall);
         layoutTabs(hall);
         var freed = freeTabBarArea();
@@ -700,7 +807,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); }
         } catch (e) {}
     }, 1500);
 
