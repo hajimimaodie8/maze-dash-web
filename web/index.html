@@ -230,6 +230,11 @@
     <script src="wide-ui.js" charset="utf-8"></script>
     <!-- 3e) preload: warm the level-asset descriptors while the player is on the hall -->
     <script src="preload.js" charset="utf-8"></script>
+    <!-- page backdrop: this port paints the theme colour onto the page while the game is
+         still loading, so a save parked on a coloured world (world 5 is magenta) showed
+         that colour full-screen before any content appeared. Pin it to white; the canvas
+         covers it as soon as the game draws. -->
+    <style id="maze-dash-page-bg">html, body { background: #ffffff !important; }</style>
     <!-- 4) boot -->
     <script src="main.js" charset="utf-8"></script>
 </body>
