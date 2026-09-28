@@ -435,15 +435,20 @@
                white title card, and once the fill is widened it is what shows down the
                sides (with the debris particles over it). Hide it so the sides are white,
                which is what was asked for on this screen. */
-            if (n.activeInHierarchy && n.height > 200 && n.width > 200 && frame !== 'default_sprite_splash') {
+            /* Any LARGE backdrop node, whatever its colour: this scene tints its
+               background with the current world's theme, so a world-5 save makes the
+               flanks magenta ([193,62,152]) - the earlier rule only caught dark colours
+               and let that through. Small nodes (the title card, the character, the
+               debris) are below the size threshold and stay untouched. */
+            if (n.activeInHierarchy && n.height > 600 && n.width > 600 && frame !== 'default_sprite_splash') {
                 var col = n.color;
-                if (col && col.r + col.g + col.b < 200 && n.opacity > 120) {
+                if (col && (col.r !== 255 || col.g !== 255 || col.b !== 255)) {
                     /* Recolour rather than hide: this is the dark backdrop drawn behind
                        the title card, and it is what shows down the sides. Hiding it
                        would remove whatever it is attached to; painting it white keeps
                        the scene intact and gives the white flanks that were asked for. */
                     n.color = cc.color(255, 255, 255, n.color.a);
-                    stats.launchDarkWhitened = (stats.launchDarkWhitened || 0) + 1;
+                    stats.launchBackdropWhitened = (stats.launchBackdropWhitened || 0) + 1;
                     done++;
                 }
             }

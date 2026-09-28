@@ -647,8 +647,12 @@
             if (!hall.leftViewMap) { hall.leftViewMap = []; }
             if (!hall.rightViewMap) { hall.rightViewMap = []; }
             // parked on the left, so the first switch slides it in from the left
-            hall.leftViewMap[CFG.index] = true;
-            hall.rightViewMap[CFG.index] = false;
+            /* The custom tab is the right-most one, so it should slide in from the right
+               (dir 2) and its outgoing view should leave to the left - the mirror of what
+               a left-hand page does. leftViewMap=true made it come in from the left,
+               which reads as the wrong direction. */
+            hall.leftViewMap[CFG.index] = false;
+            hall.rightViewMap[CFG.index] = true;
         }
         log('installed: tab index', CFG.index, '(', CFG.title, ')');
         return true;
