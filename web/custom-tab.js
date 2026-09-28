@@ -248,6 +248,41 @@
         { name: 'faceView', colour: 'white' },
     ];
 
+    /* The five full-screen pages are Canvas children in a fixed order (shop, face,
+       game, quest, setting, custom), and each paints a full-width backdrop. Whichever
+       page is shown must therefore also be the LAST sibling, or a page with a higher
+       index still draws over it - which is how the skin page ended up with the
+       level-select backdrops showing down its sides. Raise the visible one each tick;
+       it is a no-op when the order is already right. */
+    function raiseActiveView() {
+        var hall = window.hallScene;
+        if (!hall || !hall.viewGroup) { return; }
+        /* Source of truth is the hall's own current tab index. The game can leave the
+           previous page active (its moveOut only deactivates after an animation clip
+           finishes), and with two pages active the earlier one still shows through -
+           which is exactly the coloured bands down the sides of the skin page. */
+        var cur = (typeof hall.currentIndex === 'number') ? hall.currentIndex : -1;
+        var active = (cur >= 0 && hall.viewGroup[cur] && hall.viewGroup[cur].isValid) ? hall.viewGroup[cur] : null;
+        if (!active) {
+            hall.viewGroup.forEach(function (v) { if (v && v.isValid && v.activeInHierarchy) { active = v; } });
+        }
+        if (!active || !active.parent) { return; }
+        hall.viewGroup.forEach(function (v, i) {
+            if (!v || !v.isValid || v === active) { return; }
+            if (v.activeInHierarchy) { v.active = false; stats.viewsHidden = (stats.viewsHidden || 0) + 1; }
+        });
+        active.setSiblingIndex(active.parent.children.length - 1);
+        /* Sibling order is not enough: Cocos draws by zIndex first, and the pager was
+           left with a higher zIndex than the skin page, so the world pages painted over
+           it and showed through down both sides. Put the visible page above every other
+           view page (the tab bar is a separate node and keeps its own layer). */
+        var maxZ = -1;
+        hall.viewGroup.forEach(function (v) { if (v && v.isValid && v !== active) { maxZ = Math.max(maxZ, v.zIndex); } });
+        if (active.zIndex <= maxZ) {
+            active.zIndex = maxZ + 1;
+            stats.viewRaised = (stats.viewRaised || 0) + 1;
+        }
+    }
     function applyPageTint() {
         var hall = window.hallScene;
         if (!hall || !hall.viewGroup) { return false; }
@@ -616,7 +651,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); }
         } catch (e) {}
     }, 1500);
 
