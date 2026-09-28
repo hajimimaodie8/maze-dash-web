@@ -155,8 +155,15 @@
             if (sv.width < W) { sv.width = W; n++; }
             var view = sv.getChildByName('view');
             if (view && view.isValid && view.width < W) { view.width = W; n++; }
-            var bg = sv.getChildByName('background');
-            if (bg && bg.isValid && bg.width < W) { bg.width = W; n++; }
+            /* Only the pager's own background is a full-width colour strip that must
+               follow the window. The inner pages' "background" children are decorative
+               panels authored for a 720 wide page; stretching them covered both sides
+               of the skin page with that decoration (reported as a strange colour down
+               the left and right). Widen those only with their own scrollview. */
+            if (page.name === 'gameView') {
+                var bg = sv.getChildByName('background');
+                if (bg && bg.isValid && bg.width < W) { bg.width = W; n++; }
+            }
         });
         return n;
     }
@@ -176,6 +183,15 @@
 
         var n = content.children.length;
         var changed = 0;
+
+        // Nothing below may run on every tick: the realign would drag the pager back to
+        // its page while the player is swiping (reported as "it pulls itself back").
+        // Only spread and realign when the width actually changed.
+        if (content.__spreadW === W) {
+            pages.forEach(function (p) { var c2 = p.getComponent('StageSelectLayer'); if (c2) { centerGridVertically(c2); } });
+            return 0;
+        }
+        content.__spreadW = W;
 
         // capture where the pager is now, before the page width changes
         var pager = window.hallScene.StageSelectLayer || null;

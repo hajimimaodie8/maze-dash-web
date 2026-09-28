@@ -236,9 +236,24 @@
        scene (the "white fog" that was reported). Take the colour from the camera
        instead, which this port keeps in sync with the theme, and if that is not
        usable, draw no background at all rather than a white one. */
+    /* Pages whose own background is authored in a colour that only looked right while
+       the pager clipped it to 720 px. The skin page is dark navy [48,46,76] and, once
+       widened, painted both sides of the window with it. Tinting them to the theme
+       colour keeps every page consistent. */
+    var TINT_PAGES = ['customLevelsView', 'faceView'];
+
     function applyPageTint() {
         var hall = window.hallScene;
-        var page = hall && hall.viewGroup ? hall.viewGroup[CFG.index] : null;
+        if (!hall || !hall.viewGroup) { return false; }
+        var idx = TINT_PAGES.indexOf(hall.viewGroup[CFG.index] ? hall.viewGroup[CFG.index].name : '');
+        var names = idx >= 0 ? TINT_PAGES : TINT_PAGES;
+        names.forEach(function (nm) {
+            hall.viewGroup.forEach(function (v) { if (v && v.isValid && v.name === nm) { tintOne(v); } });
+        });
+        return true;
+    }
+
+    function tintOne(page) {
         if (!page || !page.isValid) { return false; }
         var sp = page.getComponent(cc.Sprite);
         if (!sp) { return false; }
