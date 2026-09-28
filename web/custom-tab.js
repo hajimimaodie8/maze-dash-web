@@ -1476,18 +1476,18 @@
         roundedPanel(panel, cc.color(40, 36, 44, 255), panelW, panelH);
         var worldId = visibleWorldId(hall) || 1;
 
-        makeLabel(panel, t('createWorld'), panelH / 2 - 56, 44, cc.color(255, 255, 255, 255)).name = 'dlgTitle';
+        makeLabel(panel, t('createWorld'), 316, 40, cc.color(255, 255, 255, 255)).name = 'dlgTitle';
         var errLabel = makeLabel(panel, '', -panelH / 2 + 40, 22, cc.color(255, 120, 120, 255));
         errLabel.name = 'dlgError';
 
         // --- world name ---
-        makeLabel(panel, t('worldName'), panelH / 2 - 140, 26, cc.color(255, 255, 255, 210)).name = 'dlgNameLabel';
-        var nameBox = makeEditBox(panel, 'worldNameInput', 0, panelH / 2 - 176, 620, 84, 'My World', 36);
+        makeLabel(panel, t('worldName'), 252, 22, cc.color(255, 255, 255, 200)).name = 'dlgNameLabel';
+        var nameBox = makeEditBox(panel, 'worldNameInput', 0, 206, 560, 64, 'My World', 28);
 
         // --- preset swatches (the eight shipped themes + the current custom colour) ---
-        makeLabel(panel, t('themeColour'), swatchY + 84, 26, cc.color(255, 255, 255, 210)).name = 'dlgColourLabel';
+        makeLabel(panel, t('themeColour'), 130, 22, cc.color(255, 255, 255, 200)).name = 'dlgColourLabel';
         var presets = presetThemes();
-        var swatchY = panelH / 2 - 300;
+        var swatchY = 40;
         var chosen = { hsva: presets.length ? presets[0].hsva.slice() : [160, 60, 80, 1] };
         var swatches = [];
         presets.forEach(function (p, i) {
@@ -1514,23 +1514,16 @@
         });
 
         // --- hex code input + live preview ---
-        var hexBox = makeEditBox(panel, 'hexInput', -180, swatchY - 322, 300, 76, '#RRGGBB', 32);
+        var hexBox = makeEditBox(panel, 'hexInput', -40, -238, 240, 64, '#RRGGBB', 28);
         markSwatch(swatches, swatches[0]);
-        var preview = new cc.Node('preview');
-        preview.parent = panel;
-
-        preview.y = swatchY - 322;
-        var psp = preview.addComponent(cc.Sprite);
-        psp.spriteFrame = whiteFrame();
-        psp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-        psp.type = cc.Sprite.Type.SIMPLE;
-        function refreshPreview() { preview.color = cc.color(hsvaToHex(chosen.hsva)); }
-        refreshPreview();
+        /* The little preview swatch is gone: it rendered as a 2x2 dot and sat under the
+           Create button. The palette and the hex code already say what the colour is. */
+        function refreshPreview() { /* kept as a no-op: the swatch handlers still call it */ }
         /* the hex hint label is deliberately gone: the #RRGGBB placeholder says the same
            thing, and the small CJK line rendered as garbage between the swatch rows. */
 
         // --- confirm / cancel ---
-        var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 470, cc.color(255, 210, 60, 255), function () {
+        var confirmBtn = makeDialogButton(panel, t('confirm'), 1, -330, cc.color(255, 210, 60, 255), function () {
             var name = inputValue(nameBox) || t('untitledWorld');
             var typed = hexToHsva(inputValue(hexBox));
             if (typed) { chosen.hsva = typed; }
@@ -1545,7 +1538,7 @@
                 warn('create world failed:', msg);
             }
         });
-        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, swatchY - 470, cc.color(90, 84, 96, 255), function () { closeDialog(); });
+        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, -330, cc.color(90, 84, 96, 255), function () { closeDialog(); });
 
         /* the game's own entrance motion: fade + scale */
         modal.opacity = 0;
@@ -1575,7 +1568,7 @@
         node.parent = parent;
         node.setContentSize(w, h);
         node.x = x; node.y = y;
-        fullSprite(node, w, h, cc.color(255, 255, 255, 52));
+        roundedPanel(node, cc.color(18, 16, 22, 235), w, h);   // dark inset slot, the game's own panel
         var fs = fontSize || 42;
         var el = document.createElement('input');
         el.type = 'text';
@@ -1583,12 +1576,13 @@
         el.maxLength = 24;
         el.style.position = 'fixed';
         el.style.boxSizing = 'border-box';
-        el.style.padding = '0 14px';
+        el.style.padding = '0 18px';
         el.style.border = '0';
         el.style.outline = 'none';
-        el.style.borderRadius = '10px';
-        el.style.background = 'rgba(0,0,0,0.28)';
+        el.style.borderRadius = '8px';
+        el.style.background = 'transparent';   // the rounded dark slot is drawn by the node behind it
         el.style.color = '#ffffff';
+        el.style.textAlign = 'left';
         el.style.fontSize = fs + 'px';
         el.style.fontFamily = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
         el.style.zIndex = '30';
@@ -1630,11 +1624,11 @@
     function makeDialogButton(parent, text, side, y, colour, onTap) {
         var btn = new cc.Node('dlgBtn');
         btn.parent = parent;
-        btn.setContentSize(300, 96);
-        btn.x = side * 170;
+        btn.setContentSize(240, 80);
+        btn.x = side * 140;
         btn.y = y;
-        roundedPanel(btn, colour, 300, 96);
-        var lb = makeLabel(btn, text, 0, 34, cc.color(30, 26, 34, 255));
+        roundedPanel(btn, colour, 240, 80);
+        var lb = makeLabel(btn, text, 0, 30, cc.color(30, 26, 34, 255));
         lb.name = 'dlgBtnLabel';
         btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
         btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
