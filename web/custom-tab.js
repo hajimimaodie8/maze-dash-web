@@ -969,6 +969,7 @@
     }
 
     var PREVIEW_NAME = 'editorPreview';
+    var previewRootRef = null;   // direct handle: closing must not depend on a find()
     function closePreview() {
         var host = cc.find('Canvas');
         var p = host && host.getChildByName(PREVIEW_NAME);
@@ -1001,16 +1002,28 @@
         close.y = H / 2 - 24 - 65;
         roundedPanel(close, cc.color(30, 26, 34, 235), 300, 130);
         makeLabel(close, '\u2190 ' + t('backToEditor'), 0, 30, cc.color(255, 255, 255, 255)).name = 'previewCloseLabel';
+        /* the pager covers the full screen and registers touch handlers, so it was sitting on
+           top of this button and swallowing its taps; zIndex puts the way out above it. */
+        close.zIndex = 50;
         close.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(close, true); });
         close.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(close, false); });
-        close.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(close, false); closePreview(); backToEditor(); });
+        close.on(cc.Node.EventType.TOUCH_END, function () {
+            pressFeedback(close, false);
+            /* do both: destroy what we hold, then run the normal path. One of them is
+               enough, and neither depends on the other succeeding. */
+            if (root && root.isValid) { root.destroy(); }
+            closePreview();
+            backToEditor();
+        });
 
         if (!ids.length) {
             /* empty state, with an entrance rather than a blank grey screen */
             var empty = makeLabel(root, t('noWorldsYet'), 40, 40, cc.color(255, 255, 255, 225));
             empty.name = 'previewEmpty';
+            empty.zIndex = 10;
             var hint = makeLabel(root, t('emptyHint'), -70, 26, cc.color(255, 255, 255, 170));
             hint.name = 'previewEmptyHint';
+            hint.zIndex = 10;
             empty.opacity = 0; hint.opacity = 0;
             empty.runAction(cc.sequence(cc.delayTime(0.08), cc.fadeTo(0.24, 225)));
             hint.runAction(cc.sequence(cc.delayTime(0.16), cc.fadeTo(0.24, 170)));
