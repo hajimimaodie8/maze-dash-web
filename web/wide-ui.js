@@ -395,7 +395,11 @@
 
     function fixLaunchScreen() {
         var scene = cc.director.getScene();
-        if (!scene || scene.name !== 'LaunchScene') { return 0; }
+        /* The title card with the drifting debris is NOT LaunchScene - it is AnimScene,
+           and its camera clears to pure black, which is what showed down both sides.
+           Handle both scenes. */
+        var sceneName = scene ? scene.name : '';
+        if (sceneName !== 'LaunchScene' && sceneName !== 'AnimScene') { return 0; }
         var W = visibleWidth();
         var done = 0;
         /* Every camera, not just the main one: the launch scene does not necessarily
@@ -431,11 +435,15 @@
                white title card, and once the fill is widened it is what shows down the
                sides (with the debris particles over it). Hide it so the sides are white,
                which is what was asked for on this screen. */
-            if (n.activeInHierarchy && n.height > 300 && n.width > 300) {
+            if (n.activeInHierarchy && n.height > 200 && n.width > 200 && frame !== 'default_sprite_splash') {
                 var col = n.color;
-                if (col && col.r + col.g + col.b < 180 && n.opacity > 200 && frame !== 'default_sprite_splash') {
-                    n.active = false;
-                    stats.launchDarkHidden = (stats.launchDarkHidden || 0) + 1;
+                if (col && col.r + col.g + col.b < 200 && n.opacity > 120) {
+                    /* Recolour rather than hide: this is the dark backdrop drawn behind
+                       the title card, and it is what shows down the sides. Hiding it
+                       would remove whatever it is attached to; painting it white keeps
+                       the scene intact and gives the white flanks that were asked for. */
+                    n.color = cc.color(255, 255, 255, n.color.a);
+                    stats.launchDarkWhitened = (stats.launchDarkWhitened || 0) + 1;
                     done++;
                 }
             }
