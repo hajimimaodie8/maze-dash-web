@@ -87256,11 +87256,19 @@ cc._RF.pop();
     /* ============ 新建世界：模态对话框（背景变暗 + 中央面板） ============ */
     var DIALOG_NAME = 'editorDialog';
     function closeDialog() {
-        var hall = window.hallScene;
-        var host = cc.find('Canvas')   // the HallScene component sits ON the Canvas, so hall.node IS it;
+        var host = cc.find('Canvas');
         var d = host && host.getChildByName(DIALOG_NAME);
-        if (d && d.isValid) { d.destroy(); stats.dialogsClosed = (stats.dialogsClosed || 0) + 1; }
-        return d ? true : false;
+        /* remove every DOM input belonging to this dialog before its node goes: the boxes are
+           real HTML elements and would otherwise float over the game after closing */
+        Array.prototype.slice.call(document.querySelectorAll('input')).forEach(function (el) {
+            if (el.__mazeDashInput && el.parentNode) { el.parentNode.removeChild(el); }
+        });
+        if (d && d.isValid) {
+            destroyInputs(d);
+            d.destroy();
+            stats.dialogsClosed = (stats.dialogsClosed || 0) + 1;
+        }
+        return !!d;
     }
 
     function openCreateWorldDialog(hall) {
@@ -87322,7 +87330,7 @@ cc._RF.pop();
 
             sw.on(cc.Node.EventType.TOUCH_END, function () {
                 chosen.hsva = p.hsva.slice();
-                if (hexBox) { hexBox.string = hsvaToHex(chosen.hsva); }
+                if (hexBox && hexBox.__input) { hexBox.__input.value = hsvaToHex(chosen.hsva); }
                 refreshPreview();
                 pressFeedback(sw, false);
                 markSwatch(swatches, sw);       // visible "this one is selected"
@@ -87349,8 +87357,8 @@ cc._RF.pop();
 
         // --- confirm / cancel ---
         var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 330, cc.color(255, 210, 60, 255), function () {
-            var name = (nameBox && nameBox.string) || t('untitledWorld');
-            var typed = hexToHsva(hexBox && hexBox.string);
+            var name = inputValue(nameBox) || t('untitledWorld');
+            var typed = hexToHsva(inputValue(hexBox));
             if (typed) { chosen.hsva = typed; }
             /* Do NOT close on failure: show the reason in the dialog instead of appearing
                to do nothing (which is exactly how it was reported). */
@@ -87383,45 +87391,66 @@ cc._RF.pop();
             n.runAction(cc.spawn(cc.scaleTo(0.12, on ? 1.22 : 1, on ? 1.22 : 1), cc.fadeTo(0.12, on ? 255 : 170)));
         });
     }
+    /* cc.EditBox renders typed text through a DOM <textarea> overlay, and measured on the
+       live page that element was display:none at 0x0 - so the text simply was not shown.
+       This builds the input itself instead: a normal cc.Node for the box, plus a real DOM
+       input positioned over the canvas, styled with a font that has CJK glyphs. Full control,
+       no component quirks. */
     function makeEditBox(parent, name, x, y, w, h, placeholder, fontSize) {
         var node = new cc.Node(name);
         node.parent = parent;
         node.setContentSize(w, h);
         node.x = x; node.y = y;
-        fullSprite(node, w, h, cc.color(255, 255, 255, 46));
-        var eb = node.addComponent(cc.EditBox);
+        fullSprite(node, w, h, cc.color(255, 255, 255, 52));
         var fs = fontSize || 42;
-        eb.string = '';
-        eb.placeholder = placeholder || '';
-        eb.fontSize = fs;
-        eb.maxLength = 24;
-        eb.inputMode = cc.EditBox.InputMode.ANY;
-        eb.returnType = cc.EditBox.KeyboardReturnType.DONE;
-        /* The typed text was rendering tiny and wrong. Two causes, both handled: the internal
-           labels (created lazily by the component) were never switched off the game's
-           Latin-only TTF, and nothing re-asserted their size. Address the component's own
-           label references directly AND walk whatever children already exist. */
-        function styleLabel(lb, isText) {
-            if (!lb) { return; }
-            try {
-                lb.useSystemFont = true;
-                lb.fontFamily = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
-                lb.fontSize = fs;
-                lb.lineHeight = Math.round(fs * 1.6);
-                if (lb.node) { lb.node.color = isText ? cc.color(255, 255, 255, 255) : cc.color(255, 255, 255, 130); }
-            } catch (e) {}
+        var el = document.createElement('input');
+        el.type = 'text';
+        el.placeholder = placeholder || '';
+        el.maxLength = 24;
+        el.style.position = 'fixed';
+        el.style.boxSizing = 'border-box';
+        el.style.padding = '0 14px';
+        el.style.border = '0';
+        el.style.outline = 'none';
+        el.style.borderRadius = '10px';
+        el.style.background = 'rgba(0,0,0,0.28)';
+        el.style.color = '#ffffff';
+        el.style.fontSize = fs + 'px';
+        el.style.fontFamily = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
+        el.style.zIndex = '30';
+        el.style.display = 'block';
+        document.body.appendChild(el);
+        node.__input = el;
+        node.__inputClosed = false;
+        function place() {
+            if (!node.isValid) { if (el.parentNode) { el.parentNode.removeChild(el); } return; }
+            var wp = node.convertToWorldSpaceAR(cc.v2(0, 0));
+            var r = cc.game.canvas.getBoundingClientRect();
+            var vs = cc.view.getVisibleSize();
+            var sx = r.width / vs.width, sy = r.height / vs.height;
+            var cx = r.left + wp.x * sx, cy = r.top + (vs.height - wp.y) * sy;
+            el.style.left = Math.round(cx - (node.width * sx) / 2) + 'px';
+            el.style.top = Math.round(cy - (node.height * sy) / 2) + 'px';
+            el.style.width = Math.round(node.width * sx) + 'px';
+            el.style.height = Math.round(node.height * sy) + 'px';
         }
-        try {
-            styleLabel(eb._textLabel, true);
-            styleLabel(eb._placeholderLabel, false);
-            eb.fontColor = cc.color(255, 255, 255, 255);
-            eb.placeholderColor = cc.color(255, 255, 255, 130);
-        } catch (e) {}
-        (function fixInner(n) {
-            styleLabel(n.getComponent && n.getComponent(cc.Label), n.name === 'TEXT_LABEL');
-            (n.children || []).forEach(fixInner);
-        })(node);
-        return eb;
+        place();
+        /* the dialog animates its panel in, so re-place after the motion settles */
+        setTimeout(place, 120);
+        setTimeout(place, 320);
+        node.__place = place;
+        return node;   // read the value from node.__input.value
+    }
+
+    function inputValue(box) {
+        return (box && box.__input) ? String(box.__input.value || '') : '';
+    }
+
+    function destroyInputs(root) {
+        (function walk(n) {
+            if (n.__input && n.__input.parentNode) { n.__input.parentNode.removeChild(n.__input); }
+            (n.children || []).forEach(walk);
+        })(root);
     }
 
     function makeDialogButton(parent, text, side, y, colour, onTap) {
