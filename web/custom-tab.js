@@ -524,6 +524,72 @@
         return view;
     }
 
+    /* ============ 自建 UI 的多语言 ============
+       游戏自己的文案在 game_lang.json 里、由 LocalizedLabel 驱动；我自建的节点不经过
+       那套流程，所以必须自己跟着 gamemain.getGameLang() 走，否则切语言时我的界面不动。
+       编辑器后续所有自建文字都从这里取词。 */
+    var TEXT = {
+        en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
+                     customTitle: 'Custom Levels', customHint: 'Level editor (in progress)' },
+        'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
+                     customTitle: '自定义关卡', customHint: '关卡编辑器（开发中）' },
+        'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
+                     customTitle: '自訂關卡', customHint: '關卡編輯器（開發中）' },
+        ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
+                     customTitle: 'カスタムステージ', customHint: 'ステージエディタ（開発中）' },
+        kr:        { mode: '모드', progression: '일반 모드', unlocked: '전체 해금',
+                     customTitle: '커스텀 스테이지', customHint: '스테이지 편집기(개발 중)' },
+        de:        { mode: 'Modus', progression: 'Fortschritt', unlocked: 'Freigeschaltet',
+                     customTitle: 'Eigene Level', customHint: 'Level-Editor (in Arbeit)' },
+        es:        { mode: 'Modo', progression: 'Progreso', unlocked: 'Desbloqueado',
+                     customTitle: 'Niveles propios', customHint: 'Editor de niveles (en desarrollo)' },
+        fr:        { mode: 'Mode', progression: 'Progression', unlocked: 'Débloqué',
+                     customTitle: 'Niveaux perso', customHint: 'Éditeur de niveaux (en cours)' },
+        pt:        { mode: 'Modo', progression: 'Progresso', unlocked: 'Desbloqueado',
+                     customTitle: 'Níveis próprios', customHint: 'Editor de níveis (em desenvolvimento)' },
+        ru:        { mode: 'Режим', progression: 'Прогресс', unlocked: 'Разблокировано',
+                     customTitle: 'Свои уровни', customHint: 'Редактор уровней (в разработке)' },
+    };
+    /* the game ships ten languages (sz_en / sz_zh-Hans / sz_zh-Hant / sz_ja / sz_de /
+       sz_kr / sz_es / sz_fr / sz_pt / sz_ru) - mirror them all here, and normalise the
+       couple of spellings the runtime may report. */
+    var LANG_ALIAS = { ko: 'kr', 'zh-cn': 'zh-Hans', 'zh-sg': 'zh-Hans', 'zh-tw': 'zh-Hant', 'zh-hk': 'zh-Hant' };
+
+    function currentLang() {
+        var l = 'en';
+        try { l = (gamemain.getGameLang && gamemain.getGameLang()) || 'en'; } catch (e) {}
+        if (LANG_ALIAS[l]) { return LANG_ALIAS[l]; }
+        if (TEXT[l]) { return l; }
+        var base = String(l).split(/[-_]/)[0].toLowerCase();
+        if (LANG_ALIAS[base]) { return LANG_ALIAS[base]; }
+        for (var k in TEXT) { if (k.toLowerCase() === String(l).toLowerCase()) { return k; } }
+        return 'en';
+    }
+
+    /* translate a key for the language the game is currently set to */
+    function t(key) {
+        var l = currentLang();
+        var row = TEXT[l] || TEXT[l && l.split('-')[0]] || TEXT.en;
+        return (row && row[key]) || (TEXT.en[key] || key);
+    }
+
+    /* re-apply text every tick: a language change then shows up without a reload */
+    function applyTexts() {
+        var hall = window.hallScene;
+        if (!hall || !hall.node || !hall.node.isValid) { return; }
+        var want = { modeSwitchTitle: t('mode'), label_progression: t('progression'), label_unlocked: t('unlocked'),
+                     customTitle: t('customTitle'), customHint: t('customHint') };
+        Object.keys(want).forEach(function (name) {
+            var n = cc.find('Canvas'); if (!n) { return; }
+            (function walk(x) {
+                if (x.name === name) {
+                    var lb = x.getComponent(cc.Label);
+                    if (lb && lb.string !== want[name]) { lb.string = want[name]; stats.textsUpdated = (stats.textsUpdated || 0) + 1; }
+                }
+                (x.children || []).forEach(walk);
+            })(hall.node);
+        });
+    }
     /* ================= 选关页左上角的模式切换（用游戏自身语汇） =================
        面板用游戏自己的 default_panel（20x20 圆角帧，按 SLICED 九宫格拉伸），
        选中态用选关页的 list_level_next（亮金），未选态用 list_level_disabled（暗橄榄）
@@ -582,12 +648,12 @@
         root.y = visibleHeight() / 2 - 24 - panelH / 2;
         roundedPanel(root, themeColour(worldId, 'list_level_background', cc.color(163, 75, 67, 255)), panelW, panelH);
 
-        var title = makeLabel(root, '模式', panelH / 2 - 34, 26, cc.color(255, 255, 255, 235));
+        var title = makeLabel(root, t('mode'), panelH / 2 - 34, 26, cc.color(255, 255, 255, 235));
         title.name = 'modeSwitchTitle';
 
         var modes = [
-            { id: 'progression', label: '闯关模式' },
-            { id: 'unlocked', label: '解锁模式' },
+            { id: 'progression', label: t('progression') },
+            { id: 'unlocked', label: t('unlocked') },
         ];
         var rows = [];
         modes.forEach(function (m, i) {
@@ -598,7 +664,7 @@
             row.y = -18;
             roundedPanel(row, cc.color(0, 0, 0, 0), rowW, rowH);
             var lb = makeLabel(row, m.label, 0, 30, cc.color(255, 255, 255, 255));
-            lb.name = 'label';
+            lb.name = 'label_' + m.id;
             row.on(cc.Node.EventType.TOUCH_END, function () {
                 applyMode(m.id);
                 paintModeRows(rows, worldId);
@@ -766,7 +832,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); applyTexts(); }
         } catch (e) {}
     }, 1500);
 
