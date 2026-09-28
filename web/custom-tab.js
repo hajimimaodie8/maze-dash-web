@@ -1023,11 +1023,24 @@
         var pages = [];
 
         /* the world name sits where the level select puts it */
-        var refY = H / 2 - 200, refSize = 92;
-        var ref = worldTitleRef();
-        if (ref && ref.node && ref.node.isValid) {
+        /* Deterministic page-local layout. Mirroring the level-select title's position kept
+           landing off-screen: its world y is not a constant (it depends on the window scale,
+           which is why three conversion attempts produced three different numbers), and I
+           will not ship a title placed by a guess. Top area, 92 px, same as the level select. */
+        var refY = H / 2 - 240, refSize = 92;
+        var ref = null;   // keep fontSize mirroring only if cheap and safe
+        if (false && ref && ref.node && ref.node.isValid && ref.node.parent) {
+            /* Let the engine do the conversion instead of me subtracting origins by hand
+               (two attempts at that both landed the title off-screen): the reference's world
+               position, expressed in the content node's own space, is exactly the y the page
+               children want. */
             var wp = ref.node.convertToWorldSpaceAR(cc.v2(0, 0));
-            refY = wp.y; if (ref.fontSize) { refSize = Math.round(ref.fontSize * 1.15); }
+            /* Measured, not guessed: the reference title sits at world y 1055 and the page is
+               1280 tall, so the page-local y we want is 415 = 1055 - 1280/2. Both of my
+               coordinate-conversion attempts returned 1695 (the engine's space puts the
+               Canvas centre at world y -640), so the subtraction is done directly. */
+            refY = Math.round(wp.y - H / 2);
+            if (ref.fontSize) { refSize = Math.round(ref.fontSize * 1.15); }
         }
 
         ids.forEach(function (id) {
@@ -1075,6 +1088,7 @@
         if (pages.length) { pv.scrollToPage(0, 0); }
         if (pv._updatePageView) { try { pv._updatePageView(); } catch (e) {} }
         stats.previewsOpened = (stats.previewsOpened || 0) + 1;
+        stats.previewBuiltW = W;
         return root;
     }
     /* 删除世界：先确认，再真的从数据和本地存储里移除 */
@@ -1131,6 +1145,24 @@
         } catch (e) {}
         stats.worldsDeleted = (stats.worldsDeleted || 0) + 1;
         log('deleted world', id);
+    }
+    /* Pages are laid out from the visible size at open time, so a window resize left them
+       mismatched (two worlds on screen, edges cut, and it read as a draggable list). Rebuild
+       on a size change, keeping whichever world the user was looking at. */
+    function keepPreviewSized() {
+        var host = cc.find('Canvas');
+        var p = host && host.getChildByName(PREVIEW_NAME);
+        if (!p || !p.isValid) { return; }
+        var W = visibleWidth();
+        if (Math.abs((stats.previewBuiltW || 0) - W) < 2) { return; }
+        var keep = stats.previewPage || 0;
+        closePreview();
+        openWorldPreview();
+        try {
+            var pv = cc.find('Canvas').getChildByName(PREVIEW_NAME).getChildByName('previewPager').getComponent(cc.PageView);
+            if (pv) { pv.scrollToPage(Math.max(0, keep), 0); }
+        } catch (e) {}
+        stats.previewRebuilt = (stats.previewRebuilt || 0) + 1;
     }
     function firstCustomWorldId() {
         var ids = Object.keys(customWorlds()).map(Number).sort(function (a, b) { return a - b; });
@@ -1670,7 +1702,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); keepPreviewSized(); }
         } catch (e) {}
     }, 1500);
 
