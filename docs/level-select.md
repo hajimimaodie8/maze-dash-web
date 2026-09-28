@@ -1,4 +1,4 @@
-# 选关界面（StageSelect / 世界与关卡）实现说明
+﻿# 选关界面（StageSelect / 世界与关卡）实现说明
 
 > 用途：为「自定义关卡编辑器」打基础。下面全部是对原版代码的**实测结论**，
 > 标注了行号（`_work/analysis/project.pretty.js`，即 `web/src/project.js` 的美化版）。

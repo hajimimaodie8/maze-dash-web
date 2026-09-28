@@ -1,4 +1,4 @@
-# 冲撞迷阵 Maze Dash — 网页版
+﻿# 冲撞迷阵 Maze Dash — 网页版
 
 # 🎮 在线游玩 ｜ <https://hajimimaodie8.github.io/maze-dash-web/>
 

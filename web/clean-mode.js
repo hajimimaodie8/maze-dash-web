@@ -308,6 +308,47 @@
 
     var SHOP_INDEX = 0;   // 原版最左边的商店
     var FACE_INDEX = 1;   // 皮肤页
+    /* The game ships a Latin-only TTF, so any CJK string in it renders as "?" (the
+       About panel's Chinese title, for example). For labels whose text actually contains
+       CJK, switch that label to the system font - which does have the glyphs - without
+       touching the Latin UI, which is designed around the bundled face. */
+    var CJK_RE = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3040-\u30ff\uac00-\ud7af]/;
+
+    /* The key item carries a Mask (IMAGE_STENCIL) holding a "blockbreak" sprite - a
+       100x50 white plate that is meant to be clipped to the key's silhouette. It leaks
+       unclipped and shows as a white rectangle beside the key (reported as a key texture
+       problem). Hide that one sprite; the key, its shadow and the little star stay. */
+    function hideKeyArtifacts() {
+        var scene = cc.director.getScene();
+        if (!scene) { return 0; }
+        var hidden = 0;
+        (function walk(n, p) {
+            if (n.activeInHierarchy && n.name === 'blockbreak' && /\/key\//i.test(p)) {
+                n.active = false;
+                stats.keyArtifactHidden = (stats.keyArtifactHidden || 0) + 1;
+                hidden++;
+            }
+            (n.children || []).forEach((c) => walk(c, p + '/' + n.name));
+        })(scene, '');
+        return hidden;
+    }
+    function fixCjkLabels() {
+        var scene = cc.director.getScene();
+        if (!scene) { return 0; }
+        var fixed = 0;
+        (function walk(n) {
+            var lb = n.getComponent && n.getComponent(cc.Label);
+            if (lb && lb.string && CJK_RE.test(lb.string)) {
+                try {
+                    if (lb.useSystemFont !== true) { lb.useSystemFont = true; stats.cjkFontSwitched = (stats.cjkFontSwitched || 0) + 1; fixed++; }
+                    var want = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
+                    if (lb.fontFamily !== want) { lb.fontFamily = want; }
+                } catch (e) {}
+            }
+            (n.children || []).forEach(walk);
+        })(scene);
+        return fixed;
+    }
     function quietScene() {
         try {
             var s = cc.director.getScene();
@@ -317,6 +358,8 @@
             quietAds();
             if (window.hallScene && window.hallScene.node && window.hallScene.node.isValid) { hideQuestTab(window.hallScene); }
             hidePurchaseUI();
+            fixCjkLabels();
+            hideKeyArtifacts();
             (function walk(n) {
                 if (CFG.hideNuisanceNodes !== false && n !== s && n.active && NUISANCE_RE.test(n.name)) {
                     n.active = false;

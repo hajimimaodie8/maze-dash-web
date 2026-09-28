@@ -1,4 +1,4 @@
-# 冲撞迷阵 Maze Dash — 网页版 (Web Port)
+﻿# 冲撞迷阵 Maze Dash — 网页版 (Web Port)
 
 把 Android 版《冲撞迷阵 Maze Dash》移植成可以直接在浏览器里玩的网页版。
 
