@@ -293,9 +293,24 @@
            hid the whole bottom row until a swipe changed the layering. Keep the bar one
            layer above whatever the visible page ends up at. */
         var bottom = hall.tabBar && hall.tabBar.parent;
-        if (bottom && bottom.isValid && bottom.zIndex <= active.zIndex) {
-            bottom.zIndex = active.zIndex + 1;
-            stats.barRaised = (stats.barRaised || 0) + 1;
+        if (bottom && bottom.isValid) {
+            /* Reported as: the bar is there at first and gets covered later. Something
+               that only appears after a while ends up above it. Rather than chase which
+               node that is, keep the bar unconditionally on top - above every sibling on
+               its parent, by zIndex and by sibling order - and re-check it every tick. */
+            var host = bottom.parent;
+            var maxAny = -1;
+            if (host) {
+                host.children.forEach(function (ch) { if (ch !== bottom && ch.isValid) { maxAny = Math.max(maxAny, ch.zIndex); } });
+            }
+            if (bottom.zIndex <= maxAny) {
+                bottom.zIndex = maxAny + 1;
+                stats.barRaised = (stats.barRaised || 0) + 1;
+            }
+            if (host && host.children[host.children.length - 1] !== bottom) {
+                bottom.setSiblingIndex(host.children.length - 1);
+                stats.barRestacked = (stats.barRestacked || 0) + 1;
+            }
         }
     }
     function applyPageTint() {
