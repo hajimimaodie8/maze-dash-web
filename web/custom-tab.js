@@ -204,6 +204,13 @@
         if (!bar) { return W; }
         var bottom = bar.parent;
         if (bottom) {
+            /* bottom carries a cc.Widget, which positions it from the Canvas size on its
+               own schedule. That fought the widened layout and, on some window sizes,
+               left the whole bar outside the visible area (reported as the bottom row
+               disappearing until a swipe). Turn the Widget off and place the bar from the
+               visible height every tick instead - one authority, no race. */
+            var wgt = bottom.getComponent(cc.Widget);
+            if (wgt && wgt.enabled) { wgt.enabled = false; stats.barWidgetOff = (stats.barWidgetOff || 0) + 1; }
             bottom.width = W;
             bottom.x = 0;
             bottom.y = -visibleHeight() / 2 + bottom.height / 2;
