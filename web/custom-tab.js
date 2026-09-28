@@ -615,17 +615,33 @@
        面板用游戏自己的 default_panel（20x20 圆角帧，按 SLICED 九宫格拉伸），
        选中态用选关页的 list_level_next（亮金），未选态用 list_level_disabled（暗橄榄）
        —— 这就是游戏自己在标签栏与"下一关"上表达"选中"的方式，不再是我自造的小方框。 */
-    function themeColour(worldId, key, fallback) {
+    /* Theme colours live in conf.theme_cfg as HSVA arrays with S and V on a 0-100 scale,
+       and the engine's Color.fromHSV wants 0-1 - converting by hand produced black. The
+       game already has a helper for exactly this, used all over its own UI, so use it and
+       fall back to a corrected manual conversion only if it is unavailable. */
+    function themeValue(worldId, key) {
         try {
-            var t = conf.theme_cfg[worldId] || conf.theme_cfg[1];
-            var v = t && t[key];
-            if (!v || !cc.Color.fromHSV) { return fallback; }
-            var col = cc.Color.fromHSV(v[0], v[1], v[2]);
-            col.a = Math.round((v[3] === undefined ? 1 : v[3]) * 255);
-            return col;
-        } catch (e) { return fallback; }
+            var t = conf.theme_cfg[worldId] || conf.theme_cfg[String(worldId)] || conf.theme_cfg[1];
+            return (t && t[key]) || null;
+        } catch (e) { return null; }
     }
 
+    function applyThemeColour(node, worldId, key, fallback) {
+        var v = themeValue(worldId, key);
+        if (v && typeof setNodeColorForHSVA === 'function') {
+            try { setNodeColorForHSVA(node, v); return true; } catch (e) {}
+        }
+        if (v) {
+            var h = (((v[0] % 360) + 360) % 360) / 360, s = v[1] / 100, val = v[2] / 100;
+            var i = Math.floor(h * 6), f = h * 6 - i, p = val * (1 - s), q = val * (1 - f * s), t2 = val * (1 - (1 - f) * s);
+            var rgb = [[val, t2, p], [q, val, p], [p, val, t2], [p, q, val], [t2, p, val], [val, p, q]][i % 6];
+            node.color = cc.color(Math.round(rgb[0] * 255), Math.round(rgb[1] * 255), Math.round(rgb[2] * 255),
+                Math.round((v[3] === undefined ? 1 : v[3]) * 255));
+            return true;
+        }
+        node.color = fallback;
+        return false;
+    }
     /* the game's own rounded panel texture, taken from a world page */
     function panelFrame() {
         try {
@@ -667,7 +683,8 @@
            near the middle. positionModeSwitch() re-asserts it every tick anyway. */
         root.x = -visibleWidth() / 2 + 34 + panelW / 2;
         root.y = visibleHeight() / 2 - 24 - panelH / 2;
-        roundedPanel(root, themeColour(worldId, 'list_level_background', cc.color(163, 75, 67, 255)), panelW, panelH);
+        roundedPanel(root, cc.color(163, 75, 67, 255), panelW, panelH);
+        applyThemeColour(root, worldId, 'list_level_background', cc.color(163, 75, 67, 255));
 
         var title = makeLabel(root, t('mode'), panelH / 2 - 30, 26, cc.color(255, 255, 255, 235));
         title.name = 'modeSwitchTitle';
@@ -687,18 +704,87 @@
             roundedPanel(row, cc.color(0, 0, 0, 0), rowW, rowH);
             var lb = makeLabel(row, m.label, 0, 30, cc.color(255, 255, 255, 255));
             lb.name = 'label_' + m.id;
+            row.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(row, true); });
+            row.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(row, false); });
             row.on(cc.Node.EventType.TOUCH_END, function () {
+                pressFeedback(row, false);
                 applyMode(m.id);
-                paintModeRows(rows, worldId);
+                var wid = visibleWorldId(hall) || worldId;
+                retintRows(rows, wid);
+                animateIn(root);
                 log('mode switched to', m.id);
             });
             rows.push({ id: m.id, node: row });
         });
         paintModeRows(rows, worldId);
+        animateIn(root);
+        stats.lastWorldId = worldId;
         stats.modeSwitchBuilt = (stats.modeSwitchBuilt || 0) + 1;
         return root;
     }
 
+    /* repaint the mode rows whenever the player swipes to another world, with the
+       game's short dip transition rather than a snap */
+    function followVisibleWorld(hall) {
+        var root = hall.viewGroup && hall.viewGroup[2] && hall.viewGroup[2].getChildByName('modeSwitch');
+        if (!root || !root.isValid) { return; }
+        var wid = visibleWorldId(hall);
+        if (!wid || stats.lastWorldId === wid) { return; }
+        stats.lastWorldId = wid;
+        var rows = root.children.filter(function (n) { return /^modeRow_/.test(n.name); })
+            .map(function (n) { return { id: n.name.replace('modeRow_', ''), node: n }; });
+        retintRows(rows, wid);
+        stats.worldRetints = (stats.worldRetints || 0) + 1;
+    }
+    /* ---- which world is on screen right now (follows a swipe) ---- */
+    function visibleWorldId(hall) {
+        try {
+            var pager = hall.StageSelectLayer;
+            var content = pager && pager.content;
+            if (!content) { return null; }
+            var centre = cc.view.getVisibleSize().width / 2;
+            var best = null, bestDist = 1e9;
+            content.children.forEach(function (p) {
+                var c = p.getComponent && p.getComponent('StageSelectLayer');
+                if (!c) { return; }
+                var wx = p.parent ? p.parent.convertToWorldSpaceAR(p.getPosition()).x : p.x;
+                var d = Math.abs(wx - centre);
+                if (d < bestDist) { bestDist = d; best = c.m_stageId; }
+            });
+            return best;
+        } catch (e) { return null; }
+    }
+
+    /* ---- the game's own motion idiom: short scale + fade, ~0.2 s ---- */
+    function animateIn(node) {
+        if (!node || !node.isValid) { return; }
+        node.stopAllActions();
+        node.opacity = 0;
+        node.scale = 0.88;
+        node.runAction(cc.spawn(cc.fadeTo(0.18, 255), cc.scaleTo(0.18, 1, 1)));
+    }
+
+    /* re-tint with a quick dip so a world change is felt rather than snapped */
+    function retintRows(rows, worldId) {
+        if (!rows || !rows.length) { return; }
+        rows.forEach(function (r) {
+            var n = r.node;
+            if (!n || !n.isValid) { return; }
+            n.stopAllActions();
+            n.runAction(cc.sequence(
+                cc.fadeTo(0.07, 110),
+                cc.callFunc(function () { paintOneRow(r, worldId); }),
+                cc.fadeTo(0.13, 255)
+            ));
+        });
+    }
+
+    /* press feedback: the game scales its buttons for a few frames on touch */
+    function pressFeedback(node, on) {
+        if (!node || !node.isValid) { return; }
+        node.stopAllActions();
+        node.runAction(cc.scaleTo(0.05, on ? 0.95 : 1, on ? 0.95 : 1));
+    }
     /* keep the panel pinned to the top-left through resizes and page widening */
     function positionModeSwitch(hall) {
         var page = hall.viewGroup && hall.viewGroup[2];
@@ -709,16 +795,22 @@
         var wantY = visibleHeight() / 2 - 24 - panelH / 2;
         if (Math.abs(root.x - wantX) > 1 || Math.abs(root.y - wantY) > 1) { root.x = wantX; root.y = wantY; }
     }
-    function paintModeRows(rows, worldId) {
+    function paintOneRow(r, worldId) {
+        if (!r || !r.node || !r.node.isValid) { return; }
         var active = currentMode();
-        var on = themeColour(worldId, 'list_level_next', cc.color(255, 210, 60, 255));
-        var off = themeColour(worldId, 'list_level_disabled', cc.color(70, 60, 70, 255));
-        rows.forEach(function (r) {
-            var isOn = (r.id === active);
-            r.node.color = isOn ? on : cc.color(off.r, off.g, off.b, 200);
-            var lb = r.node.getChildByName('label');
-            if (lb) { lb.color = isOn ? cc.color(60, 40, 20, 255) : cc.color(255, 255, 255, 210); }
-        });
+        var isOn = (r.id === active);
+        if (isOn) {
+            applyThemeColour(r.node, worldId, 'list_level_next', cc.color(255, 210, 60, 255));
+        } else {
+            applyThemeColour(r.node, worldId, 'list_level_disabled', cc.color(70, 60, 70, 255));
+            r.node.color = cc.color(r.node.color.r, r.node.color.g, r.node.color.b, 200);
+        }
+        var lb = r.node.getChildByName('label_' + r.id) || r.node.getChildByName('label');
+        if (lb) { lb.color = isOn ? cc.color(60, 40, 20, 255) : cc.color(255, 255, 255, 210); }
+    }
+
+    function paintModeRows(rows, worldId) {
+        rows.forEach(function (r) { paintOneRow(r, worldId); });
     }
     /* ================== 模式选择：闯关模式 / 解锁模式 ==================
        解锁模式把所有世界与关卡都判为已通关（覆盖两个取值函数），方便调试与检查。
@@ -854,7 +946,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); }
         } catch (e) {}
     }, 1500);
 
