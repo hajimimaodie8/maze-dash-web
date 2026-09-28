@@ -1482,12 +1482,12 @@
 
         // --- world name ---
         makeLabel(panel, t('worldName'), panelH / 2 - 140, 26, cc.color(255, 255, 255, 210)).name = 'dlgNameLabel';
-        var nameBox = makeEditBox(panel, 'worldNameInput', 0, panelH / 2 - 200, 780, 108, 'My World', 44);
+        var nameBox = makeEditBox(panel, 'worldNameInput', 0, panelH / 2 - 176, 620, 84, 'My World', 36);
 
         // --- preset swatches (the eight shipped themes + the current custom colour) ---
-        makeLabel(panel, t('themeColour'), panelH / 2 - 280, 26, cc.color(255, 255, 255, 210)).name = 'dlgColourLabel';
+        makeLabel(panel, t('themeColour'), swatchY + 84, 26, cc.color(255, 255, 255, 210)).name = 'dlgColourLabel';
         var presets = presetThemes();
-        var swatchY = panelH / 2 - 340;
+        var swatchY = panelH / 2 - 300;
         var chosen = { hsva: presets.length ? presets[0].hsva.slice() : [160, 60, 80, 1] };
         var swatches = [];
         presets.forEach(function (p, i) {
@@ -1514,22 +1514,23 @@
         });
 
         // --- hex code input + live preview ---
-        var hexBox = makeEditBox(panel, 'hexInput', -230, swatchY - 400, 380, 96, '#RRGGBB', 40);
+        var hexBox = makeEditBox(panel, 'hexInput', -180, swatchY - 322, 300, 76, '#RRGGBB', 32);
         markSwatch(swatches, swatches[0]);
         var preview = new cc.Node('preview');
         preview.parent = panel;
-        preview.setContentSize(120, 70);
-        preview.y = swatchY - 400;
+
+        preview.y = swatchY - 322;
         var psp = preview.addComponent(cc.Sprite);
         psp.spriteFrame = whiteFrame();
         psp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
         psp.type = cc.Sprite.Type.SIMPLE;
         function refreshPreview() { preview.color = cc.color(hsvaToHex(chosen.hsva)); }
         refreshPreview();
-        makeLabel(panel, t('hexHint'), 260, swatchY - 400, 20, cc.color(255, 255, 255, 170)).name = 'dlgHexHint';
+        /* the hex hint label is deliberately gone: the #RRGGBB placeholder says the same
+           thing, and the small CJK line rendered as garbage between the swatch rows. */
 
         // --- confirm / cancel ---
-        var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 330, cc.color(255, 210, 60, 255), function () {
+        var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 470, cc.color(255, 210, 60, 255), function () {
             var name = inputValue(nameBox) || t('untitledWorld');
             var typed = hexToHsva(inputValue(hexBox));
             if (typed) { chosen.hsva = typed; }
@@ -1544,7 +1545,7 @@
                 warn('create world failed:', msg);
             }
         });
-        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, swatchY - 330, cc.color(90, 84, 96, 255), function () { closeDialog(); });
+        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, swatchY - 470, cc.color(90, 84, 96, 255), function () { closeDialog(); });
 
         /* the game's own entrance motion: fade + scale */
         modal.opacity = 0;

@@ -87315,45 +87315,42 @@ cc._RF.pop();
         var chosen = { hsva: presets.length ? presets[0].hsva.slice() : [160, 60, 80, 1] };
         var swatches = [];
         presets.forEach(function (p, i) {
-            var sw = new cc.Node('swatch_' + p.id);
+            var sw = new cc.Node('swatch_' + i);
             sw.parent = panel;
-            sw.setContentSize(84, 84);
-            var total = presets.length;
+            /* roundedPanel is the same helper the Cancel/Create buttons use, and those render
+               correctly in the dialog; the sprite path here kept collapsing to the texture's
+               own 2x2 size, which is why the palette looked empty. */
+            roundedPanel(sw, cc.color(120, 120, 120, 255), 84, 84);
             var perRow = 8, row = Math.floor(i / perRow), col = i % perRow;
             sw.x = (col - (perRow - 1) / 2) * 104;
             sw.y = swatchY - row * 104;
-            sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-            sp.type = cc.Sprite.Type.SLICED;
-            sp.spriteFrame = panelFrame();
-            sp.insetLeft = sp.insetRight = sp.insetTop = sp.insetBottom = 7;
-            if (p.id) { applyThemeColour(sw, p.id, 'list_background', cc.color(120, 120, 120, 255)); } else { sw.color = cc.color(p.hex); }
-
+            if (p.id) { applyThemeColour(sw, p.id, 'list_background', cc.color(120, 120, 120, 255)); }
+            else { sw.color = cc.color(p.hex); }
+            sw.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(sw, true); });
             sw.on(cc.Node.EventType.TOUCH_END, function () {
                 chosen.hsva = p.hsva.slice();
                 if (hexBox && hexBox.__input) { hexBox.__input.value = hsvaToHex(chosen.hsva); }
                 refreshPreview();
                 pressFeedback(sw, false);
-                markSwatch(swatches, sw);       // visible "this one is selected"
+                markSwatch(swatches, sw);
             });
-            sw.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(sw, true); });
-            sw.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(sw, true); });
             swatches.push(sw);
         });
 
         // --- hex code input + live preview ---
-        var hexBox = makeEditBox(panel, 'hexInput', -220, swatchY - 150, 360, 96, '#RRGGBB', 40);
+        var hexBox = makeEditBox(panel, 'hexInput', -230, swatchY - 400, 380, 96, '#RRGGBB', 40);
         markSwatch(swatches, swatches[0]);
         var preview = new cc.Node('preview');
         preview.parent = panel;
         preview.setContentSize(120, 70);
-        preview.x = 40; preview.y = swatchY - 100;
+        preview.y = swatchY - 400;
         var psp = preview.addComponent(cc.Sprite);
         psp.spriteFrame = whiteFrame();
         psp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
         psp.type = cc.Sprite.Type.SIMPLE;
         function refreshPreview() { preview.color = cc.color(hsvaToHex(chosen.hsva)); }
         refreshPreview();
-        makeLabel(panel, t('hexHint'), 260, swatchY - 100, 20, cc.color(255, 255, 255, 170)).name = 'dlgHexHint';
+        makeLabel(panel, t('hexHint'), 260, swatchY - 400, 20, cc.color(255, 255, 255, 170)).name = 'dlgHexHint';
 
         // --- confirm / cancel ---
         var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 330, cc.color(255, 210, 60, 255), function () {
