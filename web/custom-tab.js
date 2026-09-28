@@ -694,47 +694,6 @@
         return true;
     }
 
-    function buildModeSelector(view) {
-        if (view.__modeSelectorBuilt) { return null; }   // the call site got duplicated once; never build twice
-        view.__modeSelectorBuilt = true;
-        var modes = [
-            { id: 'progression', label: '闯关模式', desc: '按进度解锁（默认）' },
-            { id: 'unlocked', label: '解锁模式', desc: '全关卡解锁（便于调试）' },
-        ];
-        var active = currentMode();
-        var buttons = [];
-        var y = -170;
-
-        makeLabel(view, '模式选择', y + 70, 30, cc.color(255, 255, 255, 230)).name = 'modeTitle';
-
-        modes.forEach(function (m, i) {
-            var node = new cc.Node('mode_' + m.id);
-            node.parent = view;
-            node.y = y - i * 100;
-            node.width = 420;
-            node.height = 84;
-
-            var bg = node.addComponent(cc.Sprite);
-            if (view.__whiteFrame) { bg.spriteFrame = view.__whiteFrame; }
-            bg.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-            bg.type = cc.Sprite.Type.SIMPLE;
-            node.color = (m.id === active) ? cc.color(124, 107, 242, 255) : cc.color(255, 255, 255, 46);
-
-            var label = makeLabel(node, m.label + '   ' + m.desc, 0, 22, cc.color(255, 255, 255, 235));
-            label.name = 'label';
-
-            node.on(cc.Node.EventType.TOUCH_END, function () {
-                applyMode(m.id);
-                buttons.forEach(function (b) {
-                    b.node.color = (b.id === m.id) ? cc.color(124, 107, 242, 255) : cc.color(255, 255, 255, 46);
-                });
-            });
-            buttons.push({ id: m.id, node: node });
-        });
-
-        makeLabel(view, '解锁模式只影响本机显示，不改动关卡数据', y - modes.length * 100 - 10, 20, cc.color(255, 255, 255, 160)).name = 'modeHint';
-        return buttons;
-    }
     /* ------------------------------------------------------------ install */
     function install(hall) {
         if (!hall || hall.__customTabInstalled) { return false; }

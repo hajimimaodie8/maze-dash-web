@@ -323,10 +323,14 @@
         if (!scene) { return 0; }
         var hidden = 0;
         (function walk(n, p) {
-            if (n.activeInHierarchy && n.name === 'blockbreak' && /\/key\//i.test(p)) {
-                n.active = false;
-                stats.keyArtifactHidden = (stats.keyArtifactHidden || 0) + 1;
+            if (n.name === 'blockbreak' && /\/key\//i.test(p)) {
+                /* The key carries a cc.Animation whose clip switches this sprite back on,
+                   so hiding it lost the race and the white plate stayed on screen. Detach
+                   it: the animation then has no target to re-enable. */
+                n.removeFromParent();
+                stats.keyArtifactRemoved = (stats.keyArtifactRemoved || 0) + 1;
                 hidden++;
+                return;
             }
             (n.children || []).forEach((c) => walk(c, p + '/' + n.name));
         })(scene, '');
