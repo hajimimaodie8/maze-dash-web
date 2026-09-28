@@ -107,7 +107,10 @@
         var label = node.addComponent(cc.Label);
         label.string = text;
         label.fontSize = fontSize;
-        label.lineHeight = Math.round(fontSize * 1.35);
+        /* CJK glyphs sit taller than the Latin metrics the game's TTF was built for; at
+           1.35 the top of a Chinese character gets clipped by the label box. Give the
+           line box room for the full ascent. */
+        label.lineHeight = Math.round(fontSize * 1.65);
         label.fontFamily = 'system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif';
         if ('useSystemFont' in label) { label.useSystemFont = true; }
         node.color = color || cc.color(255, 255, 255, 255);
@@ -557,7 +560,15 @@
 
     function currentLang() {
         var l = 'en';
-        try { l = (gamemain.getGameLang && gamemain.getGameLang()) || 'en'; } catch (e) {}
+        /* read the game's own stored setting first: getGameLang() can lag behind the
+           settings screen, and this is the value the game itself persists. */
+        try {
+            var stored = localStorage.getItem('game_lang');
+            if (stored) { l = stored.replace(/^"|"$/g, ''); }
+        } catch (e) {}
+        if (!l || l === 'en') {
+            try { var g = gamemain.getGameLang && gamemain.getGameLang(); if (g) { l = g; } } catch (e) {}
+        }
         if (LANG_ALIAS[l]) { return LANG_ALIAS[l]; }
         if (TEXT[l]) { return l; }
         var base = String(l).split(/[-_]/)[0].toLowerCase();
@@ -578,7 +589,8 @@
         var hall = window.hallScene;
         if (!hall || !hall.node || !hall.node.isValid) { return; }
         var want = { modeSwitchTitle: t('mode'), label_progression: t('progression'), label_unlocked: t('unlocked'),
-                     customTitle: t('customTitle'), customHint: t('customHint') };
+                     customTitle: t('customTitle'), customHint: t('customHint'),
+                     modeSwitchBuild: 'v 20250220a · ' + currentLang() + ' · removed:' + (stats.keyArtifactRemoved || 0) };
         Object.keys(want).forEach(function (name) {
             var n = cc.find('Canvas'); if (!n) { return; }
             (function walk(x) {
@@ -648,8 +660,13 @@
         root.y = visibleHeight() / 2 - 24 - panelH / 2;
         roundedPanel(root, themeColour(worldId, 'list_level_background', cc.color(163, 75, 67, 255)), panelW, panelH);
 
-        var title = makeLabel(root, t('mode'), panelH / 2 - 34, 26, cc.color(255, 255, 255, 235));
+        var title = makeLabel(root, t('mode'), panelH / 2 - 30, 26, cc.color(255, 255, 255, 235));
         title.name = 'modeSwitchTitle';
+        /* a deliberately tiny marker showing which build is running and which language
+           this port detects - it answers "am I looking at the new build?" at a glance,
+           and records what the game reports as the current language. */
+        var mark = makeLabel(root, '', -panelH / 2 + 14, 15, cc.color(255, 255, 255, 130));
+        mark.name = 'modeSwitchBuild';
 
         var modes = [
             { id: 'progression', label: t('progression') },
