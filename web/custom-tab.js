@@ -535,11 +535,11 @@
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
                      customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
                      worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Type a hex code, e.g. #2AA886', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
-                     tileNewLevel: 'New level', tileMoveLevels: 'Move in' },
+                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
                      customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
                      worldName: '世界名称', themeColour: '主题色', hexHint: '也可直接输入色码，如 #2AA886', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
-                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡' },
+                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
@@ -604,7 +604,8 @@
         if (!hall || !hall.node || !hall.node.isValid) { return; }
         var want = { modeSwitchTitle: t('mode'), label_progression: t('progression'), label_unlocked: t('unlocked'),
                      customTitle: t('editorTitle'), customHint: t('customHint'),
-                     editorBtnLabel_createWorld: t('createWorld'), editorBtnLabel_createLevel: t('createLevel') };
+                     editorBtnLabel_createWorld: t('createWorld'), editorBtnLabel_createLevel: t('createLevel'),
+                     editorSmallLabel_previewWorld: t('previewWorld'), editorSmallLabel_previewLevel: t('previewLevel'), editorSmallLabel_exportJson: t('exportJson') };
         Object.keys(want).forEach(function (name) {
             var n = cc.find('Canvas'); if (!n) { return; }
             (function walk(x) {
@@ -947,12 +948,163 @@
             btn.runAction(cc.repeatForever(cc.sequence(cc.scaleTo(1.1, 1.02, 1.02), cc.scaleTo(1.1, 1, 1))));
             stats['editorBtn_' + s.id] = true;
         });
+        /* a row of smaller buttons under the icon: the two previews asked for, plus export */
+        [{ id: 'previewWorld', key: 'previewWorld', x: -470 },
+         { id: 'previewLevel', key: 'previewLevel', x: 0 },
+         { id: 'exportJson', key: 'exportJson', x: 470 }].forEach(function (s) {
+            var btn = new cc.Node('editorSmall_' + s.id);
+            btn.parent = view;
+            btn.setContentSize(430, 116);
+            btn.x = s.x;
+            btn.y = 60;
+            roundedPanel(btn, cc.color(60, 54, 66, 235), 430, 116);
+            var lb = makeLabel(btn, t(s.key), 0, 26, cc.color(255, 255, 255, 235));
+            lb.name = 'editorSmallLabel_' + s.id;
+            btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
+            btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
+            btn.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(btn, false); editorAction(s.id); });
+        });
         animateIn(view);
+    }
+
+    var PREVIEW_NAME = 'editorPreview';
+    function closePreview() {
+        var host = cc.find('Canvas');
+        var p = host && host.getChildByName(PREVIEW_NAME);
+        if (p && p.isValid) { p.destroy(); }
+        return !!p;
+    }
+
+    /* The editor's own world preview: a full-screen overlay in the game's style listing the
+       worlds created here. Kept separate from the built-in level select on purpose. */
+    function openWorldPreview() {
+        var host = cc.find('Canvas');
+        if (!host) { return null; }
+        closePreview();
+        var W = visibleWidth(), H = visibleHeight();
+        var worlds = customWorlds();
+        var ids = Object.keys(worlds).map(Number).sort(function (a, b) { return a - b; });
+
+        var root = new cc.Node(PREVIEW_NAME);
+        root.parent = host;
+        root.setContentSize(W, H);
+        root.zIndex = 998;
+        var dim = new cc.Node('dim');
+        dim.parent = root;
+        dim.setContentSize(W, H);
+        var dsp = dim.addComponent(cc.Sprite);
+        dsp.spriteFrame = whiteFrame();
+        dsp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        dsp.type = cc.Sprite.Type.SIMPLE;
+        dim.color = cc.color(0, 0, 0, 200);
+
+        makeLabel(root, t('previewWorld'), H / 2 - 90, 52, cc.color(255, 255, 255, 255)).name = 'previewTitle';
+
+        if (!ids.length) {
+            makeLabel(root, t('noWorldsYet'), 0, 30, cc.color(255, 255, 255, 200)).name = 'previewEmpty';
+        }
+        ids.forEach(function (id, i) {
+            var d = worlds[String(id)] || {};
+            var row = new cc.Node('previewRow_' + id);
+            row.parent = root;
+            row.setContentSize(760, 150);
+            row.x = 0;
+            row.y = H / 2 - 220 - i * 175;
+            roundedPanel(row, cc.color(70, 62, 76, 245), 760, 150);
+            var sw = new cc.Node('previewSwatch');
+            sw.parent = row;
+            sw.setContentSize(110, 110);
+            sw.x = -300;
+            var ssp = sw.addComponent(cc.Sprite);
+            ssp.spriteFrame = whiteFrame();
+            ssp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            ssp.type = cc.Sprite.Type.SIMPLE;
+            sw.color = cc.color(hsvaToHex(d.base || [160, 60, 80, 1]));
+            var lb = makeLabel(row, String(d.name || id), 40, 34, cc.color(255, 255, 255, 250));
+            lb.name = 'previewName';
+            row.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(row, true); });
+            row.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(row, false); });
+            row.on(cc.Node.EventType.TOUCH_END, function () {
+                pressFeedback(row, false);
+                stats.previewPicked = id;
+                log('preview picked world', id);
+            });
+            animateIn(row);
+        });
+
+        var close = new cc.Node('previewClose');
+        close.parent = root;
+        close.setContentSize(150, 150);
+        close.x = -W / 2 + 30 + 75;
+        close.y = H / 2 - 24 - 75;
+        roundedPanel(close, cc.color(30, 26, 34, 230), 150, 150);
+        makeLabel(close, '\u2190', 0, 72, cc.color(255, 255, 255, 255)).name = 'previewCloseGlyph';
+        close.on(cc.Node.EventType.TOUCH_END, function () { closePreview(); backToEditor(); });
+        stats.previewsOpened = (stats.previewsOpened || 0) + 1;
+        return root;
+    }
+    function firstCustomWorldId() {
+        var ids = Object.keys(customWorlds()).map(Number).sort(function (a, b) { return a - b; });
+        return ids.length ? ids[0] : null;
+    }
+
+    function previewCustomWorld() {
+        openWorldPreview();
+        return;
+    }
+    function previewCustomWorldLegacy() {
+        var id = firstCustomWorldId();
+        if (!id) { return; }
+        var hall = window.hallScene;
+        try {
+            var content = cc.find('Canvas/gameView/scrollView').getComponent(cc.ScrollView).content;
+            var pages = content.children.filter(function (p) { return p.getComponent('StageSelectLayer'); });
+            var idx = -1;
+            pages.forEach(function (p, i) { if (p.getComponent('StageSelectLayer').m_stageId === id) { idx = i; } });
+            if (idx >= 0 && hall.StageSelectLayer.scrollToPage) { hall.StageSelectLayer.scrollToPage(idx); }
+            gamemain.showTabBarViewIndex = 2;
+            hall.showBarView();
+        } catch (e) { warn('preview world failed:', e && e.message); }
+    }
+
+    function previewCustomLevel() {
+        var id = firstCustomWorldId();
+        if (!id) { return; }
+        try {
+            var cfg = conf.stage_level_cfg[id] || {};
+            var k = Object.keys(cfg)[0];
+            if (k) { gamemain.enterEnterGameScene(cfg[k].id); }
+        } catch (e) { warn('preview level failed:', e && e.message); }
+    }
+
+    function exportCustomJson() {
+        try {
+            var data = { version: 1, note: 'Maze Dash custom worlds/levels', worlds: customWorlds(), levels: {}, maps: {} };
+            Object.keys(customWorlds()).forEach(function (wid) {
+                var cfg = conf.stage_level_cfg[wid] || {};
+                Object.keys(cfg).forEach(function (k) {
+                    data.levels[k] = cfg[k];
+                    data.maps[cfg[k].mapId] = conf.all_Level[cfg[k].mapId];
+                });
+            });
+            var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'maze-dash-custom.json';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+            stats.exports = (stats.exports || 0) + 1;
+            log('exported custom data');
+        } catch (e) { warn('export failed:', e && e.message); }
     }
 
     function editorAction(id) {
         stats.editorAction = id;
         if (id === 'createWorld') { openCreateWorldDialog(window.hallScene); return; }
+        if (id === 'previewWorld') { previewCustomWorld(); return; }
+        if (id === 'previewLevel') { previewCustomLevel(); return; }
+        if (id === 'exportJson') { exportCustomJson(); return; }
         stats.editorActionAt = Date.now();
         log('editor action:', id, '(destination screen not built yet)');
         var hall = window.hallScene;
@@ -1071,6 +1223,8 @@
         var worldId = visibleWorldId(hall) || 1;
 
         makeLabel(panel, t('createWorld'), panelH / 2 - 56, 44, cc.color(255, 255, 255, 255)).name = 'dlgTitle';
+        var errLabel = makeLabel(panel, '', -panelH / 2 + 40, 22, cc.color(255, 120, 120, 255));
+        errLabel.name = 'dlgError';
 
         // --- world name ---
         makeLabel(panel, t('worldName'), panelH / 2 - 140, 26, cc.color(255, 255, 255, 210)).name = 'dlgNameLabel';
@@ -1100,13 +1254,16 @@
                 if (hexBox) { hexBox.string = hsvaToHex(chosen.hsva); }
                 refreshPreview();
                 pressFeedback(sw, false);
+                markSwatch(swatches, sw);       // visible "this one is selected"
             });
+            sw.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(sw, true); });
             sw.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(sw, true); });
             swatches.push(sw);
         });
 
         // --- hex code input + live preview ---
         var hexBox = makeEditBox(panel, 'hexInput', -230, swatchY - 100, 300, 70, '#RRGGBB');
+        markSwatch(swatches, swatches[0]);
         var preview = new cc.Node('preview');
         preview.parent = panel;
         preview.setContentSize(120, 70);
@@ -1124,8 +1281,16 @@
             var name = (nameBox && nameBox.string) || t('untitledWorld');
             var typed = hexToHsva(hexBox && hexBox.string);
             if (typed) { chosen.hsva = typed; }
-            createCustomWorld(hall, name, chosen.hsva);
-            closeDialog();
+            /* Do NOT close on failure: show the reason in the dialog instead of appearing
+               to do nothing (which is exactly how it was reported). */
+            try {
+                createCustomWorld(hall, name, chosen.hsva);
+                closeDialog();
+            } catch (e) {
+                var msg = (e && e.message) ? e.message : String(e);
+                errLabel.string = t('createFailed') + ': ' + msg;
+                warn('create world failed:', msg);
+            }
         });
         var cancelBtn = makeDialogButton(panel, t('cancel'), -1, swatchY - 230, cc.color(90, 84, 96, 255), function () { closeDialog(); });
 
@@ -1138,6 +1303,15 @@
         return modal;
     }
 
+    /* the selected swatch grows and stays fully opaque; the rest dim and shrink back */
+    function markSwatch(all, active) {
+        all.forEach(function (n) {
+            if (!n || !n.isValid) { return; }
+            n.stopAllActions();
+            var on = (n === active);
+            n.runAction(cc.spawn(cc.scaleTo(0.12, on ? 1.22 : 1, on ? 1.22 : 1), cc.fadeTo(0.12, on ? 255 : 170)));
+        });
+    }
     function makeEditBox(parent, name, x, y, w, h, placeholder) {
         var node = new cc.Node(name);
         node.parent = parent;
@@ -1155,6 +1329,19 @@
         eb.maxLength = 24;
         eb.inputMode = cc.EditBox.InputMode.ANY;
         eb.returnType = cc.EditBox.KeyboardReturnType.DONE;
+        /* EditBox builds its own BACKGROUND_SPRITE / TEXT_LABEL / PLACEHOLDER_LABEL
+           children, and those labels default to the game's Latin-only TTF - which is what
+           rendered the Chinese hint as garbage. Force the system font on them. */
+        (function fixInner(n) {
+            var lb = n.getComponent && n.getComponent(cc.Label);
+            if (lb) {
+                try {
+                    if (lb.useSystemFont !== true) { lb.useSystemFont = true; }
+                    lb.fontFamily = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
+                } catch (e) {}
+            }
+            (n.children || []).forEach(fixInner);
+        })(node);
         return eb;
     }
 
@@ -1199,27 +1386,10 @@
         conf.level_cfg[starterId] = starter;
         conf.stage_level_cfg[id][String(starterId)] = starter;
 
-        var page = null;
-        try {
-            var content = cc.find('Canvas/gameView/scrollView').getComponent(cc.ScrollView).content;
-            var index = content.children.length - 1;
-            page = hall.createStageLayer(id, index);
-            hall.StageSelectLayer.insertPage(page, index);
-            if (page) {
-                var c = page.getComponent('StageSelectLayer');
-                var title = c && c.Title;
-                if (title) {
-                    var ll = title.getComponent('LocalizedLabel');
-                    if (ll) { ll.enabled = false; }
-                    title.string = name;              // raw name, no localisation key
-                }
-                decorateCustomWorldPage(page, id);
-                positionWorldBackButtons(hall);
-            }
-            if (window.MazeDashWide && MazeDashWide.widenSelectPage) { MazeDashWide.widenSelectPage(); }
-            if (hall.StageSelectLayer && hall.StageSelectLayer.scrollToPage) { hall.StageSelectLayer.scrollToPage(index); }
-        } catch (e) { warn('create world failed:', e && e.message ? e.message : e); }
-        stats.worldsCreated = (stats.worldsCreated || 0) + 1;
+        /* Deliberately NOT inserted into the built-in pager: custom worlds must not appear
+           in the original level select. They live only behind the editor's preview screen,
+           which is what the user asked for ("the new world should show up in Preview edited
+           worlds, not anywhere else"). */        stats.worldsCreated = (stats.worldsCreated || 0) + 1;
         log('created world', id, name, hsvaToHex(baseHsva));
         return id;
     }
