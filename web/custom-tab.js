@@ -533,9 +533,11 @@
        编辑器后续所有自建文字都从这里取词。 */
     var TEXT = {
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
-                     customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon' },
+                     customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
+                     worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Type a hex code, e.g. #2AA886', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
-                     customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出' },
+                     customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
+                     worldName: '世界名称', themeColour: '主题色', hexHint: '也可直接输入色码，如 #2AA886', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
@@ -948,6 +950,7 @@
 
     function editorAction(id) {
         stats.editorAction = id;
+        if (id === 'createWorld') { openCreateWorldDialog(window.hallScene); return; }
         stats.editorActionAt = Date.now();
         log('editor action:', id, '(destination screen not built yet)');
         var hall = window.hallScene;
@@ -974,6 +977,275 @@
             var bx = (i === 0 ? -1 : 1) * (W / 2 - 60 - btn.width / 2);
             var by = -H / 2 + 60 + btn.height / 2;
             if (Math.abs(btn.x - bx) > 1 || Math.abs(btn.y - by) > 1) { btn.x = bx; btn.y = by; }
+        });
+    }
+    /* ============ 颜色工具：主题色在 conf 里是 HSVA 数组（H 0-360, S/V 0-100, A 0-1） ============ */
+    function hexToHsva(hex) {
+        var m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
+        if (!m) { return null; }
+        var n = parseInt(m[1], 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+        var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+        if (d) {
+            if (mx === r) { h = ((g - b) / d + (g < b ? 6 : 0)); }
+            else if (mx === g) { h = (b - r) / d + 2; }
+            else { h = (r - g) / d + 4; }
+            h *= 60;
+        }
+        return [Math.round(h), Math.round((mx ? d / mx : 0) * 100), Math.round(mx * 100), 1];
+    }
+    function hsvaToHex(v) {
+        if (!v) { return '#000000'; }
+        var h = (((v[0] % 360) + 360) % 360) / 360, s = v[1] / 100, val = v[2] / 100;
+        var i = Math.floor(h * 6), f = h * 6 - i, p = val * (1 - s), q = val * (1 - f * s), t2 = val * (1 - (1 - f) * s);
+        var rgb = [[val, t2, p], [q, val, p], [p, val, t2], [p, q, val], [t2, p, val], [val, p, q]][i % 6];
+        function hx(x) { var s2 = Math.round(x * 255).toString(16); return s2.length === 1 ? '0' + s2 : s2; }
+        return '#' + hx(rgb[0]) + hx(rgb[1]) + hx(rgb[2]);
+    }
+    /* the eight shipped worlds double as a preset palette */
+    function presetThemes() {
+        var out = [];
+        for (var i = 1; i <= 8; i++) {
+            var t = conf.theme_cfg[i];
+            if (t && t.list_background) { out.push({ id: i, hsva: t.list_background, name: (conf.stage_cfg[i] && conf.stage_cfg[i].sz_title) || ('W' + i) }); }
+        }
+        return out;
+    }
+
+    /* ============ 自建世界的持久化（浏览器写不了 res/，只能存本地） ============ */
+    var CUSTOM_KEY = 'maze_dash_custom_worlds';
+    function customWorlds() {
+        try { return JSON.parse(localStorage.getItem(CUSTOM_KEY) || '{}') || {}; } catch (e) { return {}; }
+    }
+    function saveCustomWorld(id, data) {
+        try {
+            var all = customWorlds();
+            all[String(id)] = data;
+            localStorage.setItem(CUSTOM_KEY, JSON.stringify(all));
+        } catch (e) {}
+    }
+    function nextCustomWorldId() {
+        var used = customWorlds(), id = 100;
+        while (used[String(id)] || conf.stage_cfg[id]) { id++; }
+        return id;
+    }
+
+    /* ============ 新建世界：模态对话框（背景变暗 + 中央面板） ============ */
+    var DIALOG_NAME = 'editorDialog';
+    function closeDialog() {
+        var hall = window.hallScene;
+        var host = cc.find('Canvas')   // the HallScene component sits ON the Canvas, so hall.node IS it;
+        var d = host && host.getChildByName(DIALOG_NAME);
+        if (d && d.isValid) { d.destroy(); stats.dialogsClosed = (stats.dialogsClosed || 0) + 1; }
+        return d ? true : false;
+    }
+
+    function openCreateWorldDialog(hall) {
+        var host = cc.find('Canvas')   // the HallScene component sits ON the Canvas, so hall.node IS it;
+        if (!host) { return null; }
+        closeDialog();
+        var W = visibleWidth(), H = visibleHeight();
+
+        var modal = new cc.Node(DIALOG_NAME);
+        modal.parent = host;
+        modal.setContentSize(W, H);
+        modal.zIndex = 999;                      // above everything the hall draws
+        // dimming backdrop
+        var dim = new cc.Node('dim');
+        dim.parent = modal;
+        dim.setContentSize(W, H);
+        var dsp = dim.addComponent(cc.Sprite);
+        dsp.spriteFrame = whiteFrame();
+        dsp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        dsp.type = cc.Sprite.Type.SIMPLE;
+        dim.color = cc.color(0, 0, 0, 170);
+        dim.on(cc.Node.EventType.TOUCH_END, function () { closeDialog(); });
+
+        // the panel
+        var panelW = 900, panelH = 720;
+        var panel = new cc.Node('panel');
+        panel.parent = modal;
+        panel.setContentSize(panelW, panelH);
+        roundedPanel(panel, cc.color(40, 36, 44, 255), panelW, panelH);
+        var worldId = visibleWorldId(hall) || 1;
+
+        makeLabel(panel, t('createWorld'), panelH / 2 - 56, 44, cc.color(255, 255, 255, 255)).name = 'dlgTitle';
+
+        // --- world name ---
+        makeLabel(panel, t('worldName'), panelH / 2 - 140, 26, cc.color(255, 255, 255, 210)).name = 'dlgNameLabel';
+        var nameBox = makeEditBox(panel, 'worldNameInput', 0, panelH / 2 - 200, 720, 78, 'My World');
+
+        // --- preset swatches (the eight shipped themes + the current custom colour) ---
+        makeLabel(panel, t('themeColour'), panelH / 2 - 280, 26, cc.color(255, 255, 255, 210)).name = 'dlgColourLabel';
+        var presets = presetThemes();
+        var swatchY = panelH / 2 - 350;
+        var chosen = { hsva: presets.length ? presets[0].hsva.slice() : [160, 60, 80, 1] };
+        var swatches = [];
+        presets.forEach(function (p, i) {
+            var sw = new cc.Node('swatch_' + p.id);
+            sw.parent = panel;
+            sw.setContentSize(84, 84);
+            var total = presets.length;
+            sw.x = (i - (total - 1) / 2) * 98;
+            sw.y = swatchY;
+            var sp = sw.addComponent(cc.Sprite);
+            sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            sp.type = cc.Sprite.Type.SLICED;
+            sp.spriteFrame = panelFrame();
+            sp.insetLeft = sp.insetRight = sp.insetTop = sp.insetBottom = 7;
+            applyThemeColour(sw, p.id, 'list_background', cc.color(120, 120, 120, 255));
+            sw.on(cc.Node.EventType.TOUCH_END, function () {
+                chosen.hsva = p.hsva.slice();
+                if (hexBox) { hexBox.string = hsvaToHex(chosen.hsva); }
+                refreshPreview();
+                pressFeedback(sw, false);
+            });
+            sw.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(sw, true); });
+            swatches.push(sw);
+        });
+
+        // --- hex code input + live preview ---
+        var hexBox = makeEditBox(panel, 'hexInput', -230, swatchY - 100, 300, 70, '#RRGGBB');
+        var preview = new cc.Node('preview');
+        preview.parent = panel;
+        preview.setContentSize(120, 70);
+        preview.x = 40; preview.y = swatchY - 100;
+        var psp = preview.addComponent(cc.Sprite);
+        psp.spriteFrame = whiteFrame();
+        psp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        psp.type = cc.Sprite.Type.SIMPLE;
+        function refreshPreview() { preview.color = cc.color(hsvaToHex(chosen.hsva)); }
+        refreshPreview();
+        makeLabel(panel, t('hexHint'), 260, swatchY - 100, 20, cc.color(255, 255, 255, 170)).name = 'dlgHexHint';
+
+        // --- confirm / cancel ---
+        var confirmBtn = makeDialogButton(panel, t('confirm'), 1, swatchY - 230, cc.color(255, 210, 60, 255), function () {
+            var name = (nameBox && nameBox.string) || t('untitledWorld');
+            var typed = hexToHsva(hexBox && hexBox.string);
+            if (typed) { chosen.hsva = typed; }
+            createCustomWorld(hall, name, chosen.hsva);
+            closeDialog();
+        });
+        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, swatchY - 230, cc.color(90, 84, 96, 255), function () { closeDialog(); });
+
+        /* the game's own entrance motion: fade + scale */
+        modal.opacity = 0;
+        panel.scale = 0.86;
+        modal.runAction(cc.fadeTo(0.16, 255));
+        panel.runAction(cc.scaleTo(0.18, 1, 1));
+        stats.dialogsOpened = (stats.dialogsOpened || 0) + 1;
+        return modal;
+    }
+
+    function makeEditBox(parent, name, x, y, w, h, placeholder) {
+        var node = new cc.Node(name);
+        node.parent = parent;
+        node.setContentSize(w, h);
+        node.x = x; node.y = y;
+        var sp = node.addComponent(cc.Sprite);
+        sp.spriteFrame = whiteFrame();
+        sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+        sp.type = cc.Sprite.Type.SIMPLE;
+        node.color = cc.color(255, 255, 255, 46);
+        var eb = node.addComponent(cc.EditBox);
+        eb.string = '';
+        eb.placeholder = placeholder || '';
+        eb.fontSize = 30;
+        eb.maxLength = 24;
+        eb.inputMode = cc.EditBox.InputMode.ANY;
+        eb.returnType = cc.EditBox.KeyboardReturnType.DONE;
+        return eb;
+    }
+
+    function makeDialogButton(parent, text, side, y, colour, onTap) {
+        var btn = new cc.Node('dlgBtn');
+        btn.parent = parent;
+        btn.setContentSize(300, 96);
+        btn.x = side * 170;
+        btn.y = y;
+        roundedPanel(btn, colour, 300, 96);
+        var lb = makeLabel(btn, text, 0, 34, cc.color(30, 26, 34, 255));
+        lb.name = 'dlgBtnLabel';
+        btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
+        btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
+        btn.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(btn, false); onTap(); });
+        return btn;
+    }
+
+    /* ============ 真正创建世界：数据 + 翻页页 + 持久化 + 跳转 ============ */
+    function createCustomWorld(hall, name, baseHsva) {
+        var id = nextCustomWorldId();
+        conf.worlds[id] = { id: id, require: 0 };
+        conf.stage_cfg[id] = {};                       // title is set directly, not via LocalizedLabel
+        conf.stage_level_cfg[id] = {};
+        var theme = JSON.parse(JSON.stringify(conf.theme_cfg[1] || {}));
+        ['list_background', 'list_level_background', 'list_brick_tile', 'list_separator'].forEach(function (k) { theme[k] = baseHsva.slice(); });
+        theme.list_floor = [baseHsva[0], Math.max(10, Math.round(baseHsva[1] * 0.4)), 96, 1];
+        theme.list_level_next = [baseHsva[0], Math.max(30, Math.round(baseHsva[1] * 0.9)), 100, 1];
+        theme.list_level_complete = [baseHsva[0], Math.max(20, Math.round(baseHsva[1] * 0.6)), 90, 1];
+        theme.list_character = [baseHsva[0], Math.max(40, Math.round(baseHsva[1] * 0.9)), 100, 1];
+        conf.theme_cfg[id] = theme;
+        saveCustomWorld(id, { name: name, base: baseHsva });
+
+        /* Give the new world one starter level. Not just a convenience: the game's
+           updateUnlockLayer() measures its FIRST level button to compute the grid
+           columns, so a world with zero levels makes it read .width off null and the
+           page creation throws. A 1x3 starter (head + two floor) is the same shape as
+           the game's own first map, and it is what the editor will open for editing. */
+        var starterId = id * 100 + 1, starterMap = starterId;
+        conf.all_Level[starterMap] = [[-1, 1, 1]];
+        var starter = { id: starterId, wordId: id, levelId: 1, mapId: starterMap, sz_solution: 'R' };
+        conf.level_cfg[starterId] = starter;
+        conf.stage_level_cfg[id][String(starterId)] = starter;
+
+        var page = null;
+        try {
+            var content = cc.find('Canvas/gameView/scrollView').getComponent(cc.ScrollView).content;
+            var index = content.children.length - 1;
+            page = hall.createStageLayer(id, index);
+            hall.StageSelectLayer.insertPage(page, index);
+            if (page) {
+                var c = page.getComponent('StageSelectLayer');
+                var title = c && c.Title;
+                if (title) {
+                    var ll = title.getComponent('LocalizedLabel');
+                    if (ll) { ll.enabled = false; }
+                    title.string = name;              // raw name, no localisation key
+                }
+                decorateCustomWorldPage(page, id);
+            }
+            if (window.MazeDashWide && MazeDashWide.widenSelectPage) { MazeDashWide.widenSelectPage(); }
+            if (hall.StageSelectLayer && hall.StageSelectLayer.scrollToPage) { hall.StageSelectLayer.scrollToPage(index); }
+        } catch (e) { warn('create world failed:', e && e.message ? e.message : e); }
+        stats.worldsCreated = (stats.worldsCreated || 0) + 1;
+        log('created world', id, name, hsvaToHex(baseHsva));
+        return id;
+    }
+
+    /* inside a custom world: the two entries asked for */
+    function decorateCustomWorldPage(page, worldId) {
+        if (!page || !page.isValid) { return; }
+        var c = page.getComponent('StageSelectLayer');
+        var host = (c && c.SelectLayer) ? c.SelectLayer : page;
+        if (host.getChildByName('customWorldActions')) { return; }
+        var box = new cc.Node('customWorldActions');
+        box.parent = host;
+        box.y = -240;
+        var specs = [
+            { id: 'newLevel', key: 'createLevel', x: -330 },
+            { id: 'moveLevels', key: 'moveLevels', x: 330 },
+        ];
+        specs.forEach(function (s) {
+            var btn = new cc.Node('cwa_' + s.id);
+            btn.parent = box;
+            btn.setContentSize(560, 150);
+            btn.x = s.x;
+            roundedPanel(btn, cc.color(163, 75, 67, 255), 560, 150);
+            applyThemeColour(btn, worldId, s.id === 'newLevel' ? 'list_level_next' : 'list_level_complete', cc.color(200, 170, 90, 255));
+            var lb = makeLabel(btn, t(s.key), 0, 32, cc.color(40, 32, 20, 255));
+            lb.name = 'cwaLabel_' + s.id;
+            btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
+            btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
+            btn.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(btn, false); editorAction(s.id); });
         });
     }
     /* ------------------------------------------------------------ install */
