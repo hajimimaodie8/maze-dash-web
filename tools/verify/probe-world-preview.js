@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const { spawn } = require('child_process');
 const puppeteer = require('puppeteer-core');
 const WEB = 'E:\\maze_dash\\web';
@@ -55,12 +55,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const prev = await page.evaluate(() => {
         const p = cc.find('Canvas').getChildByName('editorPreview');
         if (!p) { return { found: false }; }
-        const rows = p.children.filter((n) => /^previewRow_/.test(n.name));
-        return { found: true, rows: rows.map((r) => ({ name: r.getChildByName('previewName') ? r.getChildByName('previewName').getComponent(cc.Label).string : null,
-                  size: [Math.round(r.width), Math.round(r.height)], swatch: (function () { const s = r.getChildByName('previewSwatch'); return s ? [s.color.r, s.color.g, s.color.b] : null; })() })),
+        const stack = p.getChildByName('previewPages');
+        const pages = stack ? stack.children.filter((n) => /^previewPage_/.test(n.name)) : [];
+        return { found: true,
+                 pages: pages.map((pg) => ({ name: pg.getChildByName('previewPageTitle') ? pg.getChildByName('previewPageTitle').getComponent(cc.Label).string : null,
+                    x: Math.round(pg.x), size: [Math.round(pg.width), Math.round(pg.height)],
+                    tiles: pg.children.filter((n) => /^previewTile_/.test(n.name)).map((x) => (x.children[0] && x.children[0].getComponent(cc.Label)) ? x.children[0].getComponent(cc.Label).string : '?') })),
+                 arrows: [!!p.getChildByName('previewLeft'), !!p.getChildByName('previewRight')],
                  empty: !!p.getChildByName('previewEmpty'), hasClose: !!p.getChildByName('previewClose') };
     });
-    console.log('preview:', JSON.stringify(prev, null, 1));
+    console.log('PAGES:', (prev.pages||[]).map(p => p.name+' w='+p.size[0]+' h='+p.size[1]+' x='+p.x+' tiles='+p.tiles.join('/')).join(' | '));
+    console.log('arrows', JSON.stringify(prev.arrows), 'close', prev.hasClose, 'empty', prev.empty);
     await page.screenshot({ path: path.join(__dirname, 'shots', 'world-preview.png') });
     console.log('errors:', JSON.stringify(errs.slice(0, 3)));
     await browser.close();
