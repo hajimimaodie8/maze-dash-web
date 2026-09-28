@@ -533,25 +533,25 @@
        编辑器后续所有自建文字都从这里取词。 */
     var TEXT = {
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
-                     customTitle: 'Custom Levels', customHint: 'Level editor (in progress)' },
+                     customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
-                     customTitle: '自定义关卡', customHint: '关卡编辑器（开发中）' },
+                     customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
-                     customTitle: '自訂關卡', customHint: '關卡編輯器（開發中）' },
+                     customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
-                     customTitle: 'カスタムステージ', customHint: 'ステージエディタ（開発中）' },
+                     customTitle: 'ステージエディタ', customHint: '開発中', editorTitle: 'ステージエディタ', createWorld: '新しい世界', createLevel: '新しいステージ', comingSoon: '近日公開' },
         kr:        { mode: '모드', progression: '일반 모드', unlocked: '전체 해금',
-                     customTitle: '커스텀 스테이지', customHint: '스테이지 편집기(개발 중)' },
+                     customTitle: '스테이지 편집기', customHint: '개발 중', editorTitle: '스테이지 편집기', createWorld: '새 세계', createLevel: '새 스테이지', comingSoon: '곧 공개' },
         de:        { mode: 'Modus', progression: 'Fortschritt', unlocked: 'Freigeschaltet',
-                     customTitle: 'Eigene Level', customHint: 'Level-Editor (in Arbeit)' },
+                     customTitle: 'Level-Editor', customHint: 'In Arbeit', editorTitle: 'Level-Editor', createWorld: 'Neue Welt', createLevel: 'Neues Level', comingSoon: 'Demnächst' },
         es:        { mode: 'Modo', progression: 'Progreso', unlocked: 'Desbloqueado',
-                     customTitle: 'Niveles propios', customHint: 'Editor de niveles (en desarrollo)' },
+                     customTitle: 'Editor de niveles', customHint: 'En desarrollo', editorTitle: 'Editor de niveles', createWorld: 'Nuevo mundo', createLevel: 'Nuevo nivel', comingSoon: 'Próximamente' },
         fr:        { mode: 'Mode', progression: 'Progression', unlocked: 'Débloqué',
-                     customTitle: 'Niveaux perso', customHint: 'Éditeur de niveaux (en cours)' },
+                     customTitle: 'Éditeur de niveaux', customHint: 'En cours', editorTitle: 'Éditeur de niveaux', createWorld: 'Nouveau monde', createLevel: 'Nouveau niveau', comingSoon: 'Bientôt' },
         pt:        { mode: 'Modo', progression: 'Progresso', unlocked: 'Desbloqueado',
-                     customTitle: 'Níveis próprios', customHint: 'Editor de níveis (em desenvolvimento)' },
+                     customTitle: 'Editor de níveis', customHint: 'Em desenvolvimento', editorTitle: 'Editor de níveis', createWorld: 'Novo mundo', createLevel: 'Novo nível', comingSoon: 'Em breve' },
         ru:        { mode: 'Режим', progression: 'Прогресс', unlocked: 'Разблокировано',
-                     customTitle: 'Свои уровни', customHint: 'Редактор уровней (в разработке)' },
+                     customTitle: 'Редактор уровней', customHint: 'В разработке', editorTitle: 'Редактор уровней', createWorld: 'Новый мир', createLevel: 'Новый уровень', comingSoon: 'Скоро' },
     };
     /* the game ships ten languages (sz_en / sz_zh-Hans / sz_zh-Hant / sz_ja / sz_de /
        sz_kr / sz_es / sz_fr / sz_pt / sz_ru) - mirror them all here, and normalise the
@@ -599,7 +599,8 @@
         var hall = window.hallScene;
         if (!hall || !hall.node || !hall.node.isValid) { return; }
         var want = { modeSwitchTitle: t('mode'), label_progression: t('progression'), label_unlocked: t('unlocked'),
-                     customTitle: t('customTitle'), customHint: t('customHint') };
+                     customTitle: t('editorTitle'), customHint: t('customHint'),
+                     editorBtnLabel_createWorld: t('createWorld'), editorBtnLabel_createLevel: t('createLevel') };
         Object.keys(want).forEach(function (name) {
             var n = cc.find('Canvas'); if (!n) { return; }
             (function walk(x) {
@@ -874,6 +875,107 @@
         return true;
     }
 
+    /* ================== 编辑器主界面：标题 + 左右下角两个大按钮 ==================
+       标题的位置与字号**在运行时从选关页的世界名节点读取**，所以永远和它对齐，
+       不会因为改布局而跑偏。两个按钮用游戏自己的圆角面板，配色取自主题，
+       动效沿用游戏的语汇（0.18s 淡入+缩放、点按缩到 0.95、以及轻微呼吸循环）。 */
+    function worldTitleRef() {
+        try {
+            var sv = cc.find('Canvas/gameView/scrollView');
+            var content = sv && sv.getComponent(cc.ScrollView).content;
+            var page = content && content.children.filter(function (p) { return p.getComponent('StageSelectLayer'); })[0];
+            var c = page && page.getComponent('StageSelectLayer');
+            return c && c.Title ? c.Title : null;
+        } catch (e) { return null; }
+    }
+
+    function buildEditorHome(view) {
+        if (!view || !view.isValid || view.__editorHome) { return; }
+        view.__editorHome = true;
+        var hall = window.hallScene;
+        var worldId = visibleWorldId(hall) || 1;
+
+        /* --- the big title, aligned to the world name on the level select --- */
+        var title = view.getChildByName('customTitle');
+        var ref = worldTitleRef();
+        var wantY = 430, wantSize = 56;
+        if (ref && ref.node && ref.node.isValid) {
+            var wp = ref.node.convertToWorldSpaceAR(cc.v2(0, 0));
+            var vp = view.convertToWorldSpaceAR(cc.v2(0, 0));
+            wantY = Math.round(wp.y - vp.y);
+            /* c.Title IS a cc.Label component (not a node), so read fontSize off it
+               directly - calling getComponent on it threw, and the try/catch around the
+               call site swallowed it, so nothing was built at all. */
+            if (ref.fontSize) { wantSize = Math.round(ref.fontSize * 1.15); }
+        }
+        if (title) {
+            var tl = title.getComponent(cc.Label);
+            if (tl) { tl.fontSize = wantSize; tl.lineHeight = Math.round(wantSize * 1.65); }
+            title.y = wantY;
+            title.name = 'editorTitle';
+        } else {
+            title = makeLabel(view, t('editorTitle'), wantY, wantSize, cc.color(255, 255, 255, 255));
+            title.name = 'editorTitle';
+        }
+        stats.editorTitleSize = wantSize;
+        stats.editorTitleY = wantY;
+
+        /* --- two big buttons, bottom-left and bottom-right --- */
+        var specs = [
+            { id: 'createWorld', key: 'createWorld', side: -1, colour: 'list_continue_background' },
+            { id: 'createLevel', key: 'createLevel', side: 1, colour: 'list_level_next' },
+        ];
+        specs.forEach(function (s) {
+            var btn = new cc.Node('editorBtn_' + s.id);
+            btn.parent = view;
+            btn.setContentSize(600, 200);
+            roundedPanel(btn, cc.color(163, 75, 67, 255), 600, 200);
+            applyThemeColour(btn, worldId, s.colour, cc.color(200, 150, 90, 255));
+            var lb = makeLabel(btn, t(s.key), 0, 40, cc.color(255, 255, 255, 255));
+            lb.name = 'editorBtnLabel_' + s.id;   // named so applyTexts can localise it
+            btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
+            btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
+            btn.on(cc.Node.EventType.TOUCH_END, function () {
+                pressFeedback(btn, false);
+                editorAction(s.id);
+            });
+            /* a slow idle breath, the same kind of repeating action the game uses */
+            btn.runAction(cc.repeatForever(cc.sequence(cc.scaleTo(1.1, 1.02, 1.02), cc.scaleTo(1.1, 1, 1))));
+            stats['editorBtn_' + s.id] = true;
+        });
+        animateIn(view);
+    }
+
+    function editorAction(id) {
+        stats.editorAction = id;
+        stats.editorActionAt = Date.now();
+        log('editor action:', id, '(destination screen not built yet)');
+        var hall = window.hallScene;
+        var view = hall && hall.viewGroup && hall.viewGroup[CFG.index];
+        if (view) {
+            var hint = view.getChildByName('customHint');
+            if (hint) {
+                var lb = hint.getComponent(cc.Label);
+                if (lb) { lb.string = t('comingSoon'); }
+            }
+        }
+    }
+
+    function positionEditorHome(view) {
+        if (!view || !view.isValid) { return; }
+        /* Build lazily here rather than during install(): the install call ran before
+           addView() had created and registered viewGroup[5], so it was handed undefined
+           and returned silently. The tick runs after the page exists. */
+        if (!view.__editorHome) { buildEditorHome(view); }
+        var W = visibleWidth(), H = visibleHeight();
+        ['createWorld', 'createLevel'].forEach(function (id, i) {
+            var btn = view.getChildByName('editorBtn_' + id);
+            if (!btn || !btn.isValid) { return; }
+            var bx = (i === 0 ? -1 : 1) * (W / 2 - 60 - btn.width / 2);
+            var by = -H / 2 + 60 + btn.height / 2;
+            if (Math.abs(btn.x - bx) > 1 || Math.abs(btn.y - by) > 1) { btn.x = bx; btn.y = by; }
+        });
+    }
     /* ------------------------------------------------------------ install */
     function install(hall) {
         if (!hall || hall.__customTabInstalled) { return false; }
@@ -882,6 +984,7 @@
 
         makeShowBarViewResilient(hall);
         try { buildModeSwitch(hall); } catch (e) { warn('mode switch failed:', e); }
+        try { buildEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); } catch (e) { warn('editor home failed:', e && e.message ? e.message : e); }
         var item = addTabItem(hall);
         layoutTabs(hall);
         var freed = freeTabBarArea();
@@ -946,7 +1049,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); }
         } catch (e) {}
     }, 1500);
 
