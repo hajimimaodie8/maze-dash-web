@@ -191,7 +191,15 @@
        methods off is not enough. Deliberately a short allow-list: hiding anything
        named "*Complete*" would also hide the level-complete panel the player
        needs in order to continue. */
-    var NUISANCE_RE = /^(guid_tips|QuestTips|levelAd)$/i;
+    /* Also removed here:
+       - HintsView: the hint badge pinned to the top-right of the level-select page
+         (/Canvas/gameView/HintsView/img, sprite 2-01). Reported as an obstructive
+         icon; hints themselves are unaffected.
+       - vignette: the edge-darkening overlay. It is authored to fade the edges of a
+         720-wide phone screen, so on a wide window it greys both sides (the skin
+         page showed its white centre with grey flanks, and the world panels came out
+         with rounded corners). Themes carry list_vignette for it. */
+    var NUISANCE_RE = /^(guid_tips|QuestTips|levelAd|HintsView|vignette)$/i;
     /* Guarded by a flag so the effect of hiding these can be bisected at runtime. */
 
     function silenceComponent(comp, names) {

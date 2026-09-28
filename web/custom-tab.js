@@ -295,6 +295,15 @@
         return true;
     }
 
+    /* the 2x2 white texture the game uses for tinted panels (tab highlights) */
+    function whiteFrame() {
+        try {
+            var item = window.hallScene.tabBar.children[0];
+            var bg = childByName(item, 'bg');
+            var sp = bg && bg.getComponent(cc.Sprite);
+            return sp ? sp.spriteFrame : null;
+        } catch (e) { return null; }
+    }
     function tintOne(page, kind) {
         if (!page || !page.isValid) { return false; }
         var sp = page.getComponent(cc.Sprite);
@@ -304,6 +313,12 @@
             var cam = cc.Camera.main || (cc.Camera.cameras && cc.Camera.cameras[0]);
             if (cam && cam.backgroundColor) { col = cam.backgroundColor; }
         } catch (e) {}
+        /* Tinting alone cannot make a page white: these pages draw the default_panel
+           texture, which is itself a grey panel, so white tint * grey texture = light
+           grey - which is why the node reported pure white while the screen showed grey
+           flanks. Swap in the 2x2 pure-white splash frame first, then tint. */
+        var white = whiteFrame();
+        if (white && sp.spriteFrame !== white) { sp.spriteFrame = white; }
         if (kind === 'white') {
             if (!sp.enabled) { sp.enabled = true; }
             page.color = cc.color(255, 255, 255, 255);
