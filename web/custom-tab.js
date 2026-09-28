@@ -585,12 +585,21 @@
     }
 
     /* re-apply text every tick: a language change then shows up without a reload */
+    /* the temporary build/language marker is gone; remove it from a panel that an older
+       build may have created earlier in this session */
+    function dropBuildMarker() {
+        var hall = window.hallScene;
+        if (!hall || !hall.node || !hall.node.isValid) { return; }
+        (function walk(n) {
+            if (n.name === 'modeSwitchBuild') { n.destroy(); stats.buildMarkerDropped = (stats.buildMarkerDropped || 0) + 1; return; }
+            (n.children || []).forEach(walk);
+        })(hall.node);
+    }
     function applyTexts() {
         var hall = window.hallScene;
         if (!hall || !hall.node || !hall.node.isValid) { return; }
         var want = { modeSwitchTitle: t('mode'), label_progression: t('progression'), label_unlocked: t('unlocked'),
-                     customTitle: t('customTitle'), customHint: t('customHint'),
-                     modeSwitchBuild: 'v 20250220a · ' + currentLang() + ' · removed:' + (stats.keyArtifactRemoved || 0) };
+                     customTitle: t('customTitle'), customHint: t('customHint') };
         Object.keys(want).forEach(function (name) {
             var n = cc.find('Canvas'); if (!n) { return; }
             (function walk(x) {
@@ -662,11 +671,7 @@
 
         var title = makeLabel(root, t('mode'), panelH / 2 - 30, 26, cc.color(255, 255, 255, 235));
         title.name = 'modeSwitchTitle';
-        /* a deliberately tiny marker showing which build is running and which language
-           this port detects - it answers "am I looking at the new build?" at a glance,
-           and records what the game reports as the current language. */
-        var mark = makeLabel(root, '', -panelH / 2 + 14, 15, cc.color(255, 255, 255, 130));
-        mark.name = 'modeSwitchBuild';
+
 
         var modes = [
             { id: 'progression', label: t('progression') },
@@ -849,7 +854,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); applyTexts(); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); }
         } catch (e) {}
     }, 1500);
 
