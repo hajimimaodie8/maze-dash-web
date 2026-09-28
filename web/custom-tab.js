@@ -240,20 +240,27 @@
        the pager clipped it to 720 px. The skin page is dark navy [48,46,76] and, once
        widened, painted both sides of the window with it. Tinting them to the theme
        colour keeps every page consistent. */
-    var TINT_PAGES = ['customLevelsView', 'faceView'];
+    /* Per page: the skin page is designed as an all-white screen (its inner panel is
+       white, so the sides must be white too - tinting them with the theme colour made
+       them look like the level-select backdrop). The custom page follows the theme. */
+    var TINT_PAGES = [
+        { name: 'customLevelsView', colour: 'theme' },
+        { name: 'faceView', colour: 'white' },
+    ];
 
     function applyPageTint() {
         var hall = window.hallScene;
         if (!hall || !hall.viewGroup) { return false; }
         var idx = TINT_PAGES.indexOf(hall.viewGroup[CFG.index] ? hall.viewGroup[CFG.index].name : '');
-        var names = idx >= 0 ? TINT_PAGES : TINT_PAGES;
-        names.forEach(function (nm) {
-            hall.viewGroup.forEach(function (v) { if (v && v.isValid && v.name === nm) { tintOne(v); } });
+        TINT_PAGES.forEach(function (spec) {
+            hall.viewGroup.forEach(function (v) {
+                if (v && v.isValid && v.name === spec.name) { tintOne(v, spec.colour); }
+            });
         });
         return true;
     }
 
-    function tintOne(page) {
+    function tintOne(page, kind) {
         if (!page || !page.isValid) { return false; }
         var sp = page.getComponent(cc.Sprite);
         if (!sp) { return false; }
@@ -262,6 +269,12 @@
             var cam = cc.Camera.main || (cc.Camera.cameras && cc.Camera.cameras[0]);
             if (cam && cam.backgroundColor) { col = cam.backgroundColor; }
         } catch (e) {}
+        if (kind === 'white') {
+            if (!sp.enabled) { sp.enabled = true; }
+            page.color = cc.color(255, 255, 255, 255);
+            stats.pageTintedWhite = (stats.pageTintedWhite || 0) + 1;
+            return true;
+        }
         var usable = !!col && !(col.r === 255 && col.g === 255 && col.b === 255);
         if (usable) {
             if (!sp.enabled) { sp.enabled = true; }
@@ -465,6 +478,10 @@
                         if (ch.getComponent && ch.getComponent('LevelButton')) { ch.removeFromParent(); }
                     });
                 }
+                /* showLockLayer() decides lock vs grid, but updateUnlockLayer() (the
+                   unlocked branch) never turns LockLayer off - so switching back to
+                   unlock mode left the lock panel and its icons on top. Clear it. */
+                try { if (c.LockLayer) { c.LockLayer.active = false; } } catch (e) {}
                 try { c.showLockLayer(); n++; } catch (e) {}
             });
             return n;
