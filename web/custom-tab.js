@@ -3144,6 +3144,7 @@
         editorAction: function (id) { return editorAction(id); },
         openGridEditor: function () { return openGridEditor(); },
         buildExportData: buildExportData,
+        showImportSummary: showImportSummary,
         importCustomJson: importCustomJson,
         importJson: function (t2) { return importCustomJson(t2); },
         index: CFG.index,
