@@ -1269,10 +1269,14 @@
         }
         var queue = [{ x: head[0], y: head[1], bits: bitsOf([head[0] + ',' + head[1]], floors.length), left: leftover, keys: 0, depth: 0 }];
         var visited = {}; visited[head[0] + ',' + head[1] + '|' + queue[0].bits + '|' + leftover + '|0'] = 1;
-        var nodes = 0;
+        var nodes = 0, trace = {}, maxCovered = 0, sawFull = 0, bestState = null;
         while (queue.length) {
             if (++nodes > SOLVER_NODE_CAP) { return { state: 'undecided', reason: 'nodeCap', nodes: nodes }; }
             var st = queue.shift();
+            trace[st.depth] = (trace[st.depth] || 0) + 1;
+            var cov = 0; for (var ci = 0; ci < st.bits.length; ci++) { if (st.bits[ci] === '1') { cov++; } }
+            if (cov > maxCovered) { maxCovered = cov; bestState = st.bits + ' left=' + st.left + ' at ' + st.x + ',' + st.y; }
+            if (st.bits.indexOf('0') < 0) { sawFull++; }
             if (st.left === 0 && st.bits.indexOf('0') < 0) { return { state: 'solvable', moves: st.depth, nodes: nodes }; }
             for (var dd = 0; dd < 4; dd++) {
                 var dir = SOLVER_DIRS[dd], x = st.x, y = st.y, bits = st.bits.split(''), left = st.left, keys2 = st.keys;
@@ -1289,7 +1293,8 @@
                         if (keys2 < keys) { break; }
                         left--;
                     }
-                    else if (nv !== 1 && nv !== -1 && nv !== 2 && nv !== 4 && bits[idx[nx2 + ',' + ny2]] !== '1') { break; }
+                    else if ((nv === 1 || nv === -1) && bits[idx[nx2 + ',' + ny2]] === '1') { break; }   // its own body stops the slide
+                    else if (nv !== 1 && nv !== -1 && nv !== 2 && nv !== 4) { break; }                    // anything else blocks
                     x = nx2; y = ny2; moved = true;
                     var j2 = idx[x + ',' + y]; if (j2 !== undefined) { bits[j2] = '1'; }
                     if (nv === 4) { keys2++; left--; }                                  // the key is eaten
@@ -1316,7 +1321,9 @@
            walls here), so this is reported as undecided rather than unsolvable. */
         /* Report the search size and what the best state achieved, so a false negative can be
            diagnosed instead of guessed (the 3x3 case came back undecided with no numbers at all). */
-        return { state: 'undecided', reason: 'noSolutionInConservativeModel', nodes: nodes, floors: floors.length };
+        return { state: 'undecided', reason: 'noSolutionInConservativeModel', nodes: nodes, floors: floors.length,
+                 maxCovered: maxCovered, sawFullBitmap: sawFull, bestState: bestState, states: Object.keys(visited).length,
+                 perDepth: JSON.parse(JSON.stringify(trace)) };
     }
     var FILTER_REASON = { noHero: 'noHero', noFloor: 'noFloor', isolatedFloor: 'isolatedFloor', disconnectedFloor: 'noFloorReach' };
     var editorSolvability = null;
@@ -2097,26 +2104,14 @@
                 },
             });
             conf.worlds.__guarded = true;
-            /* Same treatment for the level table: getLastWordId() does
-               conf.level_cfg[parseInt(e)].wordId and initStageLayer calls it with NO argument, so
-               parseInt(undefined) is NaN and the dereference threw inside the hall rebuild. A
-               Proxy makes unknown/NaN keys return a harmless record instead - which fixes it no
-               matter which instance or prototype reference performs the call. Only `get` is
-               intercepted, so Object.keys()/for-in enumeration is untouched. */
+            /* The crash was conf.level_cfg[parseInt(e)].wordId with e undefined, i.e. the lookup
+               conf.level_cfg[NaN]. In JavaScript that key is the STRING "NaN", so a single
+               fallback record is enough - no Proxy, nothing to interfere with the save path.
+               (A Proxy here was the first suspect for the CASE D hang, so it is gone.) */
             try {
-                if (conf.level_cfg && !conf.level_cfg.__guarded) {
-                    var rawLevels = conf.level_cfg;
-                    conf.level_cfg = new Proxy(rawLevels, {
-                        get: function (t, k) {
-                            var v = t[k];
-                            if (v === undefined && typeof k === 'string' && k !== '__guarded') {
-                                return { id: 0, wordId: stats.lastEnteredWordId || stats.lastWorldId || 1, levelId: 0, mapId: -1, sz_solution: '', __fallback: true };
-                            }
-                            return v;
-                        },
-                    });
-                    conf.level_cfg.__guarded = true;
-                    stats.levelTableGuarded = 1;
+                if (conf.level_cfg && conf.level_cfg['NaN'] === undefined) {
+                    conf.level_cfg['NaN'] = { id: 0, wordId: stats.lastEnteredWordId || stats.lastWorldId || 1, levelId: 0, mapId: -1, sz_solution: '', __fallback: true };
+                    stats.levelTableNaNGuarded = 1;
                 }
             } catch (e) { warn('level table guard failed:', e && e.message); }
             stats.worldsGuarded = 1;
@@ -2628,15 +2623,26 @@
             if (!gamemain || gamemain.__colourEntryHook) { return false; }
             gamemain.__colourEntryHook = true;
             var orig = gamemain.enterEnterGameScene.bind(gamemain);
-            /* gamemain.getLastWordId() reads .wordId off a world record and threw
+            /* The broad Proxy was REMOVED: with it installed the SAVE path hung (the timeout moved\n           from entry to save), and without it the save completed. Evidence beat preference. */
+
+        /* gamemain.getLastWordId() reads .wordId off a world record and threw
            "Cannot read properties of undefined (reading 'wordId')" from initStageLayer whenever the
            hall was rebuilt after entering a CUSTOM level. Wrapping the method is the same low-risk
            technique already used for the other engine methods in this port. */
         try {
             var origGetLastWordId = gamemain.getLastWordId.bind(gamemain);
-            gamemain.getLastWordId = function () {
+            gamemain.getLastWordId = function (arg) {
+                stats.getLastWordIdArg = (arg === undefined) ? 'undefined' : String(arg);
+                /* Validate BEFORE delegating: the original does conf.level_cfg[parseInt(arg)].wordId,
+                   so an unknown id makes it throw. Only call it when the lookup would succeed. */
+                var key = (arg === undefined || arg === null) ? null : parseInt(arg, 10);
+                var known = (key !== null && !isNaN(key) && conf.level_cfg && conf.level_cfg[key] && conf.level_cfg[key].wordId !== undefined);
+                if (!known) {
+                    stats.getLastWordIdShortCircuit = (stats.getLastWordIdShortCircuit || 0) + 1;
+                    return stats.lastEnteredWordId || stats.lastWorldId || 1;
+                }
                 var v = null;
-                try { v = origGetLastWordId(); } catch (e) { v = null; }
+                try { v = origGetLastWordId(arg); } catch (e) { v = null; }
                 if (!v) { v = stats.lastEnteredWordId || stats.lastWorldId || 1; }
                 return v;
             };
@@ -2669,7 +2675,10 @@
                 var proto = gamemain && Object.getPrototypeOf(gamemain);
                 if (proto && typeof proto.getLastWordId === 'function' && !proto.__wordIdProtoWrapped) {
                     var origProto = proto.getLastWordId;
-                    proto.getLastWordId = function () {
+                    proto.getLastWordId = function (arg) {
+                        var key = (arg === undefined || arg === null) ? null : parseInt(arg, 10);
+                        var known = (key !== null && !isNaN(key) && conf.level_cfg && conf.level_cfg[key] && conf.level_cfg[key].wordId !== undefined);
+                        if (!known) { return stats.lastEnteredWordId || stats.lastWorldId || 1; }
                         var v = null;
                         try { v = origProto.apply(this, arguments); } catch (e) { v = null; }
                         if (!v) { v = stats.lastEnteredWordId || stats.lastWorldId || 1; }
@@ -2692,7 +2701,7 @@
                 var w = conf.level_cfg && conf.level_cfg[id] && conf.level_cfg[id].wordId;
                 if (w) { stats.lastEnteredWordId = w; }
             } catch (e) {}
-                try { if (conf.level_cfg && conf.level_cfg[id] && portalColoursByMap[id]) { activePortalColours = portalColoursByMap[id]; stats.colourTableRestored = (stats.colourTableRestored || 0) + 1; } } catch (e) {}
+                try { if (conf.level_cfg && conf.level_cfg[id] && portalColoursByMap[id]) { stats.colourTableRestored = (stats.colourTableRestored || 0) + 1; activePortalColours = portalColoursByMap[id]; stats.colourTableRestored = (stats.colourTableRestored || 0) + 1; } } catch (e) {}
                 return orig(id);
             };
             stats.levelEntryHook = 1;
