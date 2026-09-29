@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const puppeteer = require('puppeteer-core');
 const CHROME = 'C:\\Users\\Lenovo\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe';
 const FILE = 'file:///E:/maze_dash/dist/MazeDash-standalone.html';
@@ -38,8 +38,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
             for (const y in comp.Level_data) { for (const x in comp.Level_data[y]) { const v = comp.Level_data[y][x]; if (v === -1) { h++; } if (v === 2 || v >= 20) { out.portals.push(v + '@' + x + ',' + y + '->' + (function () { const d = comp.getOutPortal(cc.v2(parseInt(x, 10), parseInt(y, 10))); return d.x + ',' + d.y; })()); } } }
             out.headsInData = h;
         }
+        out.painted = window.MazeDashCustomTab.stats.portalCellsPainted || 0;
+        out.markers = 0;
+        (function walk2(n) { if (/^portalColour/.test(n.name)) { out.markers++; } (n.children || []).forEach(walk2); })(cc.director.getScene());
         return out;
     });
+    console.log('MARKERS:', res.markers, ' paintedCells:', res.painted);
     console.log('IN LEVEL: comp=' + res.hasComp + ' patched=' + res.patched + ' renderedHeads=' + res.heads + ' headsInData=' + res.headsInData);
     console.log('PORTAL PAIRING:');
     (res.portals || []).forEach((p) => console.log('   ' + p));
