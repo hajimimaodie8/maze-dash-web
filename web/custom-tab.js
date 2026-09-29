@@ -1535,6 +1535,7 @@
                 var world = entry.wordId;
                 conf.stage_level_cfg[world] = conf.stage_level_cfg[world] || {};
                 conf.stage_level_cfg[world][String(id)] = entry;
+                conf.stage_level_cfg[world][String(entry.levelId)] = entry;
                 n++;
             } catch (e) {}
         });
@@ -1582,6 +1583,7 @@
             var entry = { id: id, wordId: world, levelId: display, mapId: id, sz_solution: '' };
             conf.level_cfg[id] = entry;
             conf.stage_level_cfg[world][String(id)] = entry;
+            conf.stage_level_cfg[world][String(entry.levelId)] = entry;
             saveCustomLevel(id, { grid: copy, colours: JSON.parse(JSON.stringify(editorColours)), world: world, levelId: display, name: t('createLevel') + ' ' + display });
             try { if (window.MazeDashCustomTab && MazeDashCustomTab.refreshStagePages) { MazeDashCustomTab.refreshStagePages(); } } catch (e) {}
             stats.editorSavedLevel = id;
@@ -2623,7 +2625,30 @@
             if (!gamemain || gamemain.__colourEntryHook) { return false; }
             gamemain.__colourEntryHook = true;
             var orig = gamemain.enterEnterGameScene.bind(gamemain);
-            /* The broad Proxy was REMOVED: with it installed the SAVE path hung (the timeout moved\n           from entry to save), and without it the save completed. Evidence beat preference. */
+            /* PURE LOGGING PROXY (diagnostic only): it observes which keys are read and ALWAYS returns
+           the real value - it never substitutes a fallback object, so it cannot make any loop
+           diverge. This is how we find out which key actually crashes the hall rebuild. */
+        try {
+            if (stats.debugLevelCfg && conf.level_cfg && !conf.level_cfg.__loggingProxy) {
+                var rawLog = conf.level_cfg;
+                conf.level_cfg = new Proxy(rawLog, {
+                    get: function (t, k) {
+                        try {
+                            if (typeof k === 'string') {
+                                if (!stats.levelCfgKeys) { stats.levelCfgKeys = []; }
+                                stats.levelCfgKeys.push(k);
+                                if (stats.levelCfgKeys.length > 20) { stats.levelCfgKeys.shift(); }
+                                if (t[k] === undefined && k !== '__loggingProxy') { stats.levelCfgLastMissing = k; }
+                            }
+                        } catch (e) {}
+                        return t[k];
+                    },
+                });
+                conf.level_cfg.__loggingProxy = true;
+                stats.levelCfgLoggingProxy = 1;
+            }
+        } catch (e) { warn('logging proxy failed:', e && e.message); }
+        /* The broad Proxy was REMOVED: with it installed the SAVE path hung (the timeout moved\n           from entry to save), and without it the save completed. Evidence beat preference. */
 
         /* gamemain.getLastWordId() reads .wordId off a world record and threw
            "Cannot read properties of undefined (reading 'wordId')" from initStageLayer whenever the

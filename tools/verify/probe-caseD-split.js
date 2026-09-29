@@ -93,6 +93,8 @@ async function pollMap(page, label) {
         allLevelRows: (conf.all_Level[(conf.level_cfg[id] || {}).mapId] || []).length,
         nanGuard: (conf.level_cfg['NaN'] || null),
         getLastWordId: (function () { try { return gamemain.getLastWordId(); } catch (e) { return 'THREW ' + e.message.slice(0, 60); } })(),
+        keyLog: (window.MazeDashCustomTab.stats.levelCfgKeys || []).slice(-12),
+        lastMissing: window.MazeDashCustomTab.stats.levelCfgLastMissing || null,
     }), s2.id);
     console.log('STEP3 conf   :', JSON.stringify(s3).slice(0, 400));
 
@@ -102,6 +104,7 @@ async function pollMap(page, label) {
     console.log('STEP4 enter  :', JSON.stringify(s4));
     const s4b = await page.evaluate(() => ({ restored: window.MazeDashCustomTab.stats.colourTableRestored || 0 }));
     console.log('STEP4 colourRestored:', JSON.stringify(s4b));
+    console.log('STEP4 keyLog    :', JSON.stringify(await page.evaluate(() => ({ keys: (window.MazeDashCustomTab.stats.levelCfgKeys || []).slice(-14), lastMissing: window.MazeDashCustomTab.stats.levelCfgLastMissing || null, arg: window.MazeDashCustomTab.stats.getLastWordIdArg || null, shortCircuit: window.MazeDashCustomTab.stats.getLastWordIdShortCircuit || 0 }))));
     if (s4.ok) { await page.screenshot({ path: SHOTS + '59-entered-after-reload.png' }); }
 
     /* ---- step 5 (P2): the test level with its six known portals ---- */
