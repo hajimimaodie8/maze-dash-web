@@ -281,7 +281,7 @@
     function raiseActiveView() {
         /* while the grid editor is open the tab bar is hidden on purpose, and the hall pages
            behind it must not be reshuffled either */
-        if (stats.tabBarHiddenForEditor) { return; }
+        /* the editor no longer hides the tab bar: nothing to skip here */
         var hall = window.hallScene;
         if (!hall || !hall.viewGroup) { return; }
         /* Source of truth is the hall's own current tab index. The game can leave the
@@ -993,8 +993,8 @@
         gridRootRef = null;
         try {
             var hallBar2 = window.hallScene && window.hallScene.tabBar && window.hallScene.tabBar.parent;
-            if (hallBar2 && hallBar2.isValid && stats.tabBarHiddenForEditor) { hallBar2.active = true; }
-            stats.tabBarHiddenForEditor = 0;
+            /* the tab bar is never hidden by the editor any more */
+
         } catch (e) {}
         stats.gridEditorClosed = (stats.gridEditorClosed || 0) + 1;
         return closed;
@@ -1070,6 +1070,7 @@
         if (v === 2) { editorColours[key] = editorTool.portalColour; } else { delete editorColours[key]; }
         paintGridCell(cell);
         refreshGridReadout();
+        updateSolvability();
         /* write into the grid array the save path reads - the phase-1 version did this and it
            must not be lost: without it the cells paint correctly but save an empty matrix */
         try {
@@ -1100,6 +1101,7 @@
         }
         editorColours = {};
         refreshGridReadout();
+        updateSolvability();
         stats.gridCleared = (stats.gridCleared || 0) + 1;
     }
     function buildPalette(root, W, H) {
@@ -1168,6 +1170,148 @@
         });
         refreshToolButtons();
         return panel;
+    }
+
+    /* ==================== 可解性校验 ====================
+       本游戏过关 = 蛇身填满所有地板格，所以随手画的关卡大多无解。这里只做**不会撒谎**的判定：
+         · "solvable"   = 搜索**真的找到了**一条填满全部地板的走法（最短路步数）
+         · "unsolvable" = **结构性不可能**（无主角 / 没有地板 / 有孤立地板 / 地板分区不连通）
+         · "undecided"  = 达到节点上限，判定不了（绝不猜）
+       机制按源码实现：冲刺到被挡为止、沿途填格、箭头强制转向且反向视为墙、
+       传送门按同色配对（与已验收的 pairing 规则一致）、砖块/锁按"不可穿越"处理（保守 → 找到的解在游戏里一定成立）。 */
+    var SOLVER_NODE_CAP = 200000;
+    var SOLVER_DIRS = [[0, -1, 5], [1, 0, 6], [0, 1, 7], [-1, 0, 8]];
+    /* Corrected per the authoritative format research (docs/level-format.md new sections):
+       keys are passable and get eaten, locks vanish once every key is collected, bricks are only
+       passable after being smashed (the search treats unbroken bricks as walls - conservative, so
+       any solution it finds is valid in the game), arrows only along their own direction, and
+       portals are one-shot: a traversal consumes BOTH end cells. */
+    function solverIsFloor(v) { return v === 1 || v === -1; }
+    function solverPassable(v) { return v === 1 || v === -1 || v === 2 || v === 4 || (v >= 5 && v <= 8); }
+    function solverConsumable(v) { return v === 2 || v === 4 || v === -3 || v === -4; }
+    function solveGrid(grid, colours) {
+        var H = grid.length, W = H ? grid[0].length : 0;
+        var floors = [], head = null, keys = 0, cells = {};
+        for (var y = 0; y < H; y++) {
+            for (var x = 0; x < W; x++) {
+                var v = grid[y][x];
+                cells[x + ',' + y] = v;
+                if (v === 1) { floors.push([x, y]); }
+                if (v === -1) { head = [x, y]; floors.push([x, y]); }
+                if (v === 4) { keys++; }
+            }
+        }
+        if (!head) { return { state: 'unsolvable', reason: 'noHero' }; }
+        if (!floors.length) { return { state: 'unsolvable', reason: 'noFloor' }; }
+        for (var i = 0; i < floors.length; i++) {
+            var p = floors[i], nb = 0;
+            for (var d = 0; d < 4; d++) {
+                var nx = p[0] + SOLVER_DIRS[d][0], ny = p[1] + SOLVER_DIRS[d][1];
+                if (ny < 0 || ny >= H || nx < 0 || nx >= W) { continue; }
+                if (solverPassable(grid[ny][nx])) { nb++; }
+            }
+            if (!nb) { return { state: 'unsolvable', reason: 'isolatedFloor', at: p }; }
+        }
+        var link = solverPortalMap(grid, colours);
+        var seen = {}, stack = [head[0] + ',' + head[1]];
+        seen[head[0] + ',' + head[1]] = 1; var count = 1;
+        while (stack.length) {
+            var cur = stack.pop(), cx = parseInt(cur.split(',')[0], 10), cy = parseInt(cur.split(',')[1], 10);
+            var cand = [];
+            for (var d2 = 0; d2 < 4; d2++) { cand.push([cx + SOLVER_DIRS[d2][0], cy + SOLVER_DIRS[d2][1]]); }
+            if (link[cur]) { cand.push(link[cur]); }
+            cand.forEach(function (q) {
+                var k = q[0] + ',' + q[1];
+                if (q[0] < 0 || q[0] >= W || q[1] < 0 || q[1] >= H || seen[k]) { return; }
+                if (!solverPassable(grid[q[1]][q[0]])) { return; }
+                seen[k] = 1; count++; stack.push(k);
+            });
+        }
+        if (count < floors.length) { return { state: 'unsolvable', reason: 'disconnectedFloor' }; }
+        /* the authoritative clear condition: no cell may keep a value outside {0,-1,-2} - so every
+           floor must be covered AND every consumable (portal / key / lock / brick) must be gone. */
+        var leftover = 0;
+        Object.keys(cells).forEach(function (k) { if (solverConsumable(cells[k])) { leftover++; } });
+        var idx = {}; floors.forEach(function (p2, i2) { idx[p2[0] + ',' + p2[1]] = i2; });
+        function bitsOf(list, n) {
+            var a = []; for (var i3 = 0; i3 < n; i3++) { a.push('0'); }
+            list.forEach(function (k2) { var j = idx[k2]; if (j !== undefined) { a[j] = '1'; } });
+            return a.join('');
+        }
+        var queue = [{ x: head[0], y: head[1], bits: bitsOf([head[0] + ',' + head[1]], floors.length), left: leftover, keys: 0, depth: 0 }];
+        var visited = {}; visited[head[0] + ',' + head[1] + '|' + queue[0].bits + '|' + leftover + '|0'] = 1;
+        var nodes = 0;
+        while (queue.length) {
+            if (++nodes > SOLVER_NODE_CAP) { return { state: 'undecided', reason: 'nodeCap', nodes: nodes }; }
+            var st = queue.shift();
+            if (st.left === 0 && st.bits.indexOf('0') < 0) { return { state: 'solvable', moves: st.depth, nodes: nodes }; }
+            for (var dd = 0; dd < 4; dd++) {
+                var dir = SOLVER_DIRS[dd], x = st.x, y = st.y, bits = st.bits.split(''), left = st.left, keys2 = st.keys;
+                var dx = dir[0], dy = dir[1], wantArrow = dir[2], moved = false, guard = 0;
+                while (guard++ < 400) {
+                    var nx2 = x + dx, ny2 = y + dy;
+                    if (ny2 < 0 || ny2 >= H || nx2 < 0 || nx2 >= W) { break; }
+                    var nv = grid[ny2][nx2];
+                    if (nv >= 5 && nv <= 8) { if (nv !== wantArrow) { break; } }
+                    else if (nv === 0 || nv === -4) { break; }                      // wall / whole brick (conservative)
+                    else if (nv === -3) {
+                        /* a lock is passable only once every key is collected; entering it uses
+                           the lock up (the authoritative rule: locks become floor at that point) */
+                        if (keys2 < keys) { break; }
+                        left--;
+                    }
+                    else if (nv !== 1 && nv !== -1 && nv !== 2 && nv !== 4 && bits[idx[nx2 + ',' + ny2]] !== '1') { break; }
+                    x = nx2; y = ny2; moved = true;
+                    var j2 = idx[x + ',' + y]; if (j2 !== undefined) { bits[j2] = '1'; }
+                    if (nv === 4) { keys2++; left--; }                                  // the key is eaten
+                    if (nv >= 5 && nv <= 8) { for (var q2 = 0; q2 < 4; q2++) { if (SOLVER_DIRS[q2][2] === nv) { dx = SOLVER_DIRS[q2][0]; dy = SOLVER_DIRS[q2][1]; wantArrow = nv; } } }
+                    if (nv === 2) {
+                        var pk = link[x + ',' + y];
+                        if (pk) {
+                            left -= 2;                                                  // one-shot: both ends are used up
+                            var sk = x + ',' + y;
+                            var j3 = idx[x + ',' + y]; if (j3 !== undefined) { bits[j3] = '1'; }
+                            var j4 = idx[pk[0] + ',' + pk[1]]; if (j4 !== undefined) { bits[j4] = '1'; }
+                            x = pk[0]; y = pk[1];
+                        }
+                    }
+                }
+                if (!moved) { continue; }
+                var bk = x + ',' + y + '|' + bits.join('') + '|' + left + '|' + keys2;
+                if (visited[bk]) { continue; }
+                visited[bk] = 1;
+                queue.push({ x: x, y: y, bits: bits.join(''), left: left, keys: keys2, depth: st.depth + 1 });
+            }
+        }
+        /* Exhausting a conservative model does NOT prove unsolvability (bricks are modelled as
+           walls here), so this is reported as undecided rather than unsolvable. */
+        return { state: 'undecided', reason: 'noSolutionInConservativeModel' };
+    }
+    var FILTER_REASON = { noHero: 'noHero', noFloor: 'noFloor', isolatedFloor: 'isolatedFloor', disconnectedFloor: 'noFloorReach' };
+    var editorSolvability = null;
+    function updateSolvability() {
+        var ed = MazeDashCustomTab.gridEditor;
+        if (!ed) { return null; }
+        var res = solveGrid(ed.grid, editorColours);
+        editorSolvability = res;
+        stats.editorSolvable = res.state;
+        if (res.moves !== undefined) { stats.editorSolverMoves = res.moves; }
+        if (res.nodes !== undefined) { stats.editorSolverNodes = res.nodes; }
+        try {
+            var root = gridRootRef;
+            var bg = root && root.getChildByName('gridReadoutBg');
+            var status = bg && bg.getChildByName('gridStatus') && bg.getChildByName('gridStatus').getComponent(cc.Label);
+            if (status) {
+                if (res.state === 'solvable') { status.string = t('solveOk') + ' (' + res.moves + ')'; status.color = cc.color(120, 230, 140, 255); }
+                else if (res.state === 'unsolvable') { status.string = t('solveBad') + ': ' + t(FILTER_REASON[res.reason] || 'solveUnknown'); status.color = cc.color(255, 120, 120, 255); }
+                else { status.string = t('solveUndecided'); status.color = cc.color(255, 210, 120, 255); }
+            }
+            var save = root && root.getChildByName('gridPalette') && root.getChildByName('gridPalette').getChildByName('gridSave');
+            if (save && save.isValid) {
+                save.color = (res.state === 'unsolvable') ? cc.color(200, 90, 90, 255) : cc.color(255, 210, 60, 255);
+            }
+        } catch (e) {}
+        return res;
     }
 
     function openGridEditor() {
@@ -1258,6 +1402,8 @@
         readoutBg.zIndex = 40;
         roundedPanel(readoutBg, cc.color(30, 26, 34, 235), 460, 84);
         makeLabel(readoutBg, gridReadout(grid), 0, 26, cc.color(255, 255, 255, 220)).name = 'gridReadout';
+        makeLabel(readoutBg, '', -22, 22, cc.color(255, 255, 255, 255)).name = 'gridStatus';   // solvability feedback, second line
+        updateSolvability();
         buildPalette(root, W, H);
 
         /* expose enough for the probe to drive the same code paths the user does */
@@ -1272,6 +1418,8 @@
             clear: clearGrid,
             colours: function () { return editorColours; },
             tool: function () { return editorTool; },
+            solve: updateSolvability,
+            verdict: function () { return editorSolvability; },
         };
         gridRootRef = root;
         animateIn(root);
@@ -1357,6 +1505,19 @@
 
     /* ---- save: write the three conf tables, persist, then play it immediately ---- */
     function saveGridAndPlay(grid) {
+        /* Refuse the first save when the grid is provably broken, but let a second tap through:
+           a draft may be worth keeping. */
+        var verdict = solveGrid(grid, editorColours);
+        stats.editorSolvableOnSave = verdict.state;
+        if (verdict.state === "unsolvable" && !stats.editorForceSave) {
+            stats.editorForceSave = 1;
+            updateSolvability();
+            var bg0 = gridRootRef && gridRootRef.getChildByName("gridReadoutBg");
+            var st0 = bg0 && bg0.getChildByName("gridStatus") && bg0.getChildByName("gridStatus").getComponent(cc.Label);
+            if (st0) { st0.string = st0.string + "  " + t("saveAnywayHint"); }
+            return null;
+        }
+        stats.editorForceSave = 0;
         var id = nextCustomLevelId();
         var worlds = customWorlds();
         var world = Number(Object.keys(worlds)[0] || 0) || TEST_WORLD;
@@ -1398,6 +1559,23 @@
         try { gamemain.enterEnterGameScene(id); } catch (e) { warn('enter failed:', e && e.message); }
         return id;
     }
+
+    (function addSolverStrings() {
+        var add = {
+            "zh-Hans": { solveOk: "\u53ef\u89e3", solveBad: "\u4e0d\u53ef\u89e3", solveUndecided: "\u65e0\u6cd5\u5728\u9650\u5b9a\u65f6\u95f4\u5185\u5224\u5b9a",
+                         noHero: "\u7f3a\u5c11\u4e3b\u89d2", noFloor: "\u6ca1\u6709\u5730\u677f", isolatedFloor: "\u5b58\u5728\u5b64\u7acb\u5730\u677f",
+                         noFloorReach: "\u5730\u677f\u5206\u533a\u4e0d\u8fde\u901a", solveUnknown: "\u539f\u56e0\u672a\u77e5",
+                         saveAnywayHint: "\u518d\u6b21\u70b9\u51fb\u4ecd\u4fdd\u5b58" },
+            "en":      { solveOk: "Solvable", solveBad: "Unsolvable", solveUndecided: "Cannot decide within the limit",
+                         noHero: "no hero", noFloor: "no floor", isolatedFloor: "isolated floor",
+                         noFloorReach: "floor split into disconnected areas", solveUnknown: "unknown reason",
+                         saveAnywayHint: "tap Save again to keep it anyway" },
+        };
+        Object.keys(add).forEach(function (lang) {
+            if (!TEXT[lang]) { TEXT[lang] = {}; }
+            Object.keys(add[lang]).forEach(function (k) { TEXT[lang][k] = add[lang][k]; });
+        });
+    })();
 
     (function addPaletteStrings() {
         var add = {
@@ -1807,7 +1985,7 @@
         try {
             var cfg = conf.stage_level_cfg[id] || {};
             var k = Object.keys(cfg)[0];
-            if (k) { gamemain.enterEnterGameScene(cfg[k].id); }
+            if (k) { setActiveMapColours(cfg[k].mapId); gamemain.enterEnterGameScene(cfg[k].id); }   // its own colour table
         } catch (e) { warn('preview level failed:', e && e.message); }
     }
 
@@ -2389,6 +2567,22 @@
         }
     }
 
+    /* Colour tables must survive a restart: wrapping the engine's own entry method means every
+       way a custom level can be started restores its table, not just the editor's save path. */
+    function installLevelEntryHook() {
+        try {
+            if (!gamemain || gamemain.__colourEntryHook) { return false; }
+            gamemain.__colourEntryHook = true;
+            var orig = gamemain.enterEnterGameScene.bind(gamemain);
+            gamemain.enterEnterGameScene = function (id) {
+                try { if (conf.level_cfg && conf.level_cfg[id] && portalColoursByMap[id]) { activePortalColours = portalColoursByMap[id]; stats.colourTableRestored = (stats.colourTableRestored || 0) + 1; } } catch (e) {}
+                return orig(id);
+            };
+            stats.levelEntryHook = 1;
+            return true;
+        } catch (e) { return false; }
+    }
+
     function installKeys() {
         if (window.__mazeDashKeys) { return; }
         window.__mazeDashKeys = true;
@@ -2557,6 +2751,7 @@
        左房间 3 个主角，左右房间各 3 个同色门（红 21 / 绿 22 / 蓝 23）。两房间被墙完全隔开，
        所以只有"同色配对"生效时，主角才可能从左房间到达右房间。 */
     var TEST_WORLD = 101, TEST_LEVEL = 10101, TEST_MAP = 10101;
+    var testSeededMap = 0;   // set when the test level is seeded, for verification only
     var TEST_GRID = [
         [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
         [ 0, -1, -1, -1,  0,  0,  0,  2,  2,  2],
@@ -2567,38 +2762,29 @@
     ];
 
     function seedTestLevel() {
-        portalColours[TEST_MAP] = { '1,6': 1, '2,6': 2, '3,6': 3, '8,3': 1, '9,3': 2, '10,3': 3 };
+        /* The test level lives ONLY in its own custom world (101) - it must never be written into
+           a shipped level. An earlier version also dropped the grid into world 1 level 1 at
+           runtime; that is gone, because overwriting original content is not acceptable. */
         if (conf.all_Level && conf.all_Level[TEST_MAP]) { return false; }
         try {
             conf.worlds[TEST_WORLD] = { id: TEST_WORLD, require: 0 };
             conf.stage_cfg[TEST_WORLD] = {};
             conf.stage_level_cfg[TEST_WORLD] = {};
             var theme = JSON.parse(JSON.stringify(conf.theme_cfg[1] || {}));
-            ['list_background', 'list_level_background'].forEach(function (k) { theme[k] = [292, 55, 72, 1]; });   // 紫色主题
+            ['list_background', 'list_level_background'].forEach(function (k) { theme[k] = [292, 55, 72, 1]; });   // purple
             theme.list_level_next = [292, 70, 100, 1];
             conf.theme_cfg[TEST_WORLD] = theme;
             conf.all_Level[TEST_MAP] = JSON.parse(JSON.stringify(TEST_GRID));
-            activePortalColours = { '1,2': 4, '2,2': 1, '3,2': 3, '7,1': 4, '8,1': 1, '9,1': 3 };
-                    portalColoursByMap[stats.testLevelInWorld1 || 1] = activePortalColours;
             var entry = { id: TEST_LEVEL, wordId: TEST_WORLD, levelId: 1, mapId: TEST_MAP, sz_solution: '' };
             conf.level_cfg[TEST_LEVEL] = entry;
             conf.stage_level_cfg[TEST_WORLD][String(TEST_LEVEL)] = entry;
+            /* the spec layout: left room portals on row 2 (x 1,2,3), right room portals on row 1 (x 7,8,9) */
+            portalColoursByMap[TEST_MAP] = { '1,2': 4, '2,2': 1, '3,2': 3, '7,1': 4, '8,1': 1, '9,1': 3 };
+            activePortalColours = portalColoursByMap[TEST_MAP];
             saveCustomWorld(TEST_WORLD, { name: t('testWorldName'), base: [292, 55, 72, 1] });
-            /* Also drop the same grid into the first level of world 1 (runtime only, no file is
-               written): entering a brand-new level id directly did not take - the game_map
-               component never appeared - so this gives a route that is known to work for
-               testing the mechanics right now. */
-            try {
-                var cfg1 = conf.stage_level_cfg[1] || {};
-                var firstKey = Object.keys(cfg1)[0];
-                if (firstKey && cfg1[firstKey]) {
-                    conf.all_Level[cfg1[firstKey].mapId] = JSON.parse(JSON.stringify(TEST_GRID));
-                    activePortalColours = { '1,2': 4, '2,2': 1, '3,2': 3, '7,1': 4, '8,1': 1, '9,1': 3 };
-                    stats.testLevelInWorld1 = cfg1[firstKey].mapId;
-                }
-            } catch (e) {}
             stats.testLevelSeeded = (stats.testLevelSeeded || 0) + 1;
-            log('test level seeded: world', TEST_WORLD, 'level', TEST_LEVEL);
+            testSeededMap = TEST_MAP;
+            log('test level seeded into its own world', TEST_WORLD, 'level', TEST_LEVEL);
             return true;
         } catch (e) { warn('seed failed:', e && e.message); return false; }
     }
@@ -2613,6 +2799,7 @@
         seedTestLevel();
         injectSavedLevels();
         installKeys();
+        installLevelEntryHook();
         try { buildModeSwitch(hall); } catch (e) { warn('mode switch failed:', e); }
         try { buildEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); } catch (e) { warn('editor home failed:', e && e.message ? e.message : e); }
         var item = addTabItem(hall);
