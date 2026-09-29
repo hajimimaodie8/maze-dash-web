@@ -348,6 +348,16 @@
                     if (lb.useSystemFont !== true) { lb.useSystemFont = true; stats.cjkFontSwitched = (stats.cjkFontSwitched || 0) + 1; fixed++; }
                     var want = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
                     if (lb.fontFamily !== want) { lb.fontFamily = want; }
+                    /* CJK glyphs are taller than the Latin ones this label's line box was sized
+                       for, so their tops were clipped. Give the line, and the node, room for the
+                       full ascent - this is the "every text is shifted up and half cut off" bug. */
+                    var fs = lb.fontSize || 20;
+                    var need = Math.round(fs * 1.45);
+                    if (!lb.lineHeight || lb.lineHeight < need) { lb.lineHeight = need; }
+                    if (lb.node && lb.node.height && lb.node.height < need) {
+                        lb.node.height = need;
+                        stats.cjkLineHeightFixed = (stats.cjkLineHeightFixed || 0) + 1;
+                    }
                 } catch (e) {}
             }
             (n.children || []).forEach(walk);

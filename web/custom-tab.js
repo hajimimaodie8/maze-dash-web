@@ -117,6 +117,8 @@
            with the Latin-only face - which is exactly the "text collapsed into a clump of tiny
            glyphs" that keeps being reported. */
         try { label.font = null; } catch (e) {}
+        /* keep enough vertical room for the tallest glyphs */
+        try { label.lineHeight = Math.round(fontSize * 1.45); if (label.node) { label.node.height = Math.max(label.node.height || 0, label.lineHeight); } } catch (e) {}
         if ('useSystemFont' in label) { label.useSystemFont = true; }
         /* THE clump: with a narrow node and the default overflow, a long string (especially a
            CJK one) is squeezed into the box and wraps onto many tiny overlapping lines, which
