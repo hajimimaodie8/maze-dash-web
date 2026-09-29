@@ -333,14 +333,15 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 
 ### 已落地的部分（现状，接手前先看这张表）【源码，`web/custom-tab.js` @HEAD】
 
-| 项 | 位置（HEAD 行号） | 实际内容 |
+| 项 | 位置（@HEAD `eb8f8b5` 行号；行号会漂，按函数名找） | 实际内容 |
 | --- | --- | --- |
-| 自定义关卡 | `1149` | `localStorage['maze_dash_custom_levels']` = `{ "<levelId>": { grid, world, levelId, name } }` |
-| 自定义世界 | `1772` | `localStorage['maze_dash_custom_worlds']` = `{ "<worldId>": { name, base } }`（`base` 是 HSVA 主题色） |
-| 启动注入 | `1166-1183` `injectSavedLevels()` | 把记录写回 `all_Level / level_cfg / stage_level_cfg` 三处 |
-| 保存并试玩 | `1186-1288` `saveGridAndPlay()` | 写三处 conf 表 → 持久化 → `enterEnterGameScene(id)` 直接进关 |
-| **导出** | `1621-1641` `exportCustomJson()` | 下载 `maze-dash-custom.json`，结构 `{ version, note, worlds, levels, maps }`，其中 `maps` 按 **mapId** 键 |
-| **导入** | — | **未实现**：`editorAction`（`1643-1651`）只认 `createWorld / previewWorld / previewLevel / exportJson / createLevel` |
+| 自定义关卡 | `1321` | `localStorage['maze_dash_custom_levels']` = `{ "<levelId>": { grid, colours, world, levelId, name } }`；`colours` = `{ "x,y": 色号 }`，是 phase 2 为彩色门加的 |
+| 自定义世界 | `1965` | `localStorage['maze_dash_custom_worlds']` = `{ "<worldId>": { name, base } }`（`base` 是 HSVA 主题色） |
+| 启动注入 | `1338-1356` `injectSavedLevels()` | 把记录写回 `all_Level / level_cfg / stage_level_cfg` 三处，并把 `colours` 灌进 `portalColoursByMap[id]`（1345） |
+| 保存并试玩 | `1359-1400` `saveGridAndPlay()` | 写三处 conf 表 → 持久化（含 `colours`，1385）→ `setActiveMapColours(id)`（1396）→ `enterEnterGameScene(id)` 直接进关 |
+| 编辑器颜色表 | `1009-1011` | `portalColoursByMap` / `mapColours(mapId)` / `setActiveMapColours(mapId)`；引擎读的是 `activePortalColours`（§8.5） |
+| **导出** | `1814-1834` `exportCustomJson()` | 下载 `maze-dash-custom.json`，结构 `{ version, note, worlds, levels, maps }`，其中 `maps` 按 **mapId** 键。⚠️ **不含 `colours`** —— 导出的关卡会丢掉门的颜色 |
+| **导入** | — | **未实现**：`editorAction`（`1836-1844`）只认 `createWorld / previewWorld / previewLevel / exportJson / createLevel` |
 
 > ⚠️ 上面的「结构建议」（`{version, worlds, levels:[...]}`）与实际落地结构**字段名不同**：
 > 实际存的是"键为 id 的字典"，关卡记录里字段是 `grid / world / levelId / name`。
@@ -364,7 +365,7 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 | **传送门 ≤ 2 个** | 3 个以上会全部连到扫描序最靠前的那个（§2.2），除非自己接管 `getOutPortal` |
 | **每个门都必须用得上** | 没用过的门格值仍是 `2`，过关判定永远为假（§2.3） |
 | **钥匙/锁/砖要留出回踩路线** | 锁和砖被消除后变成 `1` 地板，必须再被压一次才算填满（§2.1 第 3 点） |
-| 可解（能填满所有地板格） | **没有现成的解算器**，见下面的警告 |
+| 可解（能填满所有地板格） | 编辑器的 `solveGrid()` 会给三态判定（§6 末），但**有假阴性/假阳性**；真正确认要在游戏里走一遍 |
 | `sz_solution` 与地图一致 | 它就是提示内容；原包 `mapId 5` 的解法串本身就是错的 |
 
 ### ⚠️ `tools/verify/solver.js` **不是**解算器【源码，读工具源码得出】
@@ -376,10 +377,36 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 | `python tools/apk/pkgcheck.py` | 检查 8 个 package 的编号范围/重叠/矩形 |
 | `python tools/apk/levelcheck.py` | 汇总每个世界的关卡数、地图编号覆盖、用到的字符 |
 
-**两者的前提都是"这一关已经有解法串"**。对一关新画的地图，仓库里**没有**搜索式解算器 ——
-所以编辑器要做"保存前验证可解"，得**新写一个**（状态 = 两个矩阵 + 蛇头位置 + 已用钥匙，
-动作 = 四方向冲刺；注意 §2.3 的"门一次性"和 §2.1 的"锁/砖变地板"会让状态非单调）【推断】。
-在那之前，保存前至少要把上面所有**结构类**检查跑完。
+**两者的前提都是"这一关已经有解法串"**，所以这套工具**证明不了新画的关可解**。
+
+### 编辑器自己带的解算器（phase 2 之后加的，**当时还没提交**）
+
+`web/custom-tab.js` 里已经有 `solveGrid()` / `updateSolvability()`（工作区版本，
+写这份文档时约 `1175-1310` 行）【源码·读工作区未提交版本】：
+
+- 状态 = `(蛇头位置, 已填地板位图)`，动作 = 四方向冲刺，BFS；
+- **三态，不撒谎**：`solvable`（真的搜到一条填满全部地板的走法，并给最短步数）、
+  `unsolvable`（结构性不可能：无主角 / 无地板 / 孤立地板 / 地板分区不连通，或搜索内无解）、
+  `undecided`（超过 **200000** 节点上限，绝不猜）；
+- 保存门禁：`unsolvable` 时**第一次点保存会被拒**（状态栏追加"仍要保存"提示），
+  再点一次才强制保存；`undecided` 不拦。
+- 复核工具：`tools/verify/probe-editor-solver.js` +
+  `docs/screenshots/54-editor-solvable.png`、`55-editor-unsolvable.png`。
+
+**已知局限**【源码 + 推断，**这一段很重要**】：
+
+1. `solverPassable(v)` 只认 `1 / -1 / 2 / 5-8` —— **钥匙 `4`、锁 `-3`、砖 `-4` 都当墙**。
+   → 【推断】任何"必须从钥匙格上走过去"的关卡会被判 `unsolvable`（**假阴性**），
+   但那关在游戏里可能是可解的；
+2. BFS 的目标位图**只统计 `1` 和 `-1`**，而 `checkClearSatge` 要求
+   "没有任何非 `0/-1/-2` 的格子"（§2.1）。
+   → 【推断】含**没用到的传送门/钥匙/砖块/锁**的关卡，可能被判 `solvable`，
+   进游戏却清不了关（**假阳性**）；
+3. 门按"同色配对"处理（`solverPortalMap`），与 §8.2 的运行时规则一致，
+   但**没有实现门的"一次性"**（§2.3）—— 只要路径里用得对，结论通常仍成立，但别把它当证明。
+
+> 结论：**这套三态判定是"辅助"，不是"证明"**。真正要确认一关能过，
+> 仍然要在游戏里走一遍（用 §7 的编辑器闭环或 `alllevels.js` 那种重放方式）。
 
 > 已知原版瑕疵：`mapId 5` 的 `sz_solution = "LURDRDL"` 走不通（第 4 步被自己的身体挡住），
 > 该关本身可解（如 `RDLULD`）。编辑器**不要信任原版解法串**；能确认它的只有
@@ -391,19 +418,22 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 
 | 环节 | 位置 |
 | --- | --- |
-| 入口页（扳手标签，第 6 格） | `web/custom-tab.js` 的 `buildPlaceholderContent(view)` —— 目前放着模式选择（闯关/解锁） |
+| 入口页（扳手标签，第 6 格） | `web/custom-tab.js` 的 `buildPlaceholderContent(view)`；phase 2 起它已经是**编辑器首页**（新建世界 / 新建关卡 / 预览 / 导出 JSON） |
 | 打开这一页 | `MazeDashCustomTab.open()`；取节点 `MazeDashCustomTab.view()` |
+| 进入网格编辑器 | `editorAction('createLevel')` → `openGridEditor()`；句柄 `MazeDashCustomTab.gridEditor`（`grid / cells / colours / save / close`） |
 | 模式选择 | `MazeDashCustomTab.applyMode('progression' \| 'unlocked')`（解锁模式便于逐个调试新关卡） |
 | 刷新选关界面 | `MazeDashCustomTab.refreshStagePages()` |
 | 选关界面如何生成 | `docs/level-select.md` §3（按钮数量 = `conf.stage_level_cfg` 条数，网格列数由 `SV.content` 宽度算出） |
 
-**建议的编辑器分期**（按风险从低到高）：
+**编辑器分期与现状**（按风险从低到高；✅ = 已实现）：
 
-1. **只读浏览**：把 `conf.all_Level[mapId]` 画成网格、点格子显示 `tileType` 与含义 —— 零风险，先确认格式理解正确；
-2. **改单格**：选中图块类型 → 改数组 → 用 `loadLevel` 热重载当前关卡验证；
-3. **新建/保存**：接 §3 的三处写入 + §5 的 localStorage 持久化 + §6 的校验；
-4. **新建世界**：接 §3 的 `conf.worlds/stage_cfg/theme_cfg` + 翻页器；
-5. **导入/导出**：让关卡能离开浏览器。
+| # | 分期 | 现状 |
+| --- | --- | --- |
+| 1 | **只读浏览**：把 `conf.all_Level[mapId]` 画成网格、显示 `tileType` 与含义 | ✅ 网格 + 读数 + 状态栏 |
+| 2 | **改单格**：选图块 → 改数组 → 热重载验证 | ✅ 11 个元素的调色板（§11） |
+| 3 | **新建/保存**：§3 的三处写入 + §5 的持久化 + §6 的校验 | ✅ 保存并试玩闭环；校验见 §6（含已知局限） |
+| 4 | **新建世界**：`conf.worlds/stage_cfg/theme_cfg` + 翻页器 | ✅ 配方已实测（§3 末） |
+| 5 | **导入/导出**：让关卡能离开浏览器 | 导出 ✅ / **导入未实现**（§5） |
 
 ---
 
@@ -416,12 +446,13 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 - **坑**：早期方案用 `20 + 颜色序号`（`21/22/23`）表示彩色门 ——
   **渲染器根本不画门**。`addTileItem` 的分支是 `t == kTileDataPortal(2)`
   （`web/src/project.js:4072`），21/22/23 匹配不到任何分支，格子就只剩一块地板底衬。
-- **正确做法**：格子值**保持 `2`**，颜色存在旁表 `{ "<x>,<y>": 色号 }` 里
-  （`web/custom-tab.js` @HEAD `portalColours` / `activePortalColours`，2213-2223）。
+- **正确做法**：格子值**保持 `2`**，颜色存在旁表里 ——
+  当前实现是**按地图分级**的 `portalColoursByMap[mapId]`，引擎运行时读的是
+  `activePortalColours`（`web/custom-tab.js` @HEAD `1007-1011`、`2406-2416`；详见 §8.5）。
 
 ### 8.2 配对：在**实例级**包装 `getOutPortal`【源码】
 
-`web/custom-tab.js` @HEAD 的 `patchPortalPairing()`（2294-2318）在 `game_map` 组件实例上
+`web/custom-tab.js` @HEAD 的 `patchPortalPairing()`（`2487-2511`）在 `game_map` 组件实例上
 覆盖 `getOutPortal`，规则是：**同色才配对；没有同色伙伴就返回自身坐标（原地不动）**。
 这是"3 个以上门不再全连到一起"的实现方式（对照 §2.2 的原版行为）。
 
@@ -437,8 +468,10 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 - 引擎**自己**就把门格涂成 `149,50,255`、把子节点 `Portal` 涂成 `178,84,255`
   （来自 `theme_cfg` 的 `list_portal_tile` / `list_portal`，`web/src/project.js:4072-4079`）；
 - 屏幕上那条彩色带**就是这个 tile 自身的颜色** —— 不是叠加的标记精灵、也不是一整条 run 精灵。
-  之前"叠标记 / 染子节点 / 隐藏子节点都看不出变化"的原因就在这里；
-- 所以上色的正确做法是：改**该格 `spaceTile` 的 `color`**（以及它的 `Portal` 子节点）。
+  之前"叠标记 / 染子节点 / 隐藏子节点都看不出变化"的原因就在这里
+  （`web/custom-tab.js` @HEAD `2447-2451` 的注释记了同一结论）；
+- 所以上色的正确做法是：改**该格 `spaceTile` 的 `color`**（以及它的 `Portal` 子节点）——
+  就是 `paintPortalColours()` 里 `tiles[i].color = PALETTE[col]`（@HEAD `2468`）那两行。
 - **找格子的办法**：`tile_item_layer` 下每个道具格恰好一个 `spaceTile`，按**网格扫描顺序**排列
   （见 §9），索引与"有道具的格子列表"逐项对齐；门格的子节点**名叫 `Portal`**。
   ⚠️ **没有任何帧名含 `portal`**（实测：`game_map` 下命中 `/portal/i` 的精灵数为 **0**），
@@ -453,12 +486,27 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 | 3 | 蓝 `cc.color(64,140,240)` | 实测门色 `64 140 240` |
 | 4 | 紫 `cc.color(168,88,224)` | 实测门色 `168 88 224` |
 
-### 8.5 待办：旁表的键要按 **mapId** 归一
+### 8.5 旁表的键：**已按 mapId 分级**（phase 2 / `eb8f8b5` 落地）
 
-当前实现里，运行期实际用的是**一张"当前关卡"的平表**（键就是 `"x,y"`），
-原因是 `game_map` 组件**没有稳定暴露 `mapId`**，按 mapId 分级会取不到键、从而静默退化
-成"和第一个门配对"（`web/custom-tab.js` @HEAD 2217-2219 的注释）【源码注释】。
-**编辑器应当把颜色表和关卡数据存在一起**，进关时按 `mapId` 装载对应那张表【推断·待实现】。
+phase 1 曾经踩过的坑是"按 mapId 分级取不到键"（`game_map` 组件不暴露 mapId），
+phase 2 的解法是**不读组件、从外面塞**【源码，`web/custom-tab.js` @HEAD】：
+
+| 环节 | 行号 | 做什么 |
+| --- | --- | --- |
+| 内存表 | `1009-1011` | `portalColoursByMap[mapId]`；`mapColours(mapId)`；`setActiveMapColours(mapId)` 把引擎真正读的 `activePortalColours` 指向该表 |
+| 存 | `1385` | 保存关卡时把编辑器的颜色表写进 localStorage 记录：`{ grid, colours, world, levelId, name }` |
+| 装 | `1395-1396` | 保存并试玩时 `portalColoursByMap[id] = {...}` + `setActiveMapColours(id)` |
+| 启动恢复 | `1345` | `injectSavedLevels()` 里 `if (rec.colours) portalColoursByMap[id] = rec.colours;` |
+
+⚠️ **仍然存在的缝合口**【源码 + 推断，**未实测**】：
+`setActiveMapColours()` 在整个文件里**只有保存并试玩那一刻被调用**（`1396`）；
+`injectSavedLevels()` 只往 `portalColoursByMap` 里填，**不设置 active 表**。
+所以**下一次启动、从选关界面直接进入已保存关卡时**，
+`activePortalColours` 可能还是空表 → 彩门退回"和第一个门配对"的行为。
+补法很明确：**在进关路径上按 `mapId` 调一次 `setActiveMapColours(mapId)`**。
+这是接手的人应该**第一个去测**的用例（"重启 → 选关页 → 进自定义关 → 门颜色对不对"）。
+
+另外：**导出 JSON 不含 `colours`**（§5 的表），所以经导出/导入往返的关卡会丢颜色，改导入时一并补上。
 
 ---
 
@@ -523,9 +571,11 @@ local.y = 80 * ((行数-1)/2 - y)      // y 向下
 
 ---
 
-## 11. 编辑器元素调色板（建议，本轮由另一个代理实现在 `web/custom-tab.js`）
+## 11. 编辑器元素调色板（phase 2 / `eb8f8b5` 已实现；这里是规格与对照）
 
-**本节只写文档，不动代码。** 建议按下面这张表出按钮（一行一个工具，值直接写进 `grid[y][x]`）：
+**本节只写文档，不动代码。** 下面这张表是"工具 → 写入值 → 用哪个主题槽"的对照，
+实现落在 `web/custom-tab.js` 的 `TOOLS` / `editorTool` / `editorColours` / `applyToolToCell`
+（@HEAD `1012-1081`）【源码】：
 
 | 工具 | 写入值 | 颜色来源（主题槽） | 编辑器要提醒用户的事 |
 | --- | --- | --- | --- |
@@ -539,7 +589,17 @@ local.y = 80 * ((行数-1)/2 - y)      // y 向下
 | 传送门 | `2` + 旁表颜色 | `list_portal` / `list_portal_tile` | 原版一关只能一对门；彩色门要配旁表（§8）；**每个门都必须被用到** |
 | （不提供） | `-2` / `1001-1004` | — | 运行期专用，调色板里不该出现 |
 
-**传送门至少要给 4 个颜色（紫 / 红 / 蓝 / 绿）**，色号与颜色值见 §8.4。
+实现细节（方便接手时对账）【源码，@HEAD】：
+
+- `TOOLS`（`1012-1024`）共 **11 个工具**：`floor / wall / hero / brick / key / lock / up / right / down / left / portal`；
+- `PORTAL_PALETTE`（`1007`）**4 色**，`PORTAL_COLOUR_ORDER = [4, 1, 3, 2]`（紫 / 红 / 蓝 / 绿），
+  默认选中的是 **4 号紫**（`editorTool.portalColour = 4`，`1025`）；
+- 颜色**只在工具是传送门时**被记录：`applyToolToCell()` 里
+  `if (v === 2) editorColours[key] = editorTool.portalColour; else delete editorColours[key];`（`1070`）
+  —— 也就是说**改掉门格会把该格的颜色一起删掉**，不会留下脏数据；
+- 每笔操作同时写两处：`cell.__value`（绘制用）与 `ed.grid[gy][gx]`（保存路径读的），
+  漏掉后者会"画得对、存出来是空矩阵"（`1074-1079` 的注释就是记这件事）；
+- 保存时颜色随关卡一起落盘（§5 的 `colours` 字段）。
 
 ---
 
@@ -557,7 +617,12 @@ local.y = 80 * ((行数-1)/2 - y)      // y 向下
 5. 【推断】未识别字符"运行时等于一堵墙"（§2 的注意事项）—— 由 `switch` 无 `default` +
    `getStepArray` 无匹配分支推出，**没有实测**；
 6. `getRandomInRange(1,4)` 是否含 4 未读实现（不影响"背景随机"这个结论）；
-7. 编辑器元素调色板的**具体交互形态**（按钮布局、颜色选择器）属于产品决策，不在本文范围。
+7. 编辑器元素调色板的**具体交互形态**（按钮布局、颜色选择器）属于产品决策，不在本文范围；
+8. 【推断】**重启后从选关界面直接进入已保存关卡时，彩色门的颜色表是否装好**（§8.5 的缝合口）。
+   `setActiveMapColours()` 只在"保存并试玩"时调用，`injectSavedLevels()` 不设置 active 表 ——
+   这一条**没有实测**，但它决定彩门在正式游玩路径上是否生效，**建议第一个测它**；
+9. 【源码 + 推断】编辑器 `solveGrid()` 的**假阴性/假阳性**（§6 末的"已知局限"）：
+   结论来自读工作区代码，**没有跑对照用例**（例如"放一个必须踩过去的钥匙"看它报什么）。
 
 详细的证据、源码片段、探针产物路径与复核命令，见
 **[level-format-research.md](level-format-research.md)**。

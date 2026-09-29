@@ -28,11 +28,18 @@
 
 | 项 | 值 |
 | --- | --- |
-| git HEAD | `1b1162c`（*level editor phase 1: 20x20 grid window, save-and-play loop*） |
-| 移植源码 | `web/src/project.js`（5160 行）、`web/src/assets/script/plug/tileType.js`（30 行）、`web/src/assets/script/plug/gameconf.js`（127 行） |
+| git HEAD | `eb8f8b5`（*editor phase 2: element palette, per-map portal colours, and the layout the user asked for*）；前一提交 `1b1162c` 是编辑器第一阶段 |
+| 移植源码 | `web/src/project.js`（5160 行）、`web/src/assets/script/plug/tileType.js`（30 行）、`web/src/assets/script/plug/gameconf.js`（127 行）—— 这三份**没有**在 phase 2 里改动 |
 | 反编译参考 | `_work/analysis/project.pretty.js`（6025 行，代码与 `web/src/project.js` 同源、仅排版不同） |
-| 移植层 | `web/custom-tab.js` @ `1b1162c` = 2519 行。**注意：这份文件正被另一个代理并发修改**，工作区版本会漂移；本文对它的引用以 **HEAD 版行号**为准，并同时给出函数名（行号变了也能找到） |
+| 移植层 | `web/custom-tab.js` @ `eb8f8b5` = **2713 行**（phase 1 时是 2519 行） |
 | 游戏数据 | `data/package1..8.txt`（290 关）、`data/levels.json`（290 条） |
+
+**关于 `web/custom-tab.js` 的行号**：这份文件每轮都在长，行号会漂。
+本文对它的引用分两种：
+
+- 标 `@HEAD` 的行号 = **phase 2 提交后的当前值**（`eb8f8b5`，2026-09-29 抓到）；
+- 同时一律给出**函数名/变量名**，行号对不上时按名字搜。
+- 该文件当时正被**另一个代理并发修改**，工作区版本可能比提交更新。
 
 复现/复核用到的探针与产物：
 
@@ -43,6 +50,7 @@
 | `tools/verify/probe-portal-paint.js` | `tools/verify/out/portal-paint.json`、`docs/screenshots/50-portal-colours-fixed.png` | 量上色后的门色、`/portal/i` 帧名命中数 |
 | `tools/verify/solver.js` / `alllevels.js` | 控制台输出 + `tools/verify/shots/` | 过关判定的端到端验证 |
 | `tools/verify/probe-map-data.js`、`probe-grid-editor.js` | 控制台 `stats` | 运行期矩阵、编辑器保存闭环 |
+| `tools/verify/probe-editor-tools.js` | `docs/screenshots/51-editor-palette.png`、`52-editor-drawn-tools.png`、`53-editor-tools-played.png` | phase 2 的元素调色板：工具按钮数、色板数、标签栏遮挡、画完能进关（`eb8f8b5`） |
 
 ---
 
@@ -298,47 +306,66 @@ window.CloneJson = function(a) { var i = JSON.stringify(a); return JSON.parse(i)
 
 ### 6.1 颜色放旁表，**不能**放进格子值
 
-【源码】`web/custom-tab.js:2213-2215`（HEAD）：
+【源码】`web/custom-tab.js` @HEAD：
 
 ```js
-/* Portal colours live in a side table rather than in the tile value: the renderer only draws a
-   portal when the cell is exactly 2, so coloured tiles were invisible. Keyed by "<x>,<y>". */
-var portalColours = {};
+1007: var PORTAL_PALETTE = { 1: cc.color(226, 64, 72), 2: cc.color(64, 200, 96), 3: cc.color(64, 140, 240), 4: cc.color(168, 88, 224) };
+1009: var portalColoursByMap = {};
+1010: function mapColours(mapId) { if (!portalColoursByMap[mapId]) { portalColoursByMap[mapId] = {}; } return portalColoursByMap[mapId]; }
+1011: function setActiveMapColours(mapId) { activePortalColours = mapColours(mapId); stats.activeColourMap = mapId; return activePortalColours; }
+```
+
+```js
+2406: /* Portal colours live in a side table rather than in the tile value: the renderer only draws a
+2407:    portal when the cell is exactly 2, so coloured tiles were invisible. Keyed by "<x>,<y>". */
+2408: var portalColours = {};
 ```
 
 **这是踩过的坑**：早期用 `20 + 颜色序号`（21/22/23）编码颜色，
 结果**渲染器根本不画门**（`addTileItem` 的 `else if (t == kTileDataPortal)` 分支匹配不到 21/22/23，
 `project.js:4072`）【源码 + 实测（截图 `docs/screenshots/49-grid-editor-played.png` 与 50 系列的对比）】。
 
-> 遗留噪声：`web/custom-tab.js` @HEAD 2364 的注释里还写着"红 21 / 绿 22 / 蓝 23"，
-> 那是**旧方案的注释**；同一段下面的 `TEST_GRID` 里门已经是 `2`【源码，注释过期】。
+> 遗留噪声（**两处**，读代码时别被带跑）：
+> 1. `web/custom-tab.js` @HEAD 2405 的注释还写着"颜色编码：2 = 默认，20+c = 第 c 种颜色" ——
+>    那是**旧方案**的注释，当前实现里门值恒为 `2`；
+> 2. 同文件 2426 的注释说"a coloured square is added on top of it"（叠一个色块）——
+>    也与当前实现不符：真正生效的是 `paintPortalColours` 里
+>    **`tiles[i].color = PALETTE[col]`（2468 行）**，即染 tile 自己（§6.4）。
+> 3. 同文件 2559 附近的 `TEST_GRID` 上方注释仍写"红 21 / 绿 22 / 蓝 23"，同样是旧注释。
 
 ### 6.2 配对改成实例级包装
 
-【源码】`web/custom-tab.js:2294-2318`（HEAD，`patchPortalPairing`）：
+【源码】`web/custom-tab.js:2487-2511`（@HEAD，`patchPortalPairing`）：
 在 `game_map` 组件实例上**覆盖** `getOutPortal`：只接受 `v === 2` 的格子；
 若本次调用有颜色（`want > 0`）则要求对方颜色相同；找不到同色伙伴就**返回自身坐标**（= 不传送）。
 这是"同一关里多组同色门"能成立的原因。
 
-### 6.3 旁表的键：`"x,y"` vs `mapId`
+### 6.3 旁表的键：**已改为按 mapId**（phase 2 落地）
 
-【源码】`web/custom-tab.js:2215-2223`（HEAD）：
+phase 1 的注释曾写道按 mapId 分级行不通（`web/custom-tab.js` @HEAD 2410-2412：
 
-```js
-var portalColours = {};        // 设计上想按 mapId 分级：portalColours[mapId] = { "x,y": 色号 }
-var activePortalColours = {};  // 实际运行时用的那张表：直接就是 { "x,y": 色号 }
-function cellColour(x, y) { return activePortalColours[x + ',' + y] || 0; }
+```
+/* One table for the level currently loaded. Keying it by mapId did not work - the component
+   does not expose its map id - and a missing key made every portal look uncoloured, which
+   silently fell back to "pair with the first portal". The editor will key this properly. */
 ```
 
-注释里写明了原因（原文 `2217-2219`）：
-"Keying it by mapId did not work - the component does not expose its map id - and a missing key
-made every portal look uncoloured, which silently fell back to 'pair with the first portal'.
-The editor will key this properly."
+phase 2 用"**从外面塞**，而不是从组件里读"绕过了这个问题【源码，@HEAD】：
 
-即：`game_map` 组件**没有暴露 `mapId`**（有 `this.mapId` 但那是在 `loadLevel` 里赋的，
-探针取到的时机不一定对），所以当前实现退化成"当前关卡一张表"。
-【推断·给编辑器】编辑器应当把颜色表**和关卡数据一起存**（按 levelId/mapId 键），
-在进入关卡时（`loadLevel` 前后）把对应那张表装进 `activePortalColours`。
+| 环节 | 行号 | 做什么 |
+| --- | --- | --- |
+| 存 | `1385` | 保存关卡时把编辑器的颜色表写进 localStorage 记录：`{ grid, colours, world, levelId, name }` |
+| 内存表 | `1009-1011` | `portalColoursByMap[mapId]`；`mapColours(mapId)` 取（不存在就建） |
+| 装 | `1395-1396` | `portalColoursByMap[id] = {...}` 然后 **`setActiveMapColours(id)`** —— 引擎读的就是 `activePortalColours` |
+| 启动恢复 | `1345` | `injectSavedLevels()` 里 `if (rec.colours) portalColoursByMap[id] = rec.colours;` |
+
+⚠️ **仍然存在的缝合口**【源码 + 推断】：
+`setActiveMapColours()` 在整个文件里**只有保存并试玩那一刻被调用（1396）**；
+`injectSavedLevels()`（1338-1356）只往 `portalColoursByMap` 里填（1345），**不会**设置 active 表。
+所以【推断】**下一次启动、从选关界面直接进入一个已保存关卡时**，
+`activePortalColours` 可能还是空表或别的关的表 → 门会退回成"和第一个门配对"的行为。
+编辑器补这一刀的位置很明确：**在进关（`loadLevel` / `enterEnterGameScene`）时按 `mapId` 调
+`setActiveMapColours(mapId)`**。这一条**没有实测**（我没跑"重启后从选关页进入"的用例）。
 
 ### 6.4 颜色是**染门格自己**，不是叠标记、也不是一整条图
 
@@ -353,11 +380,14 @@ The editor will key this properly."
 - **门格自身的颜色是 `149,50,255`**（这是引擎自己上的 `list_portal_tile`）；
 - 其**子节点名叫 `Portal`**，颜色 `178,84,255`（引擎上的 `list_portal`，见 `project.js:4072-4079`）；
 - 颜色**不是**叠加的标记精灵，也**不是**一整条 run 精灵 —— 之前"叠标记/染子节点/隐藏子节点
-  都看不出变化"的原因就在这里（`web/custom-tab.js` @HEAD 2254-2258 的注释记了同一结论）【源码注释 + 实测】；
-- 所以正确的上色方式是：把**该格 `spaceTile` 自己的 `color`**（以及它的 `Portal` 子节点）改掉，
+  都看不出变化"的原因就在这里（`web/custom-tab.js` @HEAD 2447-2451 的注释记了同一结论，
+  实测数据见 `docs/screenshots/50-portal-markers.json`）【源码注释 + 实测】；
+- 所以正确的上色方式是：把**该格 `spaceTile` 自己的 `color`**（以及它的 `Portal` 子节点）改掉 ——
+  这就是 `paintPortalColours()`（@HEAD 2468-2473）在做的事，
   实测产物见 `tools/verify/out/portal-paint.json` / `docs/screenshots/50-portal-colours-fixed.png`。
 
-实测的调色板（`web/custom-tab.js` @HEAD 2269 的 `PALETTE`，与 `portal-paint.json` 里量到的门色一致）【源码 + 实测】：
+实测的调色板（`web/custom-tab.js` @HEAD **1007** 的 `PORTAL_PALETTE` 与 **2462** 的 `PALETTE`，
+两者数值相同；后者与 `portal-paint.json` 里量到的门色一致）【源码 + 实测】：
 
 | 色号 | 定义 | 实测门格颜色 |
 | --- | --- | --- |
@@ -393,7 +423,7 @@ The editor will key this properly."
 名字全是 `spaceTile`；`portal-markers.json` 给每个节点带上了 `index`：
 门的 index 是 **3..8**（前 3 个 index 属于那 3 个蛇头），
 格子顺序是 `[7,1] [8,1] [9,1] [1,2] [2,2] [3,2]` —— **严格的行优先扫描顺序**，
-与 `itemCellList()`（`web/custom-tab.js` @HEAD 2234-2248）算出来的格子列表**逐项对齐**。
+与 `itemCellList()`（`web/custom-tab.js` @HEAD 2427-2441）算出来的格子列表**逐项对齐**。
 
 ### 7.3 间距 80px 与坐标公式【源码 + 实测】
 
@@ -447,16 +477,14 @@ local.y = 80*rows/2 - 80*y - 40 = 80 * ((rows-1)/2 - y)
 
 ```js
 3076: showVignettte: function() {
-3077:   var e = cc.find("Content", this.vignette),
-3078:       t = Math.floor(getRandomInRange(1, 4));
-3079:   for (var i in e.children) {
-3080:     var n = e.children[i];
-3081:     n.removeAllChildren(!0);
-3082:     if (n.name != "vignette" + t) {
-3083:       var a = cc.instantiate(cc.find("vignettes/stage" + this.worldId + "_bg1", this.vignette)),
-3084:           o = a.children.length,
-3085:           c = Math.floor(getRandomInRange(1, o));
-3086:       for (var l in a.children) a.children[l].active = l == c - 1;
+3077: var e = cc.find("Content", this.vignette), t = Math.floor(getRandomInRange(1, 4));
+3078: for (var i in e.children) {
+3079: var n = e.children[i];
+3080: n.removeAllChildren(!0);
+3081: if (n.name != "vignette" + t) {
+3082: var a = cc.instantiate(cc.find("vignettes/stage" + this.worldId + "_bg1", this.vignette)), o = a.children.length, c = Math.floor(getRandomInRange(1, o));
+3083: for (var l in a.children) a.children[l].active = l == c - 1;
+3084: a.parent = n;
 ```
 
 结论：
@@ -486,16 +514,17 @@ local.y = 80*rows/2 - 80*y - 40 = 80 * ((rows-1)/2 - y)
 
 ## 9. 持久化现状（`web/custom-tab.js` @HEAD）
 
-| 项 | 位置 | 内容 |
+| 项 | 位置（@HEAD `eb8f8b5`） | 内容 |
 | --- | --- | --- |
-| 自定义关卡 | `1149` | `localStorage['maze_dash_custom_levels']` = `{ "<levelId>": { grid, world, levelId, name } }` |
-| 自定义世界 | `1772` | `localStorage['maze_dash_custom_worlds']` = `{ "<worldId>": { name, base } }` |
-| 关卡 id 分配 | `1160-1164` | 从 **10000** 起，跳过 `level_cfg` / `all_Level` 里已占用的号 |
-| 世界 id 分配 | `1783-1787` | 从 **100** 起，跳过 `stage_cfg` 里已占用的号 |
-| 启动注入 | `1166-1183` `injectSavedLevels()` | 把 localStorage 的记录写回 `all_Level / level_cfg / stage_level_cfg` |
-| 保存并试玩 | `1186-1288` `saveGridAndPlay()` | 写三处 conf 表 + 持久化 + `enterEnterGameScene(id)` |
-| 导出 | `1621-1641` `exportCustomJson()` | 下载 `maze-dash-custom.json`，结构 `{version, note, worlds, levels, maps}`（`maps` 按 mapId 键） |
-| **导入** | — | **不存在**：`editorAction`（`1643-1651`）只处理 `createWorld / previewWorld / previewLevel / exportJson / createLevel` |
+| 自定义关卡 | `1321` | `localStorage['maze_dash_custom_levels']` = `{ "<levelId>": { grid, colours, world, levelId, name } }`（`colours` = `{ "x,y": 色号 }`，phase 2 加的） |
+| 自定义世界 | `1965` | `localStorage['maze_dash_custom_worlds']` = `{ "<worldId>": { name, base } }` |
+| 关卡 id 分配 | `nextCustomLevelId()` | 从 **10000** 起，跳过 `level_cfg` / `all_Level` 里已占用的号 |
+| 世界 id 分配 | `nextCustomWorldId()` | 从 **100** 起，跳过 `stage_cfg` 里已占用的号 |
+| 启动注入 | `1338-1356` `injectSavedLevels()` | 把 localStorage 的记录写回 `all_Level / level_cfg / stage_level_cfg`，并把 `colours` 灌进 `portalColoursByMap[id]`（1345） |
+| 保存并试玩 | `1359-1400` `saveGridAndPlay()` | 写三处 conf 表 + 持久化 + `setActiveMapColours(id)` + `enterEnterGameScene(id)` |
+| 编辑器颜色表 | `1009-1011` | `portalColoursByMap` / `mapColours()` / `setActiveMapColours()`（引擎读的是 `activePortalColours`） |
+| 导出 | `1814-1834` `exportCustomJson()` | 下载 `maze-dash-custom.json`，结构 `{version, note, worlds, levels, maps}`（`maps` 按 mapId 键）。⚠️ **导出里不含 `colours`**（只导了 `worlds/levels/maps`）—— 彩色门信息会丢 |
+| **导入** | — | **不存在**：`editorAction`（`1836-1844`）只处理 `createWorld / previewWorld / previewLevel / exportJson / createLevel` |
 
 【源码】注意当前实现里 **`mapId === id`**（`saveGridAndPlay` 里 `conf.all_Level[id] = copy`、
 `entry.mapId = id`）。文档里的"三处写入"没错，但编辑器接自己的存储层时要明确这一点。
@@ -515,14 +544,39 @@ local.y = 80*rows/2 - 80*y - 40 = 80 * ((rows-1)/2 - y)
 | `tools/verify/solver.js` | puppeteer 打开真实游戏，读**当前关自己的 `sz_solution`**，用真实滑动逐步重放，并用 `checkClearSatge` 的 hook 判定是否过关 | 文件头 `1-9` 行注释 + `146-158` 行装 hook |
 | `tools/verify/alllevels.js` | 不滑动，直接驱动真实 `game_map`：重建全部 290 张棋盘、灌入各自 `sz_solution`、instant 模式重放 `moveSanke()`，逐关问 `checkClearSatge()`；预期 **289/290**（mapId 5 的原版解法串本身不完整） | 文件头 `1-15` 行 + `tools/verify/README.md:22,38` |
 
-**两者的前提都是"这一关已经有解法串"**【源码，读工具源码得出】。
-对一关**新画的**地图，仓库里**没有**通用的搜索式解算器【源码·全目录检索】——
-所以：
+**两者的前提都是"这一关已经有解法串"**【源码，读工具源码得出】——
+对一关**新画的**地图，这套工具**证明不了可解**。
 
-- 想做"保存前校验可解"，需要**新写**一个离线求解器（状态 = 两个矩阵 + 蛇头位置 + 已用钥匙，
-  动作 = 四方向冲刺），或者退一步只做**结构校验**（§6 清单里除"可解"之外的项）；
-- 【推断】搜索空间不大：官方最大关卡也就几十格，BFS + 状态去重应该够用，
-  但要小心 §5 第 5 点的"门穿一次变墙"和 §4.1 的"锁变地板"这两个会让状态非单调的规则。
+### 10.1 但编辑器后来自己加了一个解算器（工作区版本，未提交）
+
+`web/custom-tab.js` 工作区版本里有 `solveGrid()` / `updateSolvability()`
+（写这份文档时约 `1175-1310` 行；提交后行号会变，按函数名找）【源码·读工作区未提交版本】：
+
+| 项 | 值 |
+| --- | --- |
+| 状态 | `(蛇头位置, 已填地板位图字符串)` |
+| 动作 | 四方向冲刺（`while (guard++ < 400)` 逐格推进，箭头强制转向、门按同色配对） |
+| 算法 | BFS + `visited` 去重；`SOLVER_NODE_CAP = 200000` |
+| 三态 | `solvable`（搜到填满全部地板的走法，给最短步数）/ `unsolvable` / `undecided`（超节点上限，**绝不猜**） |
+| 结构性判负 | `noHero` / `noFloor` / `isolatedFloor` / `disconnectedFloor`（后两个用可通行性做连通性检查） |
+| 保存门禁 | `saveGridAndPlay()` 里 `unsolvable && !stats.editorForceSave` → 拒绝并提示，再点一次才强制保存；`undecided` 不拦 |
+| 探针/截图 | `tools/verify/probe-editor-solver.js`、`docs/screenshots/54-editor-solvable.png`、`55-editor-unsolvable.png` |
+
+**它不能替代真实验证**（这一条我读代码得出，**没有跑对照用例**）：
+
+1. `solverPassable(v)` = `v === 1 || v === -1 || v === 2 || (v >= 5 && v <= 8)`
+   —— **钥匙 `4`、锁 `-3`、砖块 `-4` 都被当成墙**。任何"必须从钥匙格上走过去"的关卡
+   会被判 `unsolvable`【推断·假阴性】；
+2. BFS 的目标位图只由 `grid[y][x] === 1 || === -1` 的格子构成（`floors`），
+   而 `checkClearSatge` 要求**没有任何非 `0/-1/-2` 的格子**。
+   所以含**没用到的传送门/钥匙/砖块/锁**的关卡可能被判 `solvable`，进游戏却清不了关【推断·假阳性】；
+3. `solverPortalMap()` 复刻了"同色配对"，但**没有实现门的"一次性"**（§5 第 5 点）；
+4. 因此这三个状态是**辅助**：`unsolvable` 不一定是真的无解，`solvable` 也不一定真能过关。
+   真正确认只能靠"在游戏里走一遍"（编辑器的一键试玩 / `alllevels.js` 式重放）。
+
+【推断】如果将来要把这个解算器变成可信的：把 `floors` 换成"**所有需要消失的格子**"
+（`1/-1/4/2/-4/-3` 里当前还存在的），并把 `solverPassable` 补上 `4`（钥匙可走）
+与"门用过即消失"，再让 `-4/-3` 按"可破坏/解锁后才可通行"展开成两条分支。
 
 ---
 
@@ -534,11 +588,20 @@ local.y = 80*rows/2 - 80*y - 40 = 80 * ((rows-1)/2 - y)
    `checkArrow` 的返回式反推的，**没有单独实测**过"贴着出口格反向冲"的行为【推断】；
 3. **锁变成地板后是否真的需要再压一次**：推导链完整（§4.1），但**没有跑一关专门验证**
    "吃完钥匙后立刻过关 vs 必须回踩锁格"【推断】；
-4. **`game_map` 组件上的 `mapId` 在关卡加载后能否稳定读到**：`custom-tab.js` 的注释说读不到，
-   我只确认了 `loadLevel(e, t, i)` 会把 `t` 写进 `this.mapId`（`project.js:3923`），
-   **没有验证读取时机**的问题到底出在哪【部分源码、部分推断】；
+4. **`game_map` 组件上的 `mapId` 读取时机**：phase 2 用"不读组件、从外面
+   `setActiveMapColours(mapId)` 塞"绕开了（`custom-tab.js:1011/1396`）【源码】；
+   但**是否所有进关路径都会塞**没有被验证 —— 见下面第 7 条；
 5. **`getRandomInRange(1,4)` 的语义**（是否含 4）我没读它的实现，不影响"背景随机"这个结论【推断】；
-6. 编辑器元素调色板的**具体交互设计**（面板块数、颜色选择器形态）属于产品决策，不在本文范围。
+6. 编辑器元素调色板的**具体交互设计**（面板块数、颜色选择器形态）属于产品决策，不在本文范围；
+7. 【推断】**"重启后从选关界面直接进入已保存关卡"时颜色表是否装好**（§6.3 的缝合口）：
+   `setActiveMapColours()` 只在保存并试玩时调用（1396），`injectSavedLevels()` 不设置 active 表。
+   这一条**没有实测**（没跑"重启 → 选关页 → 进自定义关"的用例），
+   但它决定"彩门在正式游玩路径上是否生效"，**建议接手的人第一个就测它**；
+8. 【推断】§10.1 里编辑器解算器的**假阴性/假阳性**：结论来自读代码，
+   **没有跑对照用例**（例如"放一个必须踩过去的钥匙格，看它报 solvable 还是 unsolvable"）；
+9. **`web/custom-tab.js` 的行号**：这份文件每次会话都在长（phase 1 = 2519 行、
+   `eb8f8b5` = 2713 行、写到这里时工作区已经 **2884** 行）。本文的行号只在标注的提交上成立，
+   **一律以函数名/变量名为准**。
 
 ---
 
@@ -555,6 +618,8 @@ local.y = 80*rows/2 - 80*y - 40 = 80 * ((rows-1)/2 - y)
 NODE_PATH=E:\maze_dash\_work\test\node_modules node tools/verify/probe-portal-geometry.js
 NODE_PATH=E:\maze_dash\_work\test\node_modules node tools/verify/probe-portal-markers.js
 NODE_PATH=E:\maze_dash\_work\test\node_modules node tools/verify/probe-portal-paint.js
+node tools/verify/probe-editor-tools.js    # phase 2 调色板（截图 51/52/53）
+node tools/verify/probe-editor-solver.js   # 编辑器解算器的三态（截图 54/55）—— 见 §10.1 的局限
 node tools/verify/alllevels.js          # 289/290，看 mapId 5 的失败是否仍是那条已知瑕疵
 
 # 数据层
