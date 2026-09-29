@@ -336,8 +336,24 @@
         })(scene, '');
         return hidden;
     }
+    /* Doing a full-scene walk ten times a second is invisible on a fast machine and can be felt
+       on a slow one. Walk only when the scene or the viewport actually changed (plus a slow
+       safety pass), and count the walks so the reduction is measurable. */
     function fixCjkLabels() {
         var scene = cc.director.getScene();
+        var stamp = '';
+        try {
+            var vs = cc.view.getVisibleSize();
+            stamp = (scene ? scene.name : '') + '|' + Math.round(vs.width) + 'x' + Math.round(vs.height) + '|' + (scene ? scene.children.length : 0);
+        } catch (e) { stamp = 'x'; }
+        var now = Date.now();
+        if (window.__mazeDashStampClean === stamp && (now - (window.__mazeDashStampAt || 0)) < 5000) {
+            stats.cjkSkips = (stats.cjkSkips || 0) + 1;
+            return 0;
+        }
+        window.__mazeDashStampClean = stamp;
+        window.__mazeDashStampAt = now;
+        stats.cjkWalks = (stats.cjkWalks || 0) + 1;
         if (!scene) { return 0; }
         var fixed = 0;
         (function walk(n) {

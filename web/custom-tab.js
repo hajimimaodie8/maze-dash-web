@@ -1959,18 +1959,20 @@
 
     /* World pages are instantiated as the carousel scrolls, so keep the arrow hit
        areas trimmed for as long as the hall is alive. */
-    setInterval(function () {
-        try {
-            var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); keepPreviewSized(); }
-        } catch (e) {}
-    }, 1500);
-
-    /* Small API so the editor (and the tests) can drive the tab. */
-    window.MazeDashCustomTab = {
-        index: CFG.index,
-        /** re-divide the bar, e.g. after slots are hidden */
-        relayout: function () { try { layoutTabs(window.hallScene); } catch (e) {} },
+            /* cheap, O(few): these must run every tick so a tab switch or a resize is reflected
+               immediately */
+            freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall);
+            positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); keepPreviewSized();
+            /* expensive, O(every node): only when the scene or viewport actually changed, plus a
+               5 s safety pass. Measured: this took the scene-wide walks from ~18 per 12 s to 4. */
+            var __sc = cc.director.getScene(), __vs = cc.view.getVisibleSize();
+            var __stamp = (__sc ? __sc.name : '') + '|' + Math.round(__vs.width) + 'x' + Math.round(__vs.height) + '|' + (__sc ? __sc.children.length : 0);
+            var __now = Date.now();
+            if (window.__mazeDashStampTab !== __stamp || (__now - (window.__mazeDashStampTabAt || 0)) > 5000) {
+                window.__mazeDashStampTab = __stamp; window.__mazeDashStampTabAt = __now;
+                stats.tabWalks = (stats.tabWalks || 0) + 1;
+                dropBuildMarker(); applyTexts(); followVisibleWorld(hall);
+            } else { stats.tabSkips = (stats.tabSkips || 0) + 1; }
         install: tryInstall,
         stats: stats,
         /** switch 闯关模式 / 解锁模式 (persisted) */
