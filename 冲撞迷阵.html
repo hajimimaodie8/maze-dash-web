@@ -88805,6 +88805,7 @@ cc._RF.pop();
             var entry = { id: TEST_LEVEL, wordId: TEST_WORLD, levelId: 1, mapId: TEST_MAP, sz_solution: '' };
             conf.level_cfg[TEST_LEVEL] = entry;
             conf.stage_level_cfg[TEST_WORLD][String(TEST_LEVEL)] = entry;
+            conf.stage_level_cfg[TEST_WORLD][String(entry.levelId)] = entry;
             /* the spec layout: left room portals on row 2 (x 1,2,3), right room portals on row 1 (x 7,8,9) */
             portalColoursByMap[TEST_MAP] = { '1,2': 4, '2,2': 1, '3,2': 3, '7,1': 4, '8,1': 1, '9,1': 3 };
             activePortalColours = portalColoursByMap[TEST_MAP];
