@@ -86994,6 +86994,7 @@ cc._RF.pop();
             animateIn(page);
         });
 
+        root.__show = show;   // let the keyboard drive the same snapping
         if (pages.length) { show(0, false); }
         /* the game's own entrance idiom: fade in, and ease the content up */
         root.opacity = 0;
@@ -87600,6 +87601,99 @@ cc._RF.pop();
             if (Math.abs(back.x - bx) > 1 || Math.abs(back.y - by) > 1) { back.x = bx; back.y = by; }
         });
     }
+    /* ==================== 键盘映射 ====================
+       In menus: A / D and the left / right arrows turn pages (the pager's own API).
+       In a level: W A S D and the four arrows move, delivered as a synthetic swipe on the
+       canvas - the game's own movement is drag-driven, so this needs no internal API and
+       cannot break if the game's internals change. */
+    var KEY_DIR = {
+        KeyW: 'up', ArrowUp: 'up',
+        KeyS: 'down', ArrowDown: 'down',
+        KeyA: 'left', ArrowLeft: 'left',
+        KeyD: 'right', ArrowRight: 'right',
+    };
+
+    function sceneName() {
+        try { return cc.director.getScene() ? cc.director.getScene().name : ''; } catch (e) { return ''; }
+    }
+
+    /* a short drag on the canvas, which is exactly what a touch swipe is to the game */
+    function synthSwipe(dir) {
+        try {
+            var canvas = cc.game && cc.game.canvas;
+            if (!canvas) { return false; }
+            var r = canvas.getBoundingClientRect();
+            var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+            var dx = dir === 'left' ? -1 : (dir === 'right' ? 1 : 0);
+            var dy = dir === 'up' ? -1 : (dir === 'down' ? 1 : 0);
+            var span = Math.min(r.width, r.height) * 0.22;
+            function send(type, x, y) {
+                var ev = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, buttons: 1 });
+                canvas.dispatchEvent(ev);
+            }
+            send('mousedown', cx, cy);
+            var steps = 6;
+            for (var i = 1; i <= steps; i++) { send('mousemove', cx + dx * span * i / steps, cy + dy * span * i / steps); }
+            send('mouseup', cx + dx * span, cy + dy * span);
+            stats.swipesSent = (stats.swipesSent || 0) + 1;
+            return true;
+        } catch (e) { warn('swipe failed:', e && e.message); return false; }
+    }
+
+    /* the level select's pager, or my own preview pager if that is open */
+    function turnPage(step) {
+        var host = cc.find('Canvas');
+        var preview = host && host.getChildByName(PREVIEW_NAME);
+        if (preview && preview.isValid) {
+            var pv = preview.getChildByName('previewPager');
+            var content = pv && pv.getChildByName('content');
+            if (content && content.children.length) {
+                var cur = stats.previewPage || 0;
+                var want = Math.max(0, Math.min(content.children.length - 1, cur + step));
+                if (want !== cur && preview.__show) { preview.__show(want); stats.keyPages = (stats.keyPages || 0) + 1; return true; }
+            }
+            return false;
+        }
+        var hall = window.hallScene;
+        var pager = hall && hall.StageSelectLayer;
+        if (!pager || !pager.content) { return false; }
+        var pages = pager.content.children.filter(function (p) { return p.getComponent && p.getComponent('StageSelectLayer'); });
+        var idx = (typeof pager._curPageIdx === 'number') ? pager._curPageIdx : 0;
+        var next = Math.max(0, Math.min(pages.length - 1, idx + step));
+        if (next === idx) { return false; }
+        if (pager.scrollToPage) { pager.scrollToPage(next, 0.3); }
+        stats.keyPages = (stats.keyPages || 0) + 1;
+        return true;
+    }
+
+    function onKeyDown(e) {
+        if (e && (e.ctrlKey || e.metaKey || e.altKey)) { return; }
+        var tag = (e && e.target && e.target.tagName) ? e.target.tagName : '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA') { return; }   // never steal typing from a field
+        var dir = KEY_DIR[e && e.code];
+        if (!dir) { return; }
+        var scene = sceneName();
+        if (scene === 'gameScene') {
+            synthSwipe(dir);
+            e.preventDefault();
+            return;
+        }
+        if (dir === 'left' || dir === 'right') {
+            if (turnPage(dir === 'left' ? -1 : 1)) { e.preventDefault(); }
+        }
+    }
+
+    function installKeys() {
+        if (window.__mazeDashKeys) { return; }
+        window.__mazeDashKeys = true;
+        /* Capture phase on purpose: the engine installs its own key handling and can stop
+           propagation, which is why a bubble-phase listener here never fired. */
+        /* Exactly one target: registering on both window and document in the capture phase
+           made every keypress run the handler twice, so one press turned two pages. */
+        document.addEventListener('keydown', onKeyDown, true);
+        stats.keysInstalled = 1;
+        log('keyboard mapping installed (WASD + arrows)');
+    }
     /* ------------------------------------------------------------ install */
     function install(hall) {
         if (!hall || hall.__customTabInstalled) { return false; }
@@ -87608,6 +87702,7 @@ cc._RF.pop();
 
         makeShowBarViewResilient(hall);
         guardWorldTable();
+        installKeys();
         try { buildModeSwitch(hall); } catch (e) { warn('mode switch failed:', e); }
         try { buildEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); } catch (e) { warn('editor home failed:', e && e.message ? e.message : e); }
         var item = addTabItem(hall);
