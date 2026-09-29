@@ -1,4 +1,4 @@
-﻿const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer-core');
 const CHROME = 'C:\\Users\\Lenovo\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe';
 const FILE = 'file:///E:/maze_dash/dist/MazeDash-standalone.html';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -40,7 +40,7 @@ const log = (k, v) => console.log('V ' + k + ':', typeof v === 'string' ? v : JS
     });
     log('cellPt', pt);
     if (pt) { await tap(pt.x, pt.y, 700); }
-    log('afterRealClick', await page.evaluate(() => { const api = window.MazeDashCustomTab; const ed = api.gridEditor; let readout = null; (function w(n) { if (!readout && n.name === 'gridReadout') { const l = n.getComponent(cc.Label); readout = l ? l.string : null; } (n.children || []).forEach(w); })(cc.find('Canvas/gridEditor') || cc.director.getScene()); return { cell55: ed && ed.grid ? ed.grid[5][5] : null, readout: readout, gridPaints: api.stats.gridPaints || 0, readoutFromMatrix: api.stats.readoutFromMatrix || 0 }; }));
+    log('afterRealClick', await page.evaluate(() => { const api = window.MazeDashCustomTab; const ed = api.gridEditor; let readout = null; (function w(n) { if (!readout && n.name === 'gridReadout') { const l = n.getComponent(cc.Label); readout = l ? l.string : null; } (n.children || []).forEach(w); })(cc.find('Canvas/gridEditor') || cc.director.getScene()); return { cell55: ed && ed.grid ? ed.grid[5][5] : null, readout: readout, gridPaints: api.stats.gridPaints || 0, dragArmed: api.stats.dragPaintArmed || 0, dragApplies: api.stats.dragPaintApplies || 0, scrollDisabled: api.stats.dragScrollDisabled || 0, rowVals: ed && ed.grid ? ed.grid[5].slice(4, 12) : null }; }));
     await page.screenshot({ path: 'E:\\maze_dash\\docs\\screenshots\\74-buttons-and-grid.png' });
     await browser.close(); process.exit(0);
 })().catch((e) => { console.error('HARNESS ERROR', e); process.exit(1); });

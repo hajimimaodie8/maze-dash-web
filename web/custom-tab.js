@@ -1124,6 +1124,7 @@
     }
 
     function paintGridCell(cell) {
+        try { armDragPaint(); } catch (e) {}
         if (!cell || !cell.isValid) { return; }
         var v = cell.__value;
         var col = colourForValue(cell);
@@ -1155,6 +1156,7 @@
             /* the tab bar is never hidden by the editor any more */
 
         } catch (e) {}
+        try { var svr = null; (function up2(n) { if (!svr && n.getComponent && n.getComponent(cc.ScrollView)) { svr = n.getComponent(cc.ScrollView); } if (n.parent) { up2(n.parent); } })(window.hallScene && window.hallScene.tabBar ? window.hallScene.tabBar.parent : cc.find('Canvas')); if (svr && svr.__dragDisabled) { svr.enabled = true; svr.__dragDisabled = false; stats.dragScrollRestored = (stats.dragScrollRestored || 0) + 1; } } catch (e) {}
         stats.gridEditorClosed = (stats.gridEditorClosed || 0) + 1;
         return closed;
     }
@@ -1557,6 +1559,67 @@
             window.__vwClamped = true;
         } catch (e) {}
     })();
+    /* DRAG PAINTING, armed lazily from paintGridCell (called for every cell at build time, so this
+       runs once per editor open). One listener on the grid container; the pointer is converted to a
+       cell index arithmetically from the first cell's world position and the pitch, with the index
+       de-duplicated so a single cell is never applied twice, and the surrounding scroll view's touch
+       is disabled for the duration so the pager cannot steal the drag. */
+    var dragPaintState = { active: false, last: null };
+    function nearestCellFromWorld(wx, wy) {
+        try {
+            var first = cellsRef && cellsRef[0];
+            if (!first || !first.isValid) { return null; }
+            var fw = first.convertToWorldSpaceAR(cc.v2(0, 0));
+            var pitch = first.width + (first.parent && first.parent.children[1] ? (cellsRef[1] ? (cellsRef[1].convertToWorldSpaceAR(cc.v2(0, 0)).x - fw.x) : 0) : 0);
+            var p = Math.abs(pitch) > 1 ? Math.abs(pitch) : (first.width || 40);
+            var gx = Math.round((wx - fw.x) / p);
+            var gy = Math.round((fw.y - wy) / p);
+            if (gy < 0 || gy > 19 || gx < 0 || gx > 19) { return null; }
+            var cell = cellsRef[gy * 20 + gx];
+            return (cell && cell.isValid) ? cell : null;
+        } catch (e) { return null; }
+    }
+    function applyDragAt(wx, wy) {
+        var cell = nearestCellFromWorld(wx, wy);
+        if (!cell) { dragPaintState.last = null; return; }
+        var key = cell.__gx + ',' + cell.__gy;
+        if (dragPaintState.last === key) { return; }          // de-dupe: one apply per cell per drag
+        dragPaintState.last = key;
+        applyToolToCell(cell);
+        stats.dragPaintApplies = (stats.dragPaintApplies || 0) + 1;
+    }
+    function armDragPaint() {
+        try {
+            var root = gridRootRef;
+            if (!root || !root.isValid || root.__dragArmed) { return; }
+            root.__dragArmed = true;
+            var toWorld = function (ev) {
+                var loc = ev.getLocation ? ev.getLocation() : null;
+                if (!loc) { return null; }
+                var w = root.convertToNodeSpaceAR(cc.v2(loc.x, loc.y));
+                var wp = root.convertToWorldSpaceAR(w);
+                return wp;
+            };
+            var begin = function (ev) {
+                dragPaintState.active = true; dragPaintState.last = null;
+                try {
+                    var sv = null;
+                    (function up(n) { if (!sv && n.getComponent && n.getComponent(cc.ScrollView)) { sv = n.getComponent(cc.ScrollView); } if (n.parent) { up(n.parent); } })(root);
+                    if (sv) { sv.__dragDisabled = true; sv.enabled = false; stats.dragScrollDisabled = (stats.dragScrollDisabled || 0) + 1; }
+                } catch (e) {}
+                var p = toWorld(ev); if (p) { applyDragAt(p.x, p.y); }
+            };
+            var move = function (ev) { if (!dragPaintState.active) { return; } var p = toWorld(ev); if (p) { applyDragAt(p.x, p.y); } };
+            var end = function () { dragPaintState.active = false; dragPaintState.last = null; };
+            [cc.Node.EventType.TOUCH_START, cc.Node.EventType.TOUCH_MOVE, cc.Node.EventType.TOUCH_END, cc.Node.EventType.TOUCH_CANCEL].forEach(function (t, i) {
+                root.on(t, i === 0 ? begin : (i === 1 ? move : end), root);
+            });
+            if (cc.Node.EventType.MOUSE_DOWN) {
+                [[cc.Node.EventType.MOUSE_DOWN, begin], [cc.Node.EventType.MOUSE_MOVE, move], [cc.Node.EventType.MOUSE_UP, end], [cc.Node.EventType.MOUSE_LEAVE, end]].forEach(function (pair) { if (pair[0]) { root.on(pair[0], pair[1], root); } });
+            }
+            stats.dragPaintArmed = (stats.dragPaintArmed || 0) + 1;
+        } catch (e) {}
+    }
     function openGridEditor() {
 
         var host = cc.find('Canvas');
@@ -1967,7 +2030,12 @@
             btn.y = -H_BOTTOM_ROW;
             roundedPanel(btn, cc.color(60, 54, 66, 235), SMALL_W, 150);
             var fs = 30;
-            var lb = makeLabel(btn, t(sid), 0, fs, cc.color(255, 255, 255, 235));
+            /* t('importJson') has no entry in the string tables, so t() echoes the key and the button
+               read literally "importJson" (the user saw this). Translate it here until the key is
+               added to the real tables; the other three keys resolve normally. */
+            var labelText = t(sid);
+            if (labelText === sid && sid === 'importJson') { labelText = '导入 JSON'; }
+            var lb = makeLabel(btn, labelText, 0, fs, cc.color(255, 255, 255, 235));
             var guard = 0;
             while (lb && (lb.actualWidth || 0) * 1.02 > SMALL_W - 24 && fs > 16 && guard++ < 12) {
                 fs -= 2;
