@@ -1,4 +1,12 @@
 /*
+    try {
+        if (window.cc && cc.game && cc.game.on) {
+            if (cc.game.EVENT_GAME_INITED) { cc.game.on(cc.game.EVENT_GAME_INITED, function () { seed('gameInited'); }); }
+            if (cc.game.EVENT_ENGINE_INITED) { cc.game.on(cc.game.EVENT_ENGINE_INITED, function () { seed('engineInited'); }); }
+        }
+    } catch (e) {}
+})();
+
  * 冲撞迷阵 Maze Dash — 第 6 个标签栏："自定义关卡"（关卡编辑器入口）
  * ===========================================================================
  * The HallScene's tab bar is entirely array-driven:
@@ -25,6 +33,75 @@
  * The placeholder page is intentionally empty — it is where the level editor
  * will live. Look for `buildPlaceholderContent()` below to replace it.
  */
+
+/* EARLIEST POSSIBLE SEEDING OF DEGENERATE level_cfg KEYS.
+   The engine's own getLastWordId() does conf.level_cfg[parseInt(e)].wordId, and initStageLayer calls
+   it from scene start() - i.e. during the FIRST HALL BUILD. On a boot where no custom level is
+   registered yet that lookup is undefined and the dereference throws: the intermittent "运行出错"
+   overlay. Captured stack: getLastWordId (84521) <- initStageLayer (80827) <- start (80674).
+   Wrapping the method is NOT enough - my wrappers are installed from a director scene-launch hook
+   that runs AFTER that startup, so the original method wins on the very first boot. Seeding here, at
+   module scope, happens before main.js starts the engine. Real records, never a Proxy (a broad Proxy
+   was measured to hang the save path). */
+(function armDegenerateLevelSeed() {
+    function seed(tag) {
+        try {
+            if (!window.conf || !conf.level_cfg) { return false; }
+            /* If the saved last-level id names a level that is not registered (right after a wipe it
+               does), clear the key: the engine's getLastWordId reads exactly this at scene start and the
+               dereference throws. A level that does not exist cannot be resumed, so nothing is lost. */
+            try {
+                var rawSaved = window.localStorage.getItem('enter_levels_id');
+                if (rawSaved !== null && rawSaved !== '') {
+                    var savedId = parseInt(rawSaved, 10);
+                    var savedKnown = !isNaN(savedId) && conf.level_cfg[savedId] !== undefined;
+                    var st2 = window.MazeDashCustomTab && window.MazeDashCustomTab.stats;
+                    if (st2) { st2.enterLevelsIdSeenEarly = rawSaved; st2.enterLevelsIdKnownEarly = !!savedKnown; }
+                    if (!savedKnown) {
+                        window.localStorage.removeItem('enter_levels_id');
+                        if (st2) { st2.enterLevelsIdClearedEarly = (st2.enterLevelsIdClearedEarly || 0) + 1; }
+                    }
+                }
+            } catch (e) {}
+            /* record what the engine's default lookup (level 1) looks like at the earliest moment */
+            try {
+                var st3 = window.MazeDashCustomTab && window.MazeDashCustomTab.stats;
+                if (st3) {
+                    st3.levelCfgHasOneEarly = (conf.level_cfg[1] !== undefined);
+                    st3.levelCfgKeyCountEarly = Object.keys(conf.level_cfg).length;
+                    st3.levelCfgOneSample = JSON.stringify(conf.level_cfg[1] || null).slice(0, 80);
+                }
+            } catch (e) {}
+            var keys = ['NaN', 'undefined', 'null', ''];
+            var made = 0;
+            for (var i = 0; i < keys.length; i++) {
+                if (conf.level_cfg[keys[i]] === undefined) {
+                    conf.level_cfg[keys[i]] = { id: 0, wordId: 1, levelId: 0, mapId: -1, sz_solution: '', __fallback: true };
+                    made++;
+                }
+            }
+            if (made) {
+                try {
+                    var s = window.MazeDashCustomTab && window.MazeDashCustomTab.stats;
+                    if (s) { s.degenerateKeysSeeded = (s.degenerateKeysSeeded || 0) + made; s.degenerateKeysWhere = tag; }
+                } catch (e) {}
+            }
+            return true;
+        } catch (e) { return false; }
+    }
+    var tries = 0;
+    (function tick() {
+        tries++;
+        if (seed('tick' + tries)) { return; }
+        if (tries < 2000) { setTimeout(tick, 0); }
+    })();
+    try {
+        if (window.cc && cc.game && cc.game.on) {
+            if (cc.game.EVENT_GAME_INITED) { cc.game.on(cc.game.EVENT_GAME_INITED, function () { seed('gameInited'); }); }
+            if (cc.game.EVENT_ENGINE_INITED) { cc.game.on(cc.game.EVENT_ENGINE_INITED, function () { seed('engineInited'); }); }
+        }
+    } catch (e) {}
+})();
 (function () {
     'use strict';
 
