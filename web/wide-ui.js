@@ -402,12 +402,29 @@
        AnimScene  : /Canvas/begin/main              (240x600 mascot face: eyes and mouth)
        The user asked for the mascot/logo artwork to be gone, so those are hidden; the background
        and the drifting debris are left alone. */
+    /* Only the mascot artwork: the splash image and the cheetah face. The name artwork at
+       /Canvas/begin/label is the game's own title lettering and was hidden by mistake last
+       round, which left the title card showing a bare face. */
     var TITLE_ART_PATHS = [
         /New Sprite\(Splash\)\/New Sprite$/,
-        /AnimScene\/Canvas\/begin\/label/,
         /AnimScene\/Canvas\/begin\/main$/,
     ];
     var LOGO_RE = /logo|cheetah|leopard|splash|launch|cmcm|brand|icon|img_?logo|login_/i;
+    /* The title scene is designed 720x1280 portrait, so in a wide window it sat as a narrow
+       column with filled bars either side. Stretching its background to the visible width makes
+       it read as a landscape title instead. */
+    function widenTitleScene() {
+        var scene = cc.director.getScene();
+        if (!scene || (scene.name !== 'AnimScene' && scene.name !== 'LaunchScene')) { return; }
+        var W = cc.view.getVisibleSize().width;
+        (function walk(n) {
+            if (/^(bg|white_bg)$/.test(n.name) && n.width > 300 && Math.abs(n.width - W) > 4) {
+                n.width = W;
+                stats.titleBgWidened = (stats.titleBgWidened || 0) + 1;
+            }
+            (n.children || []).forEach(walk);
+        })(scene);
+    }
     function hideTitleLogo() {
         var scene = cc.director.getScene();
         if (!scene) { return 0; }
@@ -432,7 +449,7 @@
 
     /* The title scenes are gone by the time the hall tick runs, so this must not depend on the
        hall at all: run it on its own timer, which is also when the artwork is on screen. */
-    if (CFG.hideTitleArt !== false) { setInterval(function () { try { hideTitleLogo(); } catch (e) {} }, 300); }
+    if (CFG.hideTitleArt !== false) { setInterval(function () { try { hideTitleLogo(); widenTitleScene(); } catch (e) {} }, 300); }
     function fixLaunchScreen() {
         var scene = cc.director.getScene();
         /* The title card with the drifting debris is NOT LaunchScene - it is AnimScene,
