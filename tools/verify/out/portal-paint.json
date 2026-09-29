@@ -1,0 +1,2010 @@
+{
+  "seeded": {
+    "testWorldInStorage": {
+      "name": "Test World (3 heroes + 3 colours)",
+      "base": [
+        292,
+        55,
+        72,
+        1
+      ]
+    },
+    "map10101": true,
+    "world1FirstMap": 1,
+    "stats": {
+      "showBarViewRetries": 0,
+      "worldsGuarded": 1,
+      "testLevelInWorld1": 1,
+      "testLevelSeeded": 1,
+      "keysInstalled": 1,
+      "lastWorldId": 1,
+      "modeSwitchBuilt": 1,
+      "pageTinted": 2,
+      "pageTintedWhite": 2,
+      "viewRaised": 1,
+      "barRaised": 1,
+      "barRestacked": 2,
+      "tabWalks": 1,
+      "textsUpdated": 2,
+      "editorTitleSize": 92,
+      "editorTitleY": 415,
+      "editorBtn_createWorld": true,
+      "editorBtn_createLevel": true,
+      "tabSkips": 1
+    }
+  },
+  "diag": {
+    "ok": true,
+    "err": null,
+    "mapFound": true,
+    "compFound": true,
+    "sprites": [
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/shadow_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          12,
+          50,
+          127
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/fllor_space_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          210,
+          172
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          255,
+          196,
+          48
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/backGroup",
+        "frame": "13_imgFaceBack",
+        "size": [
+          120,
+          120
+        ],
+        "colour": [
+          255,
+          196,
+          48
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/checkbock/Background",
+        "frame": "13_imgTickBox@2x",
+        "size": [
+          36,
+          36
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/checkbock/checkmark",
+        "frame": "13_imgTick@2x",
+        "size": [
+          46,
+          37
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/WorldLock",
+        "frame": "13_imgLock",
+        "size": [
+          56,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/FaceBookLock",
+        "frame": "13_imgFB",
+        "size": [
+          40,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/VideoLock",
+        "frame": "13_imgVideo",
+        "size": [
+          60,
+          48
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face1/eye",
+        "frame": "13_imgEyeRect",
+        "size": [
+          90,
+          32
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face1/eye/light",
+        "frame": "13_imgEyeBallRect",
+        "size": [
+          82,
+          16
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face1/mouth",
+        "frame": "13_imgFace1Mouth",
+        "size": [
+          18,
+          7
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          255,
+          196,
+          48
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/backGroup",
+        "frame": "13_imgFaceBack",
+        "size": [
+          120,
+          120
+        ],
+        "colour": [
+          255,
+          196,
+          48
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/checkbock/Background",
+        "frame": "13_imgTickBox@2x",
+        "size": [
+          36,
+          36
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/checkbock/checkmark",
+        "frame": "13_imgTick@2x",
+        "size": [
+          46,
+          37
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/WorldLock",
+        "frame": "13_imgLock",
+        "size": [
+          56,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/FaceBookLock",
+        "frame": "13_imgFB",
+        "size": [
+          40,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/VideoLock",
+        "frame": "13_imgVideo",
+        "size": [
+          60,
+          48
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face2/eye",
+        "frame": "13_imgEyeRound",
+        "size": [
+          94,
+          31
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face2/eye/light",
+        "frame": "13_imgEyeBallRound",
+        "size": [
+          81,
+          18
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face2/mouth",
+        "frame": "13_imgFace2Mouth",
+        "size": [
+          28,
+          14
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face2/face_gray",
+        "frame": "13_imgFace2MouthGrey",
+        "size": [
+          28,
+          14
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          85
+        ],
+        "colour": [
+          255,
+          196,
+          48
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/backGroup",
+        "frame": "13_imgFaceBack",
+        "size": [
+          120,
+          120
+        ],
+        "colour": [
+          255,
+          196,
+          48
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/checkbock/Background",
+        "frame": "13_imgTickBox@2x",
+        "size": [
+          36,
+          36
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/checkbock/checkmark",
+        "frame": "13_imgTick@2x",
+        "size": [
+          46,
+          37
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/WorldLock",
+        "frame": "13_imgLock",
+        "size": [
+          56,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/FaceBookLock",
+        "frame": "13_imgFB",
+        "size": [
+          40,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/VideoLock",
+        "frame": "13_imgVideo",
+        "size": [
+          60,
+          48
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face7/eye",
+        "frame": "13_imgEyeSmall",
+        "size": [
+          36,
+          12
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face7/eye/light",
+        "frame": "13_imgEyeBallSmall",
+        "size": [
+          30,
+          6
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face7/mouth",
+        "frame": "13_imgFace7Mouth",
+        "size": [
+          91,
+          26
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": true,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Face/face7/face_gray",
+        "frame": "13_imgFace7MouthGrey",
+        "size": [
+          91,
+          26
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          168,
+          88,
+          224
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/001",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/002",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/003",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/004",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          64,
+          72
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/001",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/002",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/003",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/004",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          64,
+          140,
+          240
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/001",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/002",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/003",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/004",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          168,
+          88,
+          224
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/001",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/002",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/003",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/004",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          226,
+          64,
+          72
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/001",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/002",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/003",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/004",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          80,
+          80
+        ],
+        "colour": [
+          64,
+          140,
+          240
+        ],
+        "active": true,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/001",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/002",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/003",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/tile_item_layer/spaceTile/Portal/Mask/004",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Arrow/Mask/arrow1",
+        "frame": "01_imgArrow@2x",
+        "size": [
+          58,
+          82
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Arrow/Mask/arrow2",
+        "frame": "01_imgArrow@2x",
+        "size": [
+          58,
+          82
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Brick",
+        "frame": "01_imgBrick",
+        "size": [
+          110,
+          110
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/key/shadow",
+        "frame": "01_imgKeyShadow@2x",
+        "size": [
+          58,
+          94
+        ],
+        "colour": [
+          123,
+          0,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/key/01_imgKey@2x",
+        "frame": "01_imgKey@2x",
+        "size": [
+          58,
+          94
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/key/star",
+        "frame": "star",
+        "size": [
+          35,
+          35
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Face/backGroup",
+        "frame": "13_imgFaceBack",
+        "size": [
+          120,
+          120
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Face/checkbock/Background",
+        "frame": "13_imgTickBox@2x",
+        "size": [
+          36,
+          36
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Face/checkbock/checkmark",
+        "frame": "13_imgTick@2x",
+        "size": [
+          46,
+          37
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Face/WorldLock",
+        "frame": "13_imgLock",
+        "size": [
+          56,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Face/FaceBookLock",
+        "frame": "13_imgFB",
+        "size": [
+          40,
+          76
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Face/VideoLock",
+        "frame": "13_imgVideo",
+        "size": [
+          60,
+          48
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 1
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Prortal_out/13_imgFaceBack",
+        "frame": "brickmask",
+        "size": [
+          78,
+          39
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Portal/Mask/001",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Portal/Mask/002",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Portal/Mask/003",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          224,
+          144,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/Portal/Mask/004",
+        "frame": "BrickTile",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          184,
+          59,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/lock",
+        "frame": "01_imgLock",
+        "size": [
+          78,
+          78
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      },
+      {
+        "path": "game_map/game_map/itemGroup/spaceTile",
+        "frame": "default_sprite_splash",
+        "size": [
+          100,
+          100
+        ],
+        "colour": [
+          255,
+          255,
+          255
+        ],
+        "active": false,
+        "children": 0
+      }
+    ],
+    "portalSprites": [],
+    "framesSeen": [
+      "default_sprite_splash",
+      "13_imgFaceBack",
+      "13_imgTickBox@2x",
+      "13_imgTick@2x",
+      "13_imgLock",
+      "13_imgFB",
+      "13_imgVideo",
+      "13_imgEyeRect",
+      "13_imgEyeBallRect",
+      "13_imgFace1Mouth",
+      "13_imgEyeRound",
+      "13_imgEyeBallRound",
+      "13_imgFace2Mouth",
+      "13_imgFace2MouthGrey",
+      "13_imgEyeSmall",
+      "13_imgEyeBallSmall",
+      "13_imgFace7Mouth",
+      "13_imgFace7MouthGrey",
+      "BrickTile",
+      "01_imgArrow@2x",
+      "01_imgBrick",
+      "01_imgKeyShadow@2x",
+      "01_imgKey@2x",
+      "star",
+      "brickmask",
+      "01_imgLock"
+    ],
+    "cells": [
+      [
+        7,
+        1
+      ],
+      [
+        8,
+        1
+      ],
+      [
+        9,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        2
+      ]
+    ],
+    "groups": [
+      {
+        "y": 1,
+        "xs": [
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "y": 2,
+        "xs": [
+          1,
+          2,
+          3
+        ]
+      }
+    ],
+    "markers": [],
+    "stats": {
+      "showBarViewRetries": 0,
+      "worldsGuarded": 1,
+      "testLevelInWorld1": 1,
+      "testLevelSeeded": 1,
+      "keysInstalled": 1,
+      "lastWorldId": 1,
+      "modeSwitchBuilt": 1,
+      "pageTinted": 3,
+      "pageTintedWhite": 3,
+      "viewRaised": 1,
+      "barRaised": 1,
+      "barRestacked": 3,
+      "tabWalks": 1,
+      "textsUpdated": 2,
+      "editorTitleSize": 92,
+      "editorTitleY": 415,
+      "editorBtn_createWorld": true,
+      "editorBtn_createLevel": true,
+      "tabSkips": 2,
+      "colorPortalsPatched": 1,
+      "portalPaintTiles": 9,
+      "portalPaintCells": 9,
+      "portalCellsPainted": 6,
+      "portalPaintErr": null
+    }
+  },
+  "logs": [
+    "log: [custom-tab] mode -> progression (stage pages refreshed)",
+    "warn: [custom-tab] still waiting for the HallScene; continuing to poll",
+    "warn: [custom-tab] still waiting for the HallScene; continuing to poll",
+    "log: [custom-tab] test level seeded: world 101 level 10101",
+    "log: [custom-tab] keyboard mapping installed (WASD + arrows)",
+    "log: [custom-tab] added tab item at index 5 -> customBar",
+    "log: [custom-tab] laid out 6 visible slots of 379 px (bar 2276 )",
+    "log: [custom-tab] freed the tab bar row from 16 arrow hit areas",
+    "log: [custom-tab] created placeholder view customLevelsView",
+    "log: [custom-tab] installed: tab index 5 ( 自定义关卡 )",
+    "log: [custom-tab] laid out 6 visible slots of 379 px (bar 2276 )",
+    "log: [custom-tab] laid out 5 visible slots of 455 px (bar 2276 )",
+    "log: [custom-tab] laid out 4 visible slots of 569 px (bar 2276 )",
+    "log: [custom-tab] laid out 4 visible slots of 569 px (bar 2276 )",
+    "log: [custom-tab] laid out 4 visible slots of 569 px (bar 2276 )",
+    "log: [custom-tab] coloured portal pairing installed",
+    "log: [custom-tab] portal colours painted: 6 markers of 9 item tiles",
+    "warn: [custom-tab] still waiting for the HallScene; continuing to poll"
+  ],
+  "pageErrors": []
+}

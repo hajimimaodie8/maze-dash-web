@@ -1,0 +1,738 @@
+{
+  "markers": [
+    {
+      "name": "portalColour4",
+      "frame": null,
+      "local": [
+        200,
+        -239
+      ],
+      "world": [
+        1338,
+        401
+      ],
+      "size": [
+        74,
+        74
+      ],
+      "z": 903,
+      "colour": [
+        168,
+        88,
+        224
+      ],
+      "children": 0,
+      "path": "scene/gameScene/Canvas/backgroup/portalColour4",
+      "parentInfo": {
+        "name": "backgroup",
+        "frame": "default_sprite_splash",
+        "local": [
+          0,
+          0
+        ],
+        "world": [
+          1138,
+          640
+        ],
+        "size": [
+          720,
+          1280
+        ],
+        "z": 0,
+        "colour": [
+          42,
+          170,
+          134
+        ],
+        "children": 15
+      }
+    },
+    {
+      "name": "portalColour1",
+      "frame": null,
+      "local": [
+        280,
+        -239
+      ],
+      "world": [
+        1418,
+        401
+      ],
+      "size": [
+        74,
+        74
+      ],
+      "z": 904,
+      "colour": [
+        226,
+        64,
+        72
+      ],
+      "children": 0,
+      "path": "scene/gameScene/Canvas/backgroup/portalColour1",
+      "parentInfo": {
+        "name": "backgroup",
+        "frame": "default_sprite_splash",
+        "local": [
+          0,
+          0
+        ],
+        "world": [
+          1138,
+          640
+        ],
+        "size": [
+          720,
+          1280
+        ],
+        "z": 0,
+        "colour": [
+          42,
+          170,
+          134
+        ],
+        "children": 15
+      }
+    },
+    {
+      "name": "portalColour3",
+      "frame": null,
+      "local": [
+        360,
+        -239
+      ],
+      "world": [
+        1498,
+        401
+      ],
+      "size": [
+        74,
+        74
+      ],
+      "z": 905,
+      "colour": [
+        64,
+        140,
+        240
+      ],
+      "children": 0,
+      "path": "scene/gameScene/Canvas/backgroup/portalColour3",
+      "parentInfo": {
+        "name": "backgroup",
+        "frame": "default_sprite_splash",
+        "local": [
+          0,
+          0
+        ],
+        "world": [
+          1138,
+          640
+        ],
+        "size": [
+          720,
+          1280
+        ],
+        "z": 0,
+        "colour": [
+          42,
+          170,
+          134
+        ],
+        "children": 15
+      }
+    },
+    {
+      "name": "portalColour4",
+      "frame": null,
+      "local": [
+        -280,
+        -319
+      ],
+      "world": [
+        858,
+        321
+      ],
+      "size": [
+        74,
+        74
+      ],
+      "z": 906,
+      "colour": [
+        168,
+        88,
+        224
+      ],
+      "children": 0,
+      "path": "scene/gameScene/Canvas/backgroup/portalColour4",
+      "parentInfo": {
+        "name": "backgroup",
+        "frame": "default_sprite_splash",
+        "local": [
+          0,
+          0
+        ],
+        "world": [
+          1138,
+          640
+        ],
+        "size": [
+          720,
+          1280
+        ],
+        "z": 0,
+        "colour": [
+          42,
+          170,
+          134
+        ],
+        "children": 15
+      }
+    },
+    {
+      "name": "portalColour1",
+      "frame": null,
+      "local": [
+        -200,
+        -319
+      ],
+      "world": [
+        938,
+        321
+      ],
+      "size": [
+        74,
+        74
+      ],
+      "z": 907,
+      "colour": [
+        226,
+        64,
+        72
+      ],
+      "children": 0,
+      "path": "scene/gameScene/Canvas/backgroup/portalColour1",
+      "parentInfo": {
+        "name": "backgroup",
+        "frame": "default_sprite_splash",
+        "local": [
+          0,
+          0
+        ],
+        "world": [
+          1138,
+          640
+        ],
+        "size": [
+          720,
+          1280
+        ],
+        "z": 0,
+        "colour": [
+          42,
+          170,
+          134
+        ],
+        "children": 15
+      }
+    },
+    {
+      "name": "portalColour3",
+      "frame": null,
+      "local": [
+        -120,
+        -319
+      ],
+      "world": [
+        1018,
+        321
+      ],
+      "size": [
+        74,
+        74
+      ],
+      "z": 908,
+      "colour": [
+        64,
+        140,
+        240
+      ],
+      "children": 0,
+      "path": "scene/gameScene/Canvas/backgroup/portalColour3",
+      "parentInfo": {
+        "name": "backgroup",
+        "frame": "default_sprite_splash",
+        "local": [
+          0,
+          0
+        ],
+        "world": [
+          1138,
+          640
+        ],
+        "size": [
+          720,
+          1280
+        ],
+        "z": 0,
+        "colour": [
+          42,
+          170,
+          134
+        ],
+        "children": 15
+      }
+    }
+  ],
+  "tiles": [
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        -280,
+        123
+      ],
+      "world": [
+        858,
+        763
+      ],
+      "size": [
+        80,
+        85
+      ],
+      "z": 0,
+      "colour": [
+        255,
+        196,
+        48
+      ],
+      "children": 1,
+      "index": 0,
+      "kids": [
+        {
+          "name": "Face",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            858,
+            763
+          ],
+          "size": [
+            120,
+            120
+          ],
+          "z": 0,
+          "colour": [
+            255,
+            255,
+            255
+          ],
+          "children": 7
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        -200,
+        123
+      ],
+      "world": [
+        938,
+        763
+      ],
+      "size": [
+        80,
+        85
+      ],
+      "z": 0,
+      "colour": [
+        255,
+        196,
+        48
+      ],
+      "children": 1,
+      "index": 1,
+      "kids": [
+        {
+          "name": "Face",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            938,
+            763
+          ],
+          "size": [
+            120,
+            120
+          ],
+          "z": 0,
+          "colour": [
+            255,
+            255,
+            255
+          ],
+          "children": 7
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        -120,
+        123
+      ],
+      "world": [
+        1018,
+        763
+      ],
+      "size": [
+        80,
+        85
+      ],
+      "z": 0,
+      "colour": [
+        255,
+        196,
+        48
+      ],
+      "children": 1,
+      "index": 2,
+      "kids": [
+        {
+          "name": "Face",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            1018,
+            763
+          ],
+          "size": [
+            120,
+            120
+          ],
+          "z": 0,
+          "colour": [
+            255,
+            255,
+            255
+          ],
+          "children": 7
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        200,
+        120
+      ],
+      "world": [
+        1338,
+        760
+      ],
+      "size": [
+        80,
+        80
+      ],
+      "z": 0,
+      "colour": [
+        149,
+        50,
+        255
+      ],
+      "children": 1,
+      "index": 3,
+      "kids": [
+        {
+          "name": "Portal",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            1338,
+            760
+          ],
+          "size": [
+            78,
+            78
+          ],
+          "z": 0,
+          "colour": [
+            178,
+            84,
+            255
+          ],
+          "children": 1
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        280,
+        120
+      ],
+      "world": [
+        1418,
+        760
+      ],
+      "size": [
+        80,
+        80
+      ],
+      "z": 0,
+      "colour": [
+        149,
+        50,
+        255
+      ],
+      "children": 1,
+      "index": 4,
+      "kids": [
+        {
+          "name": "Portal",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            1418,
+            760
+          ],
+          "size": [
+            78,
+            78
+          ],
+          "z": 0,
+          "colour": [
+            178,
+            84,
+            255
+          ],
+          "children": 1
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        360,
+        120
+      ],
+      "world": [
+        1498,
+        760
+      ],
+      "size": [
+        80,
+        80
+      ],
+      "z": 0,
+      "colour": [
+        149,
+        50,
+        255
+      ],
+      "children": 1,
+      "index": 5,
+      "kids": [
+        {
+          "name": "Portal",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            1498,
+            760
+          ],
+          "size": [
+            78,
+            78
+          ],
+          "z": 0,
+          "colour": [
+            178,
+            84,
+            255
+          ],
+          "children": 1
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        -280,
+        40
+      ],
+      "world": [
+        858,
+        680
+      ],
+      "size": [
+        80,
+        80
+      ],
+      "z": 0,
+      "colour": [
+        149,
+        50,
+        255
+      ],
+      "children": 1,
+      "index": 6,
+      "kids": [
+        {
+          "name": "Portal",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            858,
+            680
+          ],
+          "size": [
+            78,
+            78
+          ],
+          "z": 0,
+          "colour": [
+            178,
+            84,
+            255
+          ],
+          "children": 1
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        -200,
+        40
+      ],
+      "world": [
+        938,
+        680
+      ],
+      "size": [
+        80,
+        80
+      ],
+      "z": 0,
+      "colour": [
+        149,
+        50,
+        255
+      ],
+      "children": 1,
+      "index": 7,
+      "kids": [
+        {
+          "name": "Portal",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            938,
+            680
+          ],
+          "size": [
+            78,
+            78
+          ],
+          "z": 0,
+          "colour": [
+            178,
+            84,
+            255
+          ],
+          "children": 1
+        }
+      ]
+    },
+    {
+      "name": "spaceTile",
+      "frame": "default_sprite_splash",
+      "local": [
+        -120,
+        40
+      ],
+      "world": [
+        1018,
+        680
+      ],
+      "size": [
+        80,
+        80
+      ],
+      "z": 0,
+      "colour": [
+        149,
+        50,
+        255
+      ],
+      "children": 1,
+      "index": 8,
+      "kids": [
+        {
+          "name": "Portal",
+          "frame": null,
+          "local": [
+            0,
+            0
+          ],
+          "world": [
+            1018,
+            680
+          ],
+          "size": [
+            78,
+            78
+          ],
+          "z": 0,
+          "colour": [
+            178,
+            84,
+            255
+          ],
+          "children": 1
+        }
+      ]
+    }
+  ],
+  "colourTableHits": [
+    "7,1",
+    "8,1",
+    "9,1",
+    "1,2",
+    "2,2",
+    "3,2"
+  ],
+  "itemTileTotal": 9
+}
