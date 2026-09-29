@@ -1576,6 +1576,7 @@
             var gy = Math.round((fw.y - wy) / p);
             if (gy < 0 || gy > 19 || gx < 0 || gx > 19) { return null; }
             var cell = cellsRef[gy * 20 + gx];
+            if (cell && cell.isValid) { stats.dragCellsResolved = (stats.dragCellsResolved || 0) + 1; stats.dragLastIndex = gx + ',' + gy; }
             return (cell && cell.isValid) ? cell : null;
         } catch (e) { return null; }
     }
@@ -1587,6 +1588,7 @@
         dragPaintState.last = key;
         applyToolToCell(cell);
         stats.dragPaintApplies = (stats.dragPaintApplies || 0) + 1;
+        stats.dragCellsApplied = (stats.dragCellsApplied || 0) + 1;
     }
     function armDragPaint() {
         try {
@@ -1602,6 +1604,7 @@
             };
             var begin = function (ev) {
                 dragPaintState.active = true; dragPaintState.last = null;
+                stats.dragDowns = (stats.dragDowns || 0) + 1;
                 try {
                     var sv = null;
                     (function up(n) { if (!sv && n.getComponent && n.getComponent(cc.ScrollView)) { sv = n.getComponent(cc.ScrollView); } if (n.parent) { up(n.parent); } })(root);
@@ -1609,7 +1612,7 @@
                 } catch (e) {}
                 var p = toWorld(ev); if (p) { applyDragAt(p.x, p.y); }
             };
-            var move = function (ev) { if (!dragPaintState.active) { return; } var p = toWorld(ev); if (p) { applyDragAt(p.x, p.y); } };
+            var move = function (ev) { stats.dragMoves = (stats.dragMoves || 0) + 1; if (!dragPaintState.active) { return; } var p = toWorld(ev); if (p) { applyDragAt(p.x, p.y); } };
             var end = function () { dragPaintState.active = false; dragPaintState.last = null; };
             [cc.Node.EventType.TOUCH_START, cc.Node.EventType.TOUCH_MOVE, cc.Node.EventType.TOUCH_END, cc.Node.EventType.TOUCH_CANCEL].forEach(function (t, i) {
                 root.on(t, i === 0 ? begin : (i === 1 ? move : end), root);
