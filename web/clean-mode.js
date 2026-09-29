@@ -344,6 +344,7 @@
             var lb = n.getComponent && n.getComponent(cc.Label);
             if (lb && lb.string && CJK_RE.test(lb.string)) {
                 try {
+                    if (lb.font) { lb.font = null; }   // a leftover font asset overrides the system font
                     if (lb.useSystemFont !== true) { lb.useSystemFont = true; stats.cjkFontSwitched = (stats.cjkFontSwitched || 0) + 1; fixed++; }
                     var want = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
                     if (lb.fontFamily !== want) { lb.fontFamily = want; }

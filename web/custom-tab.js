@@ -112,7 +112,19 @@
            line box room for the full ascent. */
         label.lineHeight = Math.round(fontSize * 1.65);
         label.fontFamily = 'system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif';
+        /* Clearing the font asset matters: setting useSystemFont while a cc.Font is still
+           assigned does not always take effect, and the label then draws every CJK codepoint
+           with the Latin-only face - which is exactly the "text collapsed into a clump of tiny
+           glyphs" that keeps being reported. */
+        try { label.font = null; } catch (e) {}
         if ('useSystemFont' in label) { label.useSystemFont = true; }
+        /* THE clump: with a narrow node and the default overflow, a long string (especially a
+           CJK one) is squeezed into the box and wraps onto many tiny overlapping lines, which
+           reads as "text collapsed into a clump of small glyphs". NONE makes the node size
+           itself to the whole string, so it can never wrap. */
+        try {
+            if (cc.Label.Overflow && cc.Label.Overflow.NONE !== undefined) { label.overflow = cc.Label.Overflow.NONE; }
+        } catch (e) {}
         node.color = color || cc.color(255, 255, 255, 255);
         return node;
     }
@@ -1524,10 +1536,8 @@
         });
 
         // --- hex code input + live preview ---
-        /* A neutral ASCII caption: the localised CJK hint rendered as garbage here (the
-           label fell back to the Latin-only font), and a garbled hint is worse than none. */
-        makeLabel(panel, 'Hex', 0, -212, 20, cc.color(255, 255, 255, 190)).name = 'dlgHexHint';
-        var hexBox = makeEditBox(panel, 'hexInput', 0, -244, 300, 56, '#RRGGBB', 26, true);   // centred, no box
+        makeLabel(panel, t('hexHint'), -206, 22, cc.color(255, 255, 255, 205)).name = 'dlgHexHint';   // note: makeLabel takes (parent, text, y, fontSize, colour) - no x
+        var hexBox = makeEditBox(panel, 'hexInput', 0, -248, 320, 60, '#RRGGBB', 26);   // centred, with a visible slot again
         markSwatch(swatches, swatches[0]);
         /* The little preview swatch is gone: it rendered as a 2x2 dot and sat under the
            Create button. The palette and the hex code already say what the colour is. */
