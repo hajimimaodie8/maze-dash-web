@@ -950,7 +950,8 @@
        网格规格按约定：格距 64px，20 格正好 1280（设计高度），方块 56px 留出网格线。
        每个可点元素都显式给 zIndex（全屏容器会盖住并吃掉点击，这是踩过的坑）。
        打开时隐藏标签栏：它被刻意保持在所有兄弟节点之上，会吃掉底行格子和"保存"按钮的点击。 */
-    var GRID_N = 20, GRID_PITCH = 64, GRID_TILE = 56;
+    var GRID_N = 20, GRID_PITCH = 40, GRID_TILE = 36;   // 20x40 = 800px, leaving a row for the palette and the tab bar below
+    var GRID_OFFSET_Y = 80;                              // grid centre: its bottom edge clears the palette row and the tab bar
     var GRID_NAME = 'gridEditor';
     var gridRootRef = null;
 
@@ -965,14 +966,17 @@
 
     function paintGridCell(cell) {
         if (!cell || !cell.isValid) { return; }
-        var floor = cell.__value === 1;
-        if (floor) {
-            gridThemeColour(cell, 'list_level_next', cc.color(255, 210, 60, 255));
-        } else {
-            cell.color = cc.color(46, 40, 52, 255);      // dark: unmistakably a wall
-        }
+        var v = cell.__value;
+        var col = colourForValue(cell);
+        if (col === null) { gridThemeColour(cell, 'list_level_next', cc.color(255, 210, 60, 255)); }
+        else { cell.color = col; }
         var tick = cell.getChildByName('tick');
-        if (tick && tick.isValid) { tick.active = floor; }
+        if (tick && tick.isValid) {
+            var lb = tick.getComponent(cc.Label);
+            if (lb) { lb.string = glyphForValue(v); }
+            tick.active = (v !== 0);
+            tick.color = (v === 1) ? cc.color(40, 32, 20, 255) : cc.color(255, 255, 255, 245);
+        }
     }
 
     function closeGridEditor() {
@@ -994,6 +998,176 @@
         } catch (e) {}
         stats.gridEditorClosed = (stats.gridEditorClosed || 0) + 1;
         return closed;
+    }
+
+    /* ==================== 第二阶段：元素工具 ====================
+       调色板放左侧：设计宽 2276，网格只占中间 1280，两侧余量足够，所以格子保持 64px 不缩小。
+       点格子 = 按当前工具写入。传送门颜色存在**按地图键**的旁表；activePortalColours 仍是
+       "当前载入关卡的那张表"，于是已验证的配对/上色代码一字不改继续可用。 */
+    var PORTAL_PALETTE = { 1: cc.color(226, 64, 72), 2: cc.color(64, 200, 96), 3: cc.color(64, 140, 240), 4: cc.color(168, 88, 224) };
+    var PORTAL_COLOUR_ORDER = [4, 1, 3, 2];
+    var portalColoursByMap = {};
+    function mapColours(mapId) { if (!portalColoursByMap[mapId]) { portalColoursByMap[mapId] = {}; } return portalColoursByMap[mapId]; }
+    function setActiveMapColours(mapId) { activePortalColours = mapColours(mapId); stats.activeColourMap = mapId; return activePortalColours; }
+    var TOOLS = [
+        { id: 'floor',  value: 1,  glyph: '\u2713', key: 'toolFloor' },
+        { id: 'wall',   value: 0,  glyph: '#',      key: 'toolWall' },
+        { id: 'hero',   value: -1, glyph: 'C',      key: 'toolHero' },
+        { id: 'brick',  value: -4, glyph: 'B',      key: 'toolBrick' },
+        { id: 'key',    value: 4,  glyph: 'K',      key: 'toolKey' },
+        { id: 'lock',   value: -3, glyph: 'L',      key: 'toolLock' },
+        { id: 'up',     value: 5,  glyph: '^',      key: 'toolUp' },
+        { id: 'right',  value: 6,  glyph: '>',      key: 'toolRight' },
+        { id: 'down',   value: 7,  glyph: 'V',      key: 'toolDown' },
+        { id: 'left',   value: 8,  glyph: '<',      key: 'toolLeft' },
+        { id: 'portal', value: 2,  glyph: 'P',      key: 'toolPortal' },
+    ];
+    var editorTool = { id: 'floor', value: 1, portalColour: 4 };
+    var editorColours = {};
+    function glyphForValue(v) {
+        if (v === 1) { return '\u2713'; }
+        if (v === 0) { return ''; }
+        for (var i = 0; i < TOOLS.length; i++) { if (TOOLS[i].value === v) { return TOOLS[i].glyph; } }
+        return '';
+    }
+    function colourForValue(cell) {
+        var v = cell.__value;
+        if (v === 1) { return null; }
+        if (v === 0) { return cc.color(46, 40, 52, 255); }
+        if (v === -1) { return cc.color(255, 196, 48, 255); }
+        if (v === -4) { return cc.color(150, 96, 56, 255); }
+        if (v === 4) { return cc.color(240, 200, 80, 255); }
+        if (v === -3) { return cc.color(120, 124, 140, 255); }
+        if (v >= 5 && v <= 8) { return cc.color(96, 180, 220, 255); }
+        if (v === 2) { return PORTAL_PALETTE[editorColours[cell.__gx + ',' + cell.__gy] || 0] || cc.color(168, 88, 224, 255); }
+        return cc.color(80, 80, 90, 255);
+    }
+    function setEditorTool(id) {
+        for (var i = 0; i < TOOLS.length; i++) { if (TOOLS[i].id === id) { editorTool.id = id; editorTool.value = TOOLS[i].value; } }
+        refreshToolButtons();
+        stats.editorTool = editorTool.id;
+    }
+    function refreshToolButtons() {
+        var root = gridRootRef && gridRootRef.isValid ? gridRootRef.getChildByName('gridPalette') : null;
+        if (!root || !root.isValid) { return; }
+        (root.children || []).forEach(function (b) {
+            if (b.name && b.name.indexOf('tool_') === 0 && b.name !== 'tool_clear') {
+                var on = (b.name.substring(5) === editorTool.id);
+                b.color = on ? cc.color(255, 210, 60, 255) : cc.color(52, 46, 58, 235);
+                b.scale = on ? 1.04 : 1;
+                var lb = b.getChildByName('toolLabel');
+                if (lb) { lb.color = on ? cc.color(30, 26, 34, 255) : cc.color(255, 255, 255, 225); }
+            } else if (b.name && b.name.indexOf('swatch_') === 0) {
+                b.scale = (parseInt(b.name.substring(7), 10) === editorTool.portalColour) ? 1.18 : 1;
+            }
+        });
+    }
+    function applyToolToCell(cell) {
+        if (!cell || !cell.isValid) { return; }
+        var v = editorTool.value;
+        cell.__value = v;
+        var key = cell.__gx + ',' + cell.__gy;
+        if (v === 2) { editorColours[key] = editorTool.portalColour; } else { delete editorColours[key]; }
+        paintGridCell(cell);
+        refreshGridReadout();
+        /* write into the grid array the save path reads - the phase-1 version did this and it
+           must not be lost: without it the cells paint correctly but save an empty matrix */
+        try {
+            var ed = MazeDashCustomTab.gridEditor;
+            if (ed && ed.grid && ed.grid[cell.__gy]) { ed.grid[cell.__gy][cell.__gx] = v; }
+        } catch (e) {}
+        stats.gridPaints = (stats.gridPaints || 0) + 1;
+    }
+    function toggleGridCell(cell) { applyToolToCell(cell); }
+    function refreshGridReadout() {
+        try {
+            var root = gridRootRef;
+            var bg = root && root.getChildByName('gridReadoutBg');
+            var lb = bg && bg.getChildByName('gridReadout') && bg.getChildByName('gridReadout').getComponent(cc.Label);
+            var ed = MazeDashCustomTab.gridEditor;
+            if (lb && ed && ed.grid) { lb.string = gridReadout(ed.grid); }
+        } catch (e) {}
+    }
+    function clearGrid() {
+        var ed = MazeDashCustomTab.gridEditor;
+        if (!ed) { return; }
+        for (var y = 0; y < GRID_N; y++) {
+            for (var x = 0; x < GRID_N; x++) {
+                ed.grid[y][x] = 0;
+                var cell = ed.cells[y * GRID_N + x];
+                if (cell && cell.isValid) { cell.__value = 0; paintGridCell(cell); }
+            }
+        }
+        editorColours = {};
+        refreshGridReadout();
+        stats.gridCleared = (stats.gridCleared || 0) + 1;
+    }
+    function buildPalette(root, W, H) {
+        /* One horizontal row UNDER the grid, per the new layout requirement. It sits at
+           y = -410 with a height of 140 (so -480..-340), while the tab bar occupies roughly
+           -640..-520: a 40px gap, and nothing needs hiding - the tab bar stays visible and
+           simply never overlaps this row, so it cannot swallow the taps. */
+        var panelW = 2100, panelH = 140, panelY = -410;
+        var panel = new cc.Node('gridPalette');
+        panel.parent = root;
+        panel.setContentSize(panelW, panelH);
+        panel.x = 0;
+        panel.y = panelY;
+        panel.zIndex = 55;
+        roundedPanel(panel, cc.color(30, 26, 34, 240), panelW, panelH);
+        var n = TOOLS.length + PORTAL_COLOUR_ORDER.length + 2;   // tools + swatches + clear + save
+        var slotW = Math.floor((panelW - 40) / n);
+        var bw = Math.min(150, slotW - 8), bh = 104;
+        var items = [];
+        TOOLS.forEach(function (tool) { items.push({ kind: 'tool', tool: tool }); });
+        PORTAL_COLOUR_ORDER.forEach(function (idx) { items.push({ kind: 'swatch', idx: idx }); });
+        items.push({ kind: 'clear' });
+        items.push({ kind: 'save' });   // save lives in this row so it cannot collide with it
+        items.forEach(function (it, i) {
+            var x = Math.round(-panelW / 2 + 20 + slotW * (i + 0.5));
+            var b;
+            if (it.kind === 'swatch') {
+                b = new cc.Node('swatch_' + it.idx);
+                b.setContentSize(84, 84);
+                roundedPanel(b, PORTAL_PALETTE[it.idx], 84, 84);
+                /* selecting a colour must be a real action: picking one also switches to the
+                   portal tool, and tapping the same swatch again keeps it selected */
+                (function (node, idx) {
+                    node.on(cc.Node.EventType.TOUCH_END, function () {
+                        pressFeedback(node, false);
+                        editorTool.portalColour = idx;
+                        if (editorTool.value !== 2) { setEditorTool('portal'); } else { refreshToolButtons(); }
+                    });
+                })(b, it.idx);
+            } else if (it.kind === 'save') {
+                b = new cc.Node('gridSave');
+                b.setContentSize(bw, bh);
+                roundedPanel(b, cc.color(255, 210, 60, 255), bw, bh);
+                makeLabel(b, t('saveAndPlay'), 0, 18, cc.color(40, 32, 20, 255)).name = 'toolLabel';
+                b.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(b, false); saveGridAndPlay(MazeDashCustomTab.gridEditor.grid); });
+            } else if (it.kind === 'clear') {
+                b = new cc.Node('tool_clear');
+                b.setContentSize(bw, bh);
+                roundedPanel(b, cc.color(150, 60, 60, 240), bw, bh);
+                makeLabel(b, t('clearGrid'), 0, 20, cc.color(255, 255, 255, 240)).name = 'toolLabel';
+                b.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(b, false); clearGrid(); });
+            } else {
+                var tool = it.tool;
+                b = new cc.Node('tool_' + tool.id);
+                b.setContentSize(bw, bh);
+                roundedPanel(b, cc.color(52, 46, 58, 235), bw, bh);
+                makeLabel(b, tool.glyph + ' ' + t(tool.key), 0, 24, cc.color(255, 255, 255, 225)).name = 'toolLabel';
+                b.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(b, false); setEditorTool(tool.id); });
+            }
+            b.parent = panel;
+            b.x = x;
+            b.y = 0;
+            b.zIndex = 56;
+            b.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(b, true); });
+            b.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(b, false); });
+        });
+        refreshToolButtons();
+        return panel;
     }
 
     function openGridEditor() {
@@ -1050,7 +1224,7 @@
                 cell.parent = root;
                 cell.setContentSize(GRID_TILE, GRID_TILE);
                 cell.x = Math.round((gx - (GRID_N - 1) / 2) * GRID_PITCH);
-                cell.y = Math.round(((GRID_N - 1) / 2 - gy) * GRID_PITCH);
+                cell.y = Math.round((((GRID_N - 1) / 2 - gy) * GRID_PITCH) + GRID_OFFSET_Y);
                 cell.zIndex = 10;
                 fullSprite(cell, GRID_TILE, GRID_TILE, cc.color(46, 40, 52, 255));
                 cell.__value = 0;
@@ -1074,29 +1248,17 @@
         }
 
         /* --- controls: save & play (bottom right), readout pill (top right) --- */
-        var save = new cc.Node('gridSave');
-        save.parent = root;
-        save.setContentSize(420, 130);
-        save.x = W / 2 - 40 - 210;
-        save.y = -H / 2 + 150;
-        roundedPanel(save, cc.color(255, 210, 60, 255), 420, 130);
-        makeLabel(save, t('saveAndPlay'), 0, 34, cc.color(40, 32, 20, 255)).name = 'gridSaveLabel';
-        save.zIndex = 80;
-        save.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(save, true); });
-        save.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(save, false); });
-        save.on(cc.Node.EventType.TOUCH_END, function () {
-            pressFeedback(save, false);
-            saveGridAndPlay(grid);
-        });
+        /* the save button now lives in the palette row (see buildPalette) */
 
         var readoutBg = new cc.Node('gridReadoutBg');
         readoutBg.parent = root;
-        readoutBg.setContentSize(460, 84);
-        readoutBg.x = W / 2 - 40 - 230;
+        readoutBg.setContentSize(900, 84);
+        readoutBg.x = W / 2 - 40 - 450;
         readoutBg.y = H / 2 - 24 - 65;
         readoutBg.zIndex = 40;
         roundedPanel(readoutBg, cc.color(30, 26, 34, 235), 460, 84);
         makeLabel(readoutBg, gridReadout(grid), 0, 26, cc.color(255, 255, 255, 220)).name = 'gridReadout';
+        buildPalette(root, W, H);
 
         /* expose enough for the probe to drive the same code paths the user does */
         MazeDashCustomTab.gridEditor = {
@@ -1105,6 +1267,11 @@
             save: function () { return saveGridAndPlay(grid); },
             close: closeGridEditor,
             value: function (x, y) { return grid[y][x]; },
+            setTool: setEditorTool,
+            paint: function (x, y) { applyToolToCell(cellsRef[y * GRID_N + x]); },
+            clear: clearGrid,
+            colours: function () { return editorColours; },
+            tool: function () { return editorTool; },
         };
         gridRootRef = root;
         animateIn(root);
@@ -1114,7 +1281,8 @@
            the full 1280px height for the 20x20 grid. */
         try {
             var hallBar = window.hallScene && window.hallScene.tabBar && window.hallScene.tabBar.parent;
-            if (hallBar && hallBar.isValid) { hallBar.active = false; stats.tabBarHiddenForEditor = 1; }
+            /* The tab bar must STAY VISIBLE (user requirement). Nothing is hidden here: the
+               palette row and the grid are laid out clear of its area instead. */
         } catch (e) {}
 
         stats.gridEditorOpened = (stats.gridEditorOpened || 0) + 1;
@@ -1123,9 +1291,13 @@
     }
 
     function gridReadout(grid) {
-        var n = 0;
-        for (var y = 0; y < grid.length; y++) { for (var x = 0; x < grid[y].length; x++) { if (grid[y][x] === 1) { n++; } } }
-        return t('floorCount') + ': ' + n + ' / ' + (GRID_N * GRID_N);
+        var n = { 1: 0, '-1': 0, '2': 0, '4': 0, '-3': 0, '-4': 0, '5': 0, '6': 0, '7': 0, '8': 0 };
+        for (var y = 0; y < grid.length; y++) {
+            for (var x = 0; x < grid[y].length; x++) { var v = grid[y][x]; if (n[v] !== undefined) { n[v]++; } }
+        }
+        var arrows = n[5] + n[6] + n[7] + n[8];
+        return t('floorCount') + ' ' + n[1] + '  ' + t('toolHero') + ' ' + n['-1'] + '  ' + t('toolPortal') + ' ' + n[2] +
+               '  ' + t('toolKey') + ' ' + n[4] + '  ' + t('toolLock') + ' ' + n['-3'] + '  ' + t('toolBrick') + ' ' + n['-4'] + '  ' + t('toolArrow') + ' ' + arrows;
     }
 
     function toggleGridCell(cell) {
@@ -1170,6 +1342,7 @@
             if (!rec || !rec.grid) { return; }
             try {
                 conf.all_Level[id] = rec.grid;
+                if (rec.colours) { portalColoursByMap[id] = rec.colours; }
                 var entry = { id: id, wordId: rec.world || TEST_WORLD, levelId: rec.levelId || 1, mapId: id, sz_solution: '' };
                 conf.level_cfg[id] = entry;
                 var world = entry.wordId;
@@ -1209,7 +1382,7 @@
             var entry = { id: id, wordId: world, levelId: display, mapId: id, sz_solution: '' };
             conf.level_cfg[id] = entry;
             conf.stage_level_cfg[world][String(id)] = entry;
-            saveCustomLevel(id, { grid: copy, world: world, levelId: display, name: t('createLevel') + ' ' + display });
+            saveCustomLevel(id, { grid: copy, colours: JSON.parse(JSON.stringify(editorColours)), world: world, levelId: display, name: t('createLevel') + ' ' + display });
             try { if (window.MazeDashCustomTab && MazeDashCustomTab.refreshStagePages) { MazeDashCustomTab.refreshStagePages(); } } catch (e) {}
             stats.editorSavedLevel = id;
             stats.editorSavedWorld = world;
@@ -1219,9 +1392,29 @@
             return null;
         }
         closeGridEditor();
+        portalColoursByMap[id] = JSON.parse(JSON.stringify(editorColours));   // per-map table
+        setActiveMapColours(id);                                            // what the engine will read
+        editorColours = {};
         try { gamemain.enterEnterGameScene(id); } catch (e) { warn('enter failed:', e && e.message); }
         return id;
     }
+
+    (function addPaletteStrings() {
+        var add = {
+            'zh-Hans': { paletteTitle: '\u5de5\u5177', toolFloor: '\u5730\u677f', toolWall: '\u5899', toolHero: '\u4e3b\u89d2',
+                         toolBrick: '\u7816\u5757', toolKey: '\u94a5\u5319', toolLock: '\u9501', toolUp: '\u4e0a', toolRight: '\u53f3',
+                         toolDown: '\u4e0b', toolLeft: '\u5de6', toolPortal: '\u4f20\u9001\u95e8', toolArrow: '\u7bad\u5934',
+                         portalColourLabel: '\u4f20\u9001\u95e8\u989c\u8272', clearGrid: '\u6e05\u7a7a' },
+            'en':      { paletteTitle: 'Tools', toolFloor: 'Floor', toolWall: 'Wall', toolHero: 'Hero',
+                         toolBrick: 'Brick', toolKey: 'Key', toolLock: 'Lock', toolUp: 'Up', toolRight: 'Right',
+                         toolDown: 'Down', toolLeft: 'Left', toolPortal: 'Portal', toolArrow: 'Arrow',
+                         portalColourLabel: 'Portal colour', clearGrid: 'Clear' },
+        };
+        Object.keys(add).forEach(function (lang) {
+            if (!TEXT[lang]) { TEXT[lang] = {}; }
+            Object.keys(add[lang]).forEach(function (k) { TEXT[lang][k] = add[lang][k]; });
+        });
+    })();
 
     /* Editor-only UI strings, appended to the shared table rather than editing its big literal.
        Unknown languages fall back to English through t(). */
@@ -2386,6 +2579,7 @@
             conf.theme_cfg[TEST_WORLD] = theme;
             conf.all_Level[TEST_MAP] = JSON.parse(JSON.stringify(TEST_GRID));
             activePortalColours = { '1,2': 4, '2,2': 1, '3,2': 3, '7,1': 4, '8,1': 1, '9,1': 3 };
+                    portalColoursByMap[stats.testLevelInWorld1 || 1] = activePortalColours;
             var entry = { id: TEST_LEVEL, wordId: TEST_WORLD, levelId: 1, mapId: TEST_MAP, sz_solution: '' };
             conf.level_cfg[TEST_LEVEL] = entry;
             conf.stage_level_cfg[TEST_WORLD][String(TEST_LEVEL)] = entry;
