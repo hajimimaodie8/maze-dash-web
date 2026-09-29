@@ -2650,7 +2650,7 @@
         } catch (e) { warn('logging proxy failed:', e && e.message); }
         /* The broad Proxy was REMOVED: with it installed the SAVE path hung (the timeout moved\n           from entry to save), and without it the save completed. Evidence beat preference. */
 
-        /* gamemain.getLastWordId() reads .wordId off a world record and threw
+        /* EXTRA DEFENCE ONLY. The real culprit was the stage_level_cfg registration key (custom
            "Cannot read properties of undefined (reading 'wordId')" from initStageLayer whenever the
            hall was rebuilt after entering a CUSTOM level. Wrapping the method is the same low-risk
            technique already used for the other engine methods in this port. */
