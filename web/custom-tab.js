@@ -995,10 +995,22 @@
     var PREVIEW_NAME = 'editorPreview';
     var previewRootRef = null;   // direct handle: closing must not depend on a find()
     function closePreview() {
-        var host = cc.find('Canvas');
-        var p = host && host.getChildByName(PREVIEW_NAME);
-        if (p && p.isValid) { p.destroy(); }
-        return !!p;
+        var closed = false;
+        /* Sweep EVERY overlay by name, not just the reference we hold: opening the preview a
+           second time without the first being fully closed left a page background and a delete
+           button on screen, which is the stray frame and red block seen after returning. */
+        try {
+            var host0 = cc.find('Canvas');
+            if (host0) {
+                Array.prototype.slice.call(host0.children).forEach(function (n2) {
+                    if (n2 && n2.isValid && String(n2.name).indexOf(PREVIEW_NAME) === 0) { n2.destroy(); closed = true; }
+                });
+            }
+        } catch (e) {}
+        if (previewRootRef && previewRootRef.isValid) { previewRootRef.destroy(); closed = true; }
+        previewRootRef = null;
+        stats.previewsClosed = (stats.previewsClosed || 0) + 1;
+        return closed;
     }
 
     /* 编辑器自己的世界预览：**整页翻页**，与选关界面同构

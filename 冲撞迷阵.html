@@ -87661,7 +87661,12 @@ cc._RF.pop();
         var idx = (typeof pager._curPageIdx === 'number') ? pager._curPageIdx : 0;
         var next = Math.max(0, Math.min(pages.length - 1, idx + step));
         if (next === idx) { return false; }
-        if (pager.scrollToPage) { pager.scrollToPage(next, 0.3); }
+        if (pager.scrollToPage) {
+            /* Let the pager run its own animation, with a longer duration so a key press reads
+               as the same smooth slide a drag produces instead of an instant jump. */
+            try { pager.scrollDuration = 0.45; } catch (e) {}
+            pager.scrollToPage(next);
+        }
         stats.keyPages = (stats.keyPages || 0) + 1;
         return true;
     }

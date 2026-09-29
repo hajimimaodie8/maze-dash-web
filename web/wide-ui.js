@@ -17,6 +17,7 @@
     'use strict';
 
     var CFG = {
+        hideTitleArt: true,   // hide the mascot/logo artwork on the start screens
         widenSelectPage: true,     // 世界翻页页 + 选关网格撑宽
         widenLevelHud: true,       // 关卡内 HUD：把三颗按钮沿宽度拉开
         hideCountBadges: true,     // 去掉提示/重开按钮上的数字
@@ -393,6 +394,45 @@
        同时隐藏出版商的启动图（spriteFrame 名 launchImg，节点名 New Sprite）。 */
     var LAUNCH_LOGO_RE = /launchImg|cmcm|cheetah|publisher/i;
 
+    /* The title card still shows the game's cheetah logo. Hide it by name and record what was
+       caught, so it is obvious which node it was. */
+    /* Where the start-screen artwork actually is, found by listing the scenes:
+       LaunchScene: /Canvas/New Sprite(Splash)/New Sprite (frame launchImg, 640x215)
+       AnimScene  : /Canvas/begin/label/label_1..4  (frames login_1..login_7, the title artwork)
+       AnimScene  : /Canvas/begin/main              (240x600 mascot face: eyes and mouth)
+       The user asked for the mascot/logo artwork to be gone, so those are hidden; the background
+       and the drifting debris are left alone. */
+    var TITLE_ART_PATHS = [
+        /New Sprite\(Splash\)\/New Sprite$/,
+        /AnimScene\/Canvas\/begin\/label/,
+        /AnimScene\/Canvas\/begin\/main$/,
+    ];
+    var LOGO_RE = /logo|cheetah|leopard|splash|launch|cmcm|brand|icon|img_?logo|login_/i;
+    function hideTitleLogo() {
+        var scene = cc.director.getScene();
+        if (!scene) { return 0; }
+        var n = 0;
+        (function walk(x, p) {
+            var sp = x.getComponent && x.getComponent(cc.Sprite);
+            if (sp && sp.spriteFrame && x.activeInHierarchy) {
+                var byPath = TITLE_ART_PATHS.some(function (re) { return re.test(p); });
+                var byName = LOGO_RE.test(x.name);
+                var w = x.width, h = x.height;
+                if ((byPath || byName) && w > 80 && h > 80) {
+                    x.active = false;
+                    n++;
+                    stats.titleLogoHidden = (stats.titleLogoHidden || 0) + 1;
+                    stats.titleLogoName = (stats.titleLogoName ? stats.titleLogoName + ' | ' : '') + p + ' (' + Math.round(w) + 'x' + Math.round(h) + ')';
+                }
+            }
+            (x.children || []).forEach(function (ch) { walk(ch, p + '/' + x.name); });
+        })(scene, '');
+        return n;
+    }
+
+    /* The title scenes are gone by the time the hall tick runs, so this must not depend on the
+       hall at all: run it on its own timer, which is also when the artwork is on screen. */
+    if (CFG.hideTitleArt !== false) { setInterval(function () { try { hideTitleLogo(); } catch (e) {} }, 300); }
     function fixLaunchScreen() {
         var scene = cc.director.getScene();
         /* The title card with the drifting debris is NOT LaunchScene - it is AnimScene,
@@ -460,6 +500,7 @@
     function apply() {
         var W = visibleWidth();
         fixLaunchScreen();
+        hideTitleLogo();
         makeUnlimited();
         if (CFG.hideCountBadges) { hideCountBadges(); }
         if (CFG.widenSelectPage && window.hallScene && window.hallScene.node && window.hallScene.node.isValid) {
