@@ -112,7 +112,7 @@
             if (Math.round(cur.width) !== d.w || Math.round(cur.height) !== d.h) { applyFit(); }
         } catch (e) {}
     }, 1000);
-    var wideModeDriftCheck = true;
+    var wideModeDriftCheck = false;   // the design size is coerced at boot now, so there is nothing to drift
     function designSizeForWindow() {
         var fs = frameSize();
         var w = CONFIG.designWidth;
@@ -125,6 +125,34 @@
         return { w: w, h: CONFIG.designHeight, wide: w > CONFIG.designWidth };
     }
 
+    /* ---- boot-level coercion ------------------------------------------------------------
+       settings.js has no design field at all (only orientation:""), so the 720x1280 design size
+       comes from the game's own code calling cc.view.setDesignResolutionSize. Correcting that
+       AFTER boot is what made every scene start narrow and then flip to wide.
+       Instead, patch the engine method itself before the game uses it: whatever width the game
+       asks for, it gets the wide one. The first frame is then already wide - no flip, no stutter
+       - and no periodic re-layout is needed. */
+    var designCoercion = { installed: false, calls: 0, lastAsked: null, lastApplied: null };
+    function installDesignCoercion() {
+        if (designCoercion.installed) { return true; }
+        if (typeof cc === 'undefined' || !cc.view || typeof cc.view.setDesignResolutionSize !== 'function') { return false; }
+        var original = cc.view.setDesignResolutionSize.bind(cc.view);
+        cc.view.setDesignResolutionSize = function (w, h, policy) {
+            var d = designSizeForWindow();
+            designCoercion.calls++;
+            designCoercion.lastAsked = [w, h];
+            designCoercion.lastApplied = [d.w, d.h];
+            designCoercion.installed = true;
+            return original(d.w, d.h, d.wide ? RP.FIXED_HEIGHT : policy);
+        };
+        designCoercion.installed = true;
+        return true;
+    }
+    /* the engine may not exist yet at this point, so grab it as soon as it does */
+    (function waitForEngine(n) {
+        if (installDesignCoercion() || n > 600) { return; }
+        setTimeout(function () { waitForEngine(n + 1); }, 8);
+    })(0);
     function applyFit() {
         var p = policyForWindow();
         if (p === undefined || p === null) { return; }
