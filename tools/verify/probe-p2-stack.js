@@ -31,7 +31,7 @@ const log = (k, v) => console.log('K ' + k + ':', typeof v === 'string' ? v : JS
         await page.evaluate(() => { try { gamemain.enterEnterGameScene(10101); } catch (e) {} });
         for (let i = 0; i < 100; i++) { const r = await page.evaluate(() => { const m = cc.find('Canvas/backgroup/game_map'); const cp = m && m.getComponent && m.getComponent('game_map'); return !!(cp && cp.Level_data); }); if (r) { break; } await sleep(150); }
         await sleep(2000);
-        const st = await page.evaluate(() => { const s = window.MazeDashCustomTab.stats; return { arg: s.getLastWordIdArg || null, short: s.getLastWordIdShortCircuit || 0, seenEarly: s.enterLevelsIdSeenEarly || null, knownEarly: s.enterLevelsIdKnownEarly, clearedEarly: s.enterLevelsIdClearedEarly || 0, seeded: s.degenerateKeysSeeded || 0, hasOne: s.levelCfgHasOneEarly, keysEarly: s.levelCfgKeyCountEarly, sample: s.levelCfgOneSample }; });
+        const st = await page.evaluate(() => { const s = window.MazeDashCustomTab.stats; return { lsReads: (s.lsReads || []).slice(-10), arg: s.getLastWordIdArg || null, short: s.getLastWordIdShortCircuit || 0, seenEarly: s.enterLevelsIdSeenEarly || null, knownEarly: s.enterLevelsIdKnownEarly, clearedEarly: s.enterLevelsIdClearedEarly || 0, seeded: s.degenerateKeysSeeded || 0, hasOne: s.levelCfgHasOneEarly, keysEarly: s.levelCfgKeyCountEarly, sample: s.levelCfgOneSample }; });
         log('run' + run, { boot: duringBoot, afterHall: afterHall, afterImport: afterImport, total: stacks.length, overlayText: ovTxt, stats: st });
         if (stacks[0]) { log('run' + run + '_stack0', stacks[0].stack); }
         if (stacks[1]) { log('run' + run + '_stack1', stacks[1].stack); }

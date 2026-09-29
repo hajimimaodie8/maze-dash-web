@@ -72,6 +72,38 @@
                     st3.levelCfgOneSample = JSON.stringify(conf.level_cfg[1] || null).slice(0, 80);
                 }
             } catch (e) {}
+            /* READ-ONLY storage recorder. It NEVER changes a return value - a broad Proxy on a config
+               object was measured to hang the save path, so nothing here may alter behaviour. It records
+               level-related reads so the key that the engine's getLastWordId actually reads becomes
+               visible instead of inferred. Also hooks cc.sys.localStorage, which the engine may use. */
+            (function armStorageRecorder() {
+                function rec(api, tag) {
+                    try {
+                        if (!api || !api.getItem || api.__recHooked) { return; }
+                        var orig = api.getItem.bind(api);
+                        api.getItem = function (k) {
+                            var v = orig(k);
+                            try {
+                                var s = window.MazeDashCustomTab && window.MazeDashCustomTab.stats;
+                                if (s && /level|stage|word|map/i.test(String(k))) {
+                                    if (!s.lsReads) { s.lsReads = []; }
+                                    s.lsReads.push([tag + ':' + String(k), String(v), Date.now()]);
+                                    if (s.lsReads.length > 50) { s.lsReads.shift(); }
+                                }
+                            } catch (e) {}
+                            return v;
+                        };
+                        api.__recHooked = true;
+                    } catch (e) {}
+                }
+                rec(window.localStorage, 'win');
+                var t = 0;
+                (function tick() {
+                    t++;
+                    try { if (window.cc && cc.sys && cc.sys.localStorage) { rec(cc.sys.localStorage, 'cc'); return; } } catch (e) {}
+                    if (t < 2000) { setTimeout(tick, 0); }
+                })();
+            })();
             var keys = ['NaN', 'undefined', 'null', ''];
             var made = 0;
             for (var i = 0; i < keys.length; i++) {
