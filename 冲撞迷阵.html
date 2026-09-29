@@ -157,18 +157,7 @@
            even though the boot sequence re-shows it inline */
         body.boot-failed #splash { display: none !important; }
     </style>
-<style id="maze-dash-loadbar">
-/* The startup line: main.js drives a .progress-bar span inside #splash. Target exactly that and
-   its fill, and nothing else - an earlier, broader rule also coloured the whole splash screen. */
-#splash .progress-bar,
-#splash .progress-bar span,
-#splash .progress-bar > *,
-.progress-bar, .progress-bar span {
-  background: #d64040 !important;
-  background-color: #d64040 !important;
-  border-color: #d64040 !important;
-}
-</style></head>
+</head>
 <body>
     <div id="GameDiv">
         <canvas id="GameCanvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
@@ -85294,29 +85283,7 @@ cc._RF.pop();
        asks for, it gets the wide one. The first frame is then already wide - no flip, no stutter
        - and no periodic re-layout is needed. */
     var designCoercion = { installed: false, calls: 0, lastAsked: null, lastApplied: null };
-    /* The Cocos loading UI draws its progress bar itself, so CSS cannot reach it: find the node
-       and tint it red instead. It only exists during load, hence the short poll. */
-    function reddenLoadBar() {
-        try {
-            var scene = cc.director.getScene();
-            if (!scene) { return 0; }
-            var n = 0;
-            (function walk(x) {
-                var sp = x.getComponent && x.getComponent(cc.Sprite);
-                if (sp && x.name && /bar|progress|line|loading/i.test(x.name) && x.width > 20 && x.height < 60) {
-                    x.color = cc.color(214, 64, 64, 255);
-                    n++;
-                }
-                (x.children || []).forEach(walk);
-            })(scene);
-            if (n) { stats.loadBarReddened = (stats.loadBarReddened || 0) + n; }
-            return n;
-        } catch (e) { return 0; }
-    }
-    (function pollLoadBar(n) {
-        if (reddenLoadBar() || n > 300) { return; }
-        setTimeout(function () { pollLoadBar(n + 1); }, 20);
-    })(0);
+
     function installDesignCoercion() {
         if (designCoercion.installed) { return true; }
         if (typeof cc === 'undefined' || !cc.view || typeof cc.view.setDesignResolutionSize !== 'function') { return false; }
@@ -86946,7 +86913,7 @@ cc._RF.pop();
         close.x = -W / 2 + 30 + 150;
         close.y = H / 2 - 24 - 65;
         roundedPanel(close, cc.color(30, 26, 34, 235), 300, 130);
-        makeLabel(close, '\u2190 ' + t('backToEditor'), 0, 30, cc.color(214, 64, 64, 255)).name = 'previewCloseLabel';
+        makeLabel(close, '\u2190 ' + t('backToEditor'), 0, 30, cc.color(255, 255, 255, 255)).name = 'previewCloseLabel';
         /* the pager covers the full screen and registers touch handlers, so it was sitting on
            top of this button and swallowing its taps; zIndex puts the way out above it. */
         close.zIndex = 50;
@@ -87645,7 +87612,7 @@ cc._RF.pop();
             back.parent = c.SelectLayer;
             back.setContentSize(150, 150);
             roundedPanel(back, cc.color(30, 26, 34, 220), 150, 150);
-            var g = makeLabel(back, '\u2190', 0, 72, cc.color(214, 64, 64, 255));
+            var g = makeLabel(back, '\u2190', 0, 72, cc.color(255, 255, 255, 255));
             g.name = 'backGlyph';
             back.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(back, true); });
             back.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(back, false); });
