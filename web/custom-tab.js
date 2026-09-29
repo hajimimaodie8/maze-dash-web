@@ -1133,8 +1133,8 @@
         if (tick && tick.isValid) {
             var lb = tick.getComponent(cc.Label);
             if (lb) { lb.string = glyphForValue(v); }
-            tick.active = (v !== 0);
-            tick.color = (v === 1) ? cc.color(40, 32, 20, 255) : cc.color(255, 255, 255, 245);
+            tick.active = (v !== 0 && v !== 1);   /* the tick is an ITEM marker; floors and walls stay plain (user asked for no tick) */
+            tick.color = cc.color(255, 255, 255, 245);
         }
     }
 
@@ -1191,9 +1191,9 @@
     }
     function colourForValue(cell) {
         var v = cell.__value;
-        if (v === 1) { return null; }
+        if (v === 1) { return cc.color(226, 210, 172, 255); }   /* MEASURED in-game floor tile: spaceTile under fllor_space_layer, colour 226,210,172 */
         if (v === 0) { return cc.color(46, 40, 52, 255); }
-        if (v === -1) { return cc.color(255, 196, 48, 255); }
+        if (v === -1) { return cc.color(255, 196, 48, 255); }   /* MEASURED in-game hero tile colour; the 'C' glyph marks it as the hero */
         if (v === -4) { return cc.color(150, 96, 56, 255); }
         if (v === 4) { return cc.color(240, 200, 80, 255); }
         if (v === -3) { return cc.color(120, 124, 140, 255); }
