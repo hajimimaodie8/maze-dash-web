@@ -337,27 +337,38 @@
         return hidden;
     }
     function fixCjkLabels() {
+        /* A full-scene walk (a getComponent call per node) ten times a second. Only the labels
+           whose text changed need it, and the text only changes when something re-renders, so the
+           walk is gated on the scene/viewport stamp plus a 2 s safety pass. Counters make the
+           reduction measurable (stats.cjkWalks vs stats.cjkSkips). */
         var scene = cc.director.getScene();
+        var stamp = 'x';
+        try {
+            var vs = cc.view.getVisibleSize();
+            stamp = (scene ? scene.name : '') + '|' + Math.round(vs.width) + 'x' + Math.round(vs.height) + '|' + (scene ? scene.children.length : 0);
+        } catch (e) {}
+        var now = Date.now();
+        if (window.__mazeDashStampClean === stamp && (now - (window.__mazeDashStampCleanAt || 0)) < 5000) {
+            stats.cjkSkips = (stats.cjkSkips || 0) + 1;
+            return 0;
+        }
+        window.__mazeDashStampClean = stamp;
+        window.__mazeDashStampCleanAt = now;
+        stats.cjkWalks = (stats.cjkWalks || 0) + 1;
         if (!scene) { return 0; }
         var fixed = 0;
         (function walk(n) {
             var lb = n.getComponent && n.getComponent(cc.Label);
             if (lb && lb.string && CJK_RE.test(lb.string)) {
                 try {
-                    if (lb.font) { lb.font = null; }   // a leftover font asset overrides the system font
+                    if (lb.font) { lb.font = null; }
                     if (lb.useSystemFont !== true) { lb.useSystemFont = true; stats.cjkFontSwitched = (stats.cjkFontSwitched || 0) + 1; fixed++; }
                     var want = 'system-ui, "Microsoft YaHei", "PingFang SC", sans-serif';
                     if (lb.fontFamily !== want) { lb.fontFamily = want; }
-                    /* CJK glyphs are taller than the Latin ones this label's line box was sized
-                       for, so their tops were clipped. Give the line, and the node, room for the
-                       full ascent - this is the "every text is shifted up and half cut off" bug. */
                     var fs = lb.fontSize || 20;
                     var need = Math.round(fs * 1.45);
                     if (!lb.lineHeight || lb.lineHeight < need) { lb.lineHeight = need; }
-                    if (lb.node && lb.node.height && lb.node.height < need) {
-                        lb.node.height = need;
-                        stats.cjkLineHeightFixed = (stats.cjkLineHeightFixed || 0) + 1;
-                    }
+                    if (lb.node && lb.node.height && lb.node.height < need) { lb.node.height = need; }
                 } catch (e) {}
             }
             (n.children || []).forEach(walk);

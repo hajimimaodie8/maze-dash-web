@@ -612,6 +612,30 @@
         return (row && row[key]) || (TEXT.en[key] || key);
     }
 
+    /* The expensive part of the tick: three scene-wide walks (text refresh, marker cleanup, and
+       following the visible world). Gated on the scene/viewport stamp with a 5 s safety pass, so
+       it runs a couple of times a minute instead of forty, while the cheap O(few) positioning
+       still runs on every tick. Counters expose the reduction. */
+    function sweepTextAndMarkers(hall) {
+        var stamp = 'x';
+        try {
+            var sc = cc.director.getScene();
+            var vs = cc.view.getVisibleSize();
+            stamp = (sc ? sc.name : '') + '|' + Math.round(vs.width) + 'x' + Math.round(vs.height) + '|' + (sc ? sc.children.length : 0);
+        } catch (e) {}
+        var now = Date.now();
+        if (window.__mazeDashStampTab === stamp && (now - (window.__mazeDashStampTabAt || 0)) < 5000) {
+            stats.tabSkips = (stats.tabSkips || 0) + 1;
+            return 0;
+        }
+        window.__mazeDashStampTab = stamp;
+        window.__mazeDashStampTabAt = now;
+        stats.tabWalks = (stats.tabWalks || 0) + 1;
+        dropBuildMarker();
+        applyTexts();
+        followVisibleWorld(hall);
+        return 1;
+    }
     /* re-apply text every tick: a language change then shows up without a reload */
     /* the temporary build/language marker is gone; remove it from a panel that an older
        build may have created earlier in this session */
@@ -1962,7 +1986,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); dropBuildMarker(); applyTexts(); followVisibleWorld(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); keepPreviewSized(); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); sweepTextAndMarkers(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); keepPreviewSized(); }
         } catch (e) {}
     }, 1500);
 
