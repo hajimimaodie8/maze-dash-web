@@ -549,11 +549,11 @@
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
                      customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
                      worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Or type a colour code below', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
-                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete', backToEditor: 'Editor', emptyHint: 'Create one from the editor' },
+                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete', backToEditor: 'Editor', emptyHint: 'Create one from the editor', testWorldName: 'Test World (3 heroes + 3 colours)' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
                      customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
                      worldName: '世界名称', themeColour: '主题色', hexHint: '也可以在下面直接输入颜色代码', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
-                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除', backToEditor: '返回编辑器', emptyHint: '在编辑器里创建一个世界' },
+                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除', backToEditor: '返回编辑器', emptyHint: '在编辑器里创建一个世界', testWorldName: '测试世界（3 主角 + 3 色传送门）' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
@@ -1911,6 +1911,145 @@
         stats.keysInstalled = 1;
         log('keyboard mapping installed (WASD + arrows)');
     }
+    /* ==================== 彩色传送门（实验性扩展） ====================
+       引擎的 getOutPortal 是"从头扫描全图、返回第一个其它传送门"，所以多个门会全部连到一起。
+       这里包装它，实现"只有同色门互通、找不到同色门就原地不动"。颜色编码：2 = 默认，20+c = 第 c 种颜色。 */
+    /* Portal colours live in a side table rather than in the tile value: the renderer only draws a
+       portal when the cell is exactly 2, so coloured tiles were invisible. Keyed by "<x>,<y>". */
+    var portalColours = {};
+
+    /* One table for the level currently loaded. Keying it by mapId did not work - the component
+       does not expose its map id - and a missing key made every portal look uncoloured, which
+       silently fell back to "pair with the first portal". The editor will key this properly. */
+    var activePortalColours = {};
+    function cellColour(x, y) {
+        return activePortalColours[x + ',' + y] || 0;
+    }
+
+    function patchPortalPairing() {
+        var map = cc.find('Canvas/backgroup/game_map');
+        var comp = map && map.getComponent && map.getComponent('game_map');
+        if (!comp || comp.__colorPortals) { return false; }
+        comp.__colorPortals = true;
+        comp.getOutPortal = function (from) {
+            var want = cellColour(from.x, from.y);
+            var found = null;
+            for (var y in this.Level_data) {
+                for (var x in this.Level_data[y]) {
+                    var v = this.Level_data[y][x];
+                    if (v !== 2) { continue; }
+                    var xi = parseInt(x, 10), yi = parseInt(y, 10);
+                    if (xi === from.x && yi === from.y) { continue; }
+                    if (want > 0 && cellColour(xi, yi) !== want) { continue; }   // same colour only
+                    if (found === null) { found = cc.v2(xi, yi); }
+                }
+            }
+            return found || cc.v2(from.x, from.y);   // no partner of that colour: no teleport
+        };
+        /* Tint the portal sprites in the engine's own scan order, which is the order it builds
+           tiles in, so the nth portal sprite belongs to the nth portal cell. */
+        try {
+            var wanted = [];
+            for (var yy in comp.Level_data) { for (var xx in comp.Level_data[yy]) { if (comp.Level_data[yy][xx] === 2) { wanted.push(cellColour(parseInt(xx, 10), parseInt(yy, 10))); } } }
+            var sprites = [];
+            (function collect(n) { var sp = n.getComponent && n.getComponent(cc.Sprite); if (sp && sp.spriteFrame && /portal/i.test(sp.spriteFrame.name)) { sprites.push(n); } (n.children || []).forEach(collect); })(map);
+            sprites.forEach(function (n, i) {
+                var cIdx = wanted[i] || 0;
+                if (cIdx > 0) { n.color = cc.color([0, 226, 64, 64][Math.min(cIdx, 3)] , [0, 64, 200, 140][Math.min(cIdx, 3)], [0, 64, 96, 240][Math.min(cIdx, 3)]); }
+            });
+            stats.portalSpritesTinted = (stats.portalSpritesTinted || 0) + sprites.filter(function (n, i) { return (wanted[i] || 0) > 0; }).length;
+        } catch (e) {}
+        try {
+            var tint = { 21: cc.color(226, 64, 64), 22: cc.color(64, 200, 96), 23: cc.color(64, 140, 240) };
+            var cells = {};
+            this.__cells = null;
+            (function walk(n) {
+                var sp = n.getComponent && n.getComponent(cc.Sprite);
+                if (sp && sp.spriteFrame && /portal/i.test(sp.spriteFrame.name)) {
+                    var wp = n.convertToWorldSpaceAR(cc.v2(0, 0));
+                    for (var y in comp.Level_data) {
+                        for (var x in comp.Level_data[y]) {
+                            var v = comp.Level_data[y][x];
+                            if (v === 2 || v >= 20) {
+                                if (!cells[x + ',' + y]) {
+                                    var node = (function () { try { return comp.getTileNode ? comp.getTileNode(parseInt(x, 10), parseInt(y, 10)) : null; } catch (e) { return null; } })();
+                                    if (node) { cells[x + ',' + y] = node.convertToWorldSpaceAR(cc.v2(0, 0)); }
+                                }
+                                var c = cells[x + ',' + y];
+                                if (c && Math.abs(c.x - wp.x) < 8 && Math.abs(c.y - wp.y) < 8 && tint[v]) { n.color = tint[v]; }
+                            }
+                        }
+                    }
+                }
+                (n.children || []).forEach(walk);
+            })(map);
+        } catch (e) {}
+        stats.colorPortalsPatched = (stats.colorPortalsPatched || 0) + 1;
+        log('coloured portal pairing installed');
+        return true;
+    }
+
+    /* 在场景启动与随后几帧里尝试安装（关卡组件是随关卡加载才出现的） */
+    function armPortalPatch() {
+        try { stats.currentMapId = (window.gamemain && gamemain.currentLevelId) ? (conf.level_cfg[gamemain.currentLevelId] || {}).mapId : stats.currentMapId; } catch (e) {}
+        try {
+            if (sceneName() !== 'gameScene') { return; }
+            if (patchPortalPairing()) { return; }
+            var n = 0;
+            var iv = setInterval(function () { if (patchPortalPairing() || ++n > 40) { clearInterval(iv); } }, 100);
+        } catch (e) {}
+    }
+
+    /* ==================== 测试关卡：3 主角 + 3 色传送门 + 两个被墙隔开的房间 ====================
+       左房间 3 个主角，左右房间各 3 个同色门（红 21 / 绿 22 / 蓝 23）。两房间被墙完全隔开，
+       所以只有"同色配对"生效时，主角才可能从左房间到达右房间。 */
+    var TEST_WORLD = 101, TEST_LEVEL = 10101, TEST_MAP = 10101;
+    var TEST_GRID = [
+        [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+        [ 0,  1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  0],
+        [ 0,  1, -1,  1, -1,  0,  0,  1,  1,  1,  1,  0],
+        [ 0,  1,  1,  1,  1,  0,  0,  1,  2,  2,  2,  0],
+        [ 0,  1, -1,  1,  1,  0,  0,  1,  1,  1,  1,  0],
+        [ 0,  1,  1,  1,  1,  0,  0,  1,  1,  1,  1,  0],
+        [ 0,  2,  2,  2,  1,  0,  0,  1,  1,  1,  1,  0],
+        [ 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0],
+    ];
+
+    function seedTestLevel() {
+        portalColours[TEST_MAP] = { '1,6': 1, '2,6': 2, '3,6': 3, '8,3': 1, '9,3': 2, '10,3': 3 };
+        if (conf.all_Level && conf.all_Level[TEST_MAP]) { return false; }
+        try {
+            conf.worlds[TEST_WORLD] = { id: TEST_WORLD, require: 0 };
+            conf.stage_cfg[TEST_WORLD] = {};
+            conf.stage_level_cfg[TEST_WORLD] = {};
+            var theme = JSON.parse(JSON.stringify(conf.theme_cfg[1] || {}));
+            ['list_background', 'list_level_background'].forEach(function (k) { theme[k] = [292, 55, 72, 1]; });   // 紫色主题
+            theme.list_level_next = [292, 70, 100, 1];
+            conf.theme_cfg[TEST_WORLD] = theme;
+            conf.all_Level[TEST_MAP] = JSON.parse(JSON.stringify(TEST_GRID));
+            activePortalColours = { '1,6': 1, '2,6': 2, '3,6': 3, '8,3': 1, '9,3': 2, '10,3': 3 };
+            var entry = { id: TEST_LEVEL, wordId: TEST_WORLD, levelId: 1, mapId: TEST_MAP, sz_solution: '' };
+            conf.level_cfg[TEST_LEVEL] = entry;
+            conf.stage_level_cfg[TEST_WORLD][String(TEST_LEVEL)] = entry;
+            saveCustomWorld(TEST_WORLD, { name: t('testWorldName'), base: [292, 55, 72, 1] });
+            /* Also drop the same grid into the first level of world 1 (runtime only, no file is
+               written): entering a brand-new level id directly did not take - the game_map
+               component never appeared - so this gives a route that is known to work for
+               testing the mechanics right now. */
+            try {
+                var cfg1 = conf.stage_level_cfg[1] || {};
+                var firstKey = Object.keys(cfg1)[0];
+                if (firstKey && cfg1[firstKey]) {
+                    conf.all_Level[cfg1[firstKey].mapId] = JSON.parse(JSON.stringify(TEST_GRID));
+                    activePortalColours = { '1,6': 1, '2,6': 2, '3,6': 3, '8,3': 1, '9,3': 2, '10,3': 3 };
+                    stats.testLevelInWorld1 = cfg1[firstKey].mapId;
+                }
+            } catch (e) {}
+            stats.testLevelSeeded = (stats.testLevelSeeded || 0) + 1;
+            log('test level seeded: world', TEST_WORLD, 'level', TEST_LEVEL);
+            return true;
+        } catch (e) { warn('seed failed:', e && e.message); return false; }
+    }
     /* ------------------------------------------------------------ install */
     function install(hall) {
         if (!hall || hall.__customTabInstalled) { return false; }
@@ -1919,6 +2058,7 @@
 
         makeShowBarViewResilient(hall);
         guardWorldTable();
+        seedTestLevel();
         installKeys();
         try { buildModeSwitch(hall); } catch (e) { warn('mode switch failed:', e); }
         try { buildEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); } catch (e) { warn('editor home failed:', e && e.message ? e.message : e); }
@@ -1969,6 +2109,7 @@
 
     if (window.cc && cc.director) {
         cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, function () {
+            try { armPortalPatch(); } catch (e) {}
             scheduleInstall(0);
         });
     }
