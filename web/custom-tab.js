@@ -1863,22 +1863,34 @@
             stats['editorBtn_' + s.id] = true;
         });
         /* a row of smaller buttons under the icon: the two previews asked for, plus export */
-        var H_BOTTOM_ROW = 210;   // one row above the two big corner buttons
-        [{ id: 'previewWorld', key: 'previewWorld', x: -470 },
-         { id: 'previewLevel', key: 'previewLevel', x: 0 },
-         { id: 'exportJson', key: 'exportJson', x: 230 },
-         { id: 'importJson', key: 'importJson', x: 690 }].forEach(function (s) {
-            var btn = new cc.Node('editorSmall_' + s.id);
+        /* Layout from the ACTUAL visible size, never from hardcoded design coordinates: the old
+           x = +-690 * 1.28 pushed the fourth button off screen in a 1700-wide window and truncated
+           labels. Buttons are equal-width, evenly spaced, with a 60px margin at each end, and the
+           label size shrinks until it fits. */
+        var VIS_W = visibleWidth();
+        var VIS_H = visibleHeight();
+        var SMALL_IDS = ['previewWorld', 'previewLevel', 'exportJson', 'importJson'];
+        var SMALL_GAP = 26;
+        var SMALL_MARGIN = 60;
+        var SMALL_W = Math.min(470, Math.floor((VIS_W - SMALL_MARGIN * 2 - SMALL_GAP * (SMALL_IDS.length - 1)) / SMALL_IDS.length));
+        SMALL_IDS.forEach(function (sid, si) {
+            var btn = new cc.Node('editorSmall_' + sid);
             btn.parent = view;
-            btn.setContentSize(600, 150);
-            btn.x = s.x * 1.28;
+            btn.setContentSize(SMALL_W, 150);
+            btn.x = -VIS_W / 2 + SMALL_MARGIN + SMALL_W / 2 + si * (SMALL_W + SMALL_GAP);
             btn.y = -H_BOTTOM_ROW;
-            roundedPanel(btn, cc.color(60, 54, 66, 235), 600, 150);
-            var lb = makeLabel(btn, t(s.key), 0, 32, cc.color(255, 255, 255, 235));
-            lb.name = 'editorSmallLabel_' + s.id;
+            roundedPanel(btn, cc.color(60, 54, 66, 235), SMALL_W, 150);
+            var fs = 30;
+            var lb = makeLabel(btn, t(sid), 0, fs, cc.color(255, 255, 255, 235));
+            var guard = 0;
+            while (lb && (lb.actualWidth || 0) * 1.02 > SMALL_W - 24 && fs > 16 && guard++ < 12) {
+                fs -= 2;
+                lb.fontSize = fs;
+            }
+            lb.name = 'editorSmallLabel_' + sid;
             btn.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(btn, true); });
             btn.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(btn, false); });
-            btn.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(btn, false); editorAction(s.id); });
+            btn.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(btn, false); editorAction(sid); });
         });
         animateIn(view);
     }
