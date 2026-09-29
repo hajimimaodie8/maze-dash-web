@@ -3118,6 +3118,7 @@
         cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, function () {
             try { armPortalPatch(); } catch (e) {}
             try { armWordIdWrappers(); } catch (e) {}
+
             scheduleInstall(0);
         });
     }

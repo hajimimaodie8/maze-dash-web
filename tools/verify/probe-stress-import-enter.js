@@ -1,4 +1,4 @@
-﻿const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer-core');
 const CHROME = 'C:\\Users\\Lenovo\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe';
 const FILE = 'file:///E:/maze_dash/dist/MazeDash-standalone.html';
 const SHOTS = 'E:\\maze_dash\\docs\\screenshots\\';
@@ -45,10 +45,10 @@ async function banner(page, t, c) { await page.evaluate((x, k) => { let d = docu
         for (let i = 0; i < 100; i++) { const r = await page.evaluate(() => { const m = cc.find('Canvas/backgroup/game_map'); const cp = m && m.getComponent && m.getComponent('game_map'); return !!(cp && cp.Level_data); }); if (r) { entered = true; break; } await sleep(150); }
         await sleep(3000);
         const tEnter = Date.now();
-        const st = await page.evaluate(() => { const s = window.MazeDashCustomTab.stats; const m = cc.find('Canvas/backgroup/game_map'); const cp = m && m.getComponent && m.getComponent('game_map'); const o = { overlay: /运行出错|Uncaught|TypeError/.test((document.body && document.body.innerText) || ''), arg: s.getLastWordIdArg || null, short: s.getLastWordIdShortCircuit || 0, imports: s.imports || 0, dup: s.duplicateEnterIgnored || 0, lastEntered: s.lastEnteredLevelId || null }; if (cp && cp.Level_data) { let h = 0, p = 0; Object.keys(cp.Level_data).forEach((y) => Object.keys(cp.Level_data[y]).forEach((x) => { const v = cp.Level_data[y][x]; if (v === -1) { h++; } if (v === 2) { p++; } })); o.rows = Object.keys(cp.Level_data).length; o.heads = h; o.portals = p; } return o; });
+        const st = await page.evaluate(() => { const s = window.MazeDashCustomTab.stats; const lv = (function () { try { return window.localStorage.getItem('enter_levels_id'); } catch (e) { return null; } })(); const m = cc.find('Canvas/backgroup/game_map'); const cp = m && m.getComponent && m.getComponent('game_map'); const o = { overlay: /运行出错|Uncaught|TypeError/.test((document.body && document.body.innerText) || ''), arg: s.getLastWordIdArg || null, short: s.getLastWordIdShortCircuit || 0, imports: s.imports || 0, dup: s.duplicateEnterIgnored || 0, lastEntered: s.lastEnteredLevelId || null }; if (cp && cp.Level_data) { let h = 0, p = 0; Object.keys(cp.Level_data).forEach((y) => Object.keys(cp.Level_data[y]).forEach((x) => { const v = cp.Level_data[y][x]; if (v === -1) { h++; } if (v === 2) { p++; } })); o.rows = Object.keys(cp.Level_data).length; o.heads = h; o.portals = p; } o.enterLevelsId = lv; o.seen = s.enterLevelsIdSeen || null; o.cleared = s.enterLevelsIdCleared || 0; return o; });
         const ok = entered && !st.overlay && stacks.length === 0;
         const rec = { run: run, entered: entered, overlayAfterImport: ovImp, overlayAfterEnter: st.overlay, stacks: stacks.length, rows: st.rows, heads: st.heads, portals: st.portals,
-                      timing: { importMs: tImport - tHall, enterMs: tEnter - tImport }, stats: { imports: st.imports, short: st.short, dup: st.dup, lastEntered: st.lastEntered } };
+                      timing: { importMs: tImport - tHall, enterMs: tEnter - tImport }, stats: { imports: st.imports, short: st.short, dup: st.dup, lastEntered: st.lastEntered, enterLevelsId: st.enterLevelsId, seen: st.seen, cleared: st.cleared } };
         results.push(rec);
         log('run' + run, rec);
         if (ok && !shots.played) {
