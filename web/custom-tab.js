@@ -1707,7 +1707,8 @@
         var H_BOTTOM_ROW = 210;   // one row above the two big corner buttons
         [{ id: 'previewWorld', key: 'previewWorld', x: -470 },
          { id: 'previewLevel', key: 'previewLevel', x: 0 },
-         { id: 'exportJson', key: 'exportJson', x: 470 }].forEach(function (s) {
+         { id: 'exportJson', key: 'exportJson', x: 230 },
+         { id: 'importJson', key: 'importJson', x: 690 }].forEach(function (s) {
             var btn = new cc.Node('editorSmall_' + s.id);
             btn.parent = view;
             btn.setContentSize(600, 150);
@@ -2030,9 +2031,27 @@
         } catch (e) { warn('preview level failed:', e && e.message); }
     }
 
+    /* Payload builder shared by the download and by the probes. version 2 adds the portal colour
+       tables, which version 1 omitted - coloured levels lost their colours on export. */
+    function buildExportData() {
+        var data = { version: 2, note: 'Maze Dash custom worlds/levels', worlds: customWorlds(), levels: {}, maps: {}, colours: {} };
+        Object.keys(customWorlds()).forEach(function (wid) {
+            var cfg = conf.stage_level_cfg[wid] || {};
+            Object.keys(cfg).forEach(function (k) {
+                var rec = cfg[k];
+                if (!rec || !rec.id) { return; }
+                data.levels[rec.id] = rec;
+                if (conf.all_Level[rec.mapId]) { data.maps[rec.mapId] = conf.all_Level[rec.mapId]; }
+                var cols = portalColoursByMap[rec.mapId] || rec.colours || null;
+                if (cols && Object.keys(cols).length) { data.colours[rec.mapId] = cols; }
+            });
+        });
+        return data;
+    }
+
     function exportCustomJson() {
         try {
-            var data = { version: 1, note: 'Maze Dash custom worlds/levels', worlds: customWorlds(), levels: {}, maps: {} };
+            /* data now comes from buildExportData() above (version 2, with colours) */
             Object.keys(customWorlds()).forEach(function (wid) {
                 var cfg = conf.stage_level_cfg[wid] || {};
                 Object.keys(cfg).forEach(function (k) {
@@ -2040,6 +2059,7 @@
                     data.maps[cfg[k].mapId] = conf.all_Level[cfg[k].mapId];
                 });
             });
+            var data = buildExportData();
             var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
@@ -2052,12 +2072,103 @@
         } catch (e) { warn('export failed:', e && e.message); }
     }
 
+    /* Import. Never touches shipped content: anything below the custom id floors is refused and
+       reported. Mirrors injectSavedLevels() exactly, including registering BOTH the id key and the
+       levelId key in stage_level_cfg - that missing twin was the cause of the hall-rebuild crash. */
+    function importCustomJson(text) {
+        var res = { ok: 0, skipped: 0, reasons: [], worlds: 0, levels: 0, colours: 0, version: null };
+        var data;
+        try { data = (typeof text === 'string') ? JSON.parse(text) : text; } catch (e) { res.reasons.push('badJson: ' + (e && e.message)); stats.importResult = res; return res; }
+        if (!data || typeof data !== 'object') { res.reasons.push('notAnObject'); stats.importResult = res; return res; }
+        res.version = data.version || 1;
+        var worlds = data.worlds || {}, levels = data.levels || {}, maps = data.maps || {}, colours = data.colours || {};
+        var storedWorlds = {}; try { storedWorlds = JSON.parse(localStorage.getItem(CUSTOM_KEY) || '{}'); } catch (e) { storedWorlds = {}; }
+        var storedLevels = {}; try { storedLevels = JSON.parse(localStorage.getItem(CUSTOM_LEVELS_KEY) || '{}'); } catch (e) { storedLevels = {}; }
+
+        Object.keys(worlds).forEach(function (wid) {
+            var w = worlds[wid];
+            if (parseInt(wid, 10) < 100) { res.skipped++; res.reasons.push('world ' + wid + ': refuses to overwrite a shipped world'); return; }
+            conf.worlds[wid] = w;
+            conf.stage_cfg[wid] = conf.stage_cfg[wid] || {};
+            if (w && w.base) { conf.theme_cfg[wid] = conf.theme_cfg[wid] || w; }
+            storedWorlds[wid] = w;
+            res.worlds++; res.ok++;
+        });
+
+        Object.keys(levels).forEach(function (k) {
+            var rec = levels[k];
+            if (!rec || !rec.id) { res.skipped++; res.reasons.push('level ' + k + ': malformed'); return; }
+            if (rec.id < 10000 || (rec.wordId || 0) < 100) { res.skipped++; res.reasons.push('level ' + rec.id + ': refuses to overwrite a shipped level'); return; }
+            var grid = maps[rec.mapId];
+            conf.level_cfg[rec.id] = rec;
+            if (grid) { conf.all_Level[rec.mapId] = grid; }
+            var world = rec.wordId;
+            conf.stage_level_cfg[world] = conf.stage_level_cfg[world] || {};
+            conf.stage_level_cfg[world][String(rec.id)] = rec;
+            conf.stage_level_cfg[world][String(rec.levelId)] = rec;      // the twin key
+            if (colours[rec.mapId]) { portalColoursByMap[rec.mapId] = colours[rec.mapId]; res.colours++; }
+            else if (rec.colours) { portalColoursByMap[rec.mapId] = rec.colours; res.colours++; }
+            storedLevels[String(rec.id)] = { grid: grid, colours: portalColoursByMap[rec.mapId] || {}, world: world, levelId: rec.levelId, name: rec.name || ('Level ' + rec.levelId) };
+            res.levels++; res.ok++;
+        });
+
+        try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(storedWorlds)); } catch (e) {}
+        try { localStorage.setItem(CUSTOM_LEVELS_KEY, JSON.stringify(storedLevels)); } catch (e) {}
+        try { injectSavedLevels(); } catch (e) {}
+        stats.imports = (stats.imports || 0) + 1;
+        stats.importResult = res;
+        log('imported custom data:', JSON.stringify({ ok: res.ok, skipped: res.skipped, levels: res.levels, worlds: res.worlds, colours: res.colours }));
+        return res;
+    }
+
+    /* The UI entry point: a real file picker, the same DOM-element approach the dialogs already use. */
+    function pickAndImportJson() {
+        try {
+            var el = document.createElement('input');
+            el.type = 'file';
+            el.accept = '.json,application/json';
+            el.style.position = 'fixed';
+            el.style.left = '-10000px';
+            document.body.appendChild(el);
+            el.addEventListener('change', function () {
+                var file = el.files && el.files[0];
+                if (!file) { return; }
+                var fr = new FileReader();
+                fr.onload = function () {
+                    var res = importCustomJson(String(fr.result || ''));
+                    showImportSummary(res);
+                    if (el.parentNode) { el.parentNode.removeChild(el); }
+                };
+                fr.onerror = function () { warn('file read failed'); if (el.parentNode) { el.parentNode.removeChild(el); } };
+                fr.readAsText(file);
+            });
+            el.click();
+            stats.importPickers = (stats.importPickers || 0) + 1;
+        } catch (e) { warn('import picker failed:', e && e.message); }
+    }
+
+    /* Plain, readable result line in the editor home rather than a popup. */
+    function showImportSummary(res) {
+        stats.importSummaryShown = (stats.importSummaryShown || 0) + 1;
+        var msg = 'Imported ' + res.ok + ' (worlds ' + res.worlds + ', levels ' + res.levels + ', colour tables ' + res.colours + ')';
+        if (res.skipped) { msg += '  |  skipped ' + res.skipped; }
+        if (res.reasons && res.reasons.length) { msg += '  |  ' + res.reasons.slice(0, 2).join(' ; '); }
+        var hall = window.hallScene;
+        var view = hall && hall.viewGroup && hall.viewGroup[CFG.index];
+        if (view) {
+            var hint = view.getChildByName('customHint');
+            if (hint) { var lb = hint.getComponent(cc.Label); if (lb) { lb.string = msg; } }
+        }
+        stats.importSummary = msg;
+    }
+
     function editorAction(id) {
         stats.editorAction = id;
         if (id === 'createWorld') { openCreateWorldDialog(window.hallScene); return; }
         if (id === 'previewWorld') { previewCustomWorld(); return; }
         if (id === 'previewLevel') { previewCustomLevel(); return; }
         if (id === 'exportJson') { exportCustomJson(); return; }
+        if (id === 'importJson') { pickAndImportJson(); return; }
         if (id === 'createLevel') { openGridEditor(); return; }
         stats.editorActionAt = Date.now();
         log('editor action:', id, '(destination screen not built yet)');
@@ -3028,6 +3139,9 @@
     window.MazeDashCustomTab = {
         editorAction: function (id) { return editorAction(id); },
         openGridEditor: function () { return openGridEditor(); },
+        buildExportData: buildExportData,
+        importCustomJson: importCustomJson,
+        importJson: function (t2) { return importCustomJson(t2); },
         index: CFG.index,
         /** re-divide the bar, e.g. after slots are hidden */
         relayout: function () { try { layoutTabs(window.hallScene); } catch (e) {} },
