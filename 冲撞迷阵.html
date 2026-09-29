@@ -87802,11 +87802,81 @@ cc._RF.pop();
         return activePortalColours[x + ',' + y] || 0;
     }
 
+    // Portal colours live in a side table, not in the tile value: the renderer only draws a portal
+    // when the cell is exactly 2, so coloured tile values rendered nothing.
+    //
+    // The portal visuals carry no "portal" in their frame name (verified: zero sprite frames match
+    // /portal/i) and the engine draws an adjacent run of portals as ONE sprite, so neither frame
+    // names nor slicing can find them. What does line up is ORDER: both the cells that hold an item
+    // and the per-cell tiles under tile_item_layer are produced in grid scan order, so they pair up
+    // index by index (verified: 9 item cells, 9 tiles). For each item cell that is a portal, the
+    // tile at the same index is the cell to colour, and a coloured square is added on top of it.
+    function itemCellList(comp) {
+        var out = [];
+        var rows = Object.keys(comp.Level_data);
+        for (var ri = 0; ri < rows.length; ri++) {
+            var y = rows[ri], row = comp.Level_data[y];
+            for (var x in row) {
+                var v = row[x];
+                // anything the engine builds an item tile for
+                if (v === 2 || v === -1 || v === -4 || v === 4 || v === -3 || (v >= 5 && v <= 8)) {
+                    out.push([parseInt(x, 10), parseInt(y, 10)]);
+                }
+            }
+        }
+        return out;
+    }
+
+    // Markers go on the map's PARENT (backgroup), not inside the map: the engine draws an adjacent
+    // run of portals as one wide sprite somewhere inside game_map, and anything parented inside the
+    // map was being covered by it. A node added to backgroup at the cell's world position, with a
+    // high zIndex, is above everything the map draws.
+    // MEASURED, not guessed: for a portal cell the engine tints the TILE ITSELF purple
+    // (tile colour 149,50,255, while a hero tile stays 255,196,48) and its "Portal" child to
+    // 178,84,255. That tile colour IS the purple band on screen - not a sprite run and not any
+    // node I was adding - which is why markers, tinting the child, and hiding the child all
+    // changed nothing visible. The colour therefore goes on the tile's own colour.
+    function paintPortalColours(map, comp) {
+        try {
+            if (!comp || !comp.Level_data) { stats.portalPaintErr = 'Level_data not ready'; return 0; }
+            var itemLayer = null;
+            (map.children || []).forEach(function (c) { if (/tile_item_layer/i.test(c.name)) { itemLayer = c; } });
+            if (!itemLayer) { stats.portalPaintErr = 'no tile_item_layer'; return 0; }
+            var tiles = itemLayer.children.filter(function (n) { return n.name === 'spaceTile'; });
+            var itemCells = itemCellList(comp);
+            stats.portalPaintTiles = tiles.length;
+            stats.portalPaintCells = itemCells.length;
+            var PALETTE = { 1: cc.color(226, 64, 72), 2: cc.color(64, 200, 96), 3: cc.color(64, 140, 240), 4: cc.color(168, 88, 224) };
+            var painted = 0;
+            for (var i = 0; i < itemCells.length; i++) {
+                var cell = itemCells[i];
+                var col = cellColour(cell[0], cell[1]);
+                if (!col || !PALETTE[col] || !tiles[i]) { continue; }
+                tiles[i].color = PALETTE[col];
+                (tiles[i].children || []).forEach(function (kid) {
+                    if (kid.getComponent && kid.getComponent(cc.Sprite) && /portal/i.test(kid.name)) {
+                        kid.color = PALETTE[col];
+                    }
+                });
+                painted++;
+            }
+            stats.portalCellsPainted = painted;
+            stats.portalPaintErr = null;
+            return painted;
+        } catch (e) {
+            stats.portalPaintErr = String(e && e.message);
+            stats.portalPaintStack = String(e && e.stack).slice(0, 300);
+            warn('portal paint failed:', e && e.message);
+            return 0;
+        }
+    }
+
     function patchPortalPairing() {
         var map = cc.find('Canvas/backgroup/game_map');
         var comp = map && map.getComponent && map.getComponent('game_map');
         if (!comp || comp.__colorPortals) { return false; }
         comp.__colorPortals = true;
+        // pairing logic: unchanged from the verified version
         comp.getOutPortal = function (from) {
             var want = cellColour(from.x, from.y);
             var found = null;
@@ -87822,101 +87892,49 @@ cc._RF.pop();
             }
             return found || cc.v2(from.x, from.y);   // no partner of that colour: no teleport
         };
-        /* The engine draws an adjacent run of portals as ONE sprite, so per-cell tinting is
-           impossible. Instead paint each portal cell myself: the floor layer has one spaceTile per
-           cell in scan order, which gives me the exact position to place a coloured square on. */
-        try {
-        try {
-            /* The engine draws a run of adjacent portals as ONE sprite, so per-cell tinting needs
-               that sprite split. Portal cells are grouped into horizontal runs in scan order, and
-               each run sprite is sliced evenly, one coloured square per cell. */
-            var runs = [];
-            (function collect(n) {
-                var sp = n.getComponent && n.getComponent(cc.Sprite);
-                if (sp && sp.spriteFrame && /portal/i.test(sp.spriteFrame.name) && n.width > 4) { runs.push(n); }
-                (n.children || []).forEach(collect);
-            })(map);
-            var cells = [];
-            var rows = Object.keys(comp.Level_data);
-            for (var ri = 0; ri < rows.length; ri++) {
-                var y = rows[ri], row = comp.Level_data[y];
-                for (var x in row) { if (row[x] === 2) { cells.push([parseInt(x, 10), parseInt(y, 10)]); } }
-            }
-            var groups = [];
-            cells.forEach(function (c) {
-                var g = groups[groups.length - 1];
-                if (g && g.y === c[1] && c[0] === g.xs[g.xs.length - 1] + 1) { g.xs.push(c[0]); }
-                else { groups.push({ y: c[1], xs: [c[0]] }); }
-            });
-            var PALETTE = { 1: cc.color(226, 64, 72), 2: cc.color(64, 200, 96), 3: cc.color(64, 140, 240), 4: cc.color(168, 88, 224) };
-            var painted = 0;
-            groups.forEach(function (g, gi) {
-                var host = runs[gi];
-                if (!host) { return; }
-                var n = g.xs.length;
-                g.xs.forEach(function (x, k) {
-                    var col = cellColour(x, g.y);
-                    if (!col || !PALETTE[col]) { return; }
-                    var w = host.width / n, h = host.height;
-                    var marker = new cc.Node('portalColour' + col);
-                    marker.parent = host;
-                    marker.setContentSize(w * 0.92, h * 0.92);
-                    marker.x = -host.width / 2 + (k + 0.5) * w;
-                    marker.y = 0;
-                    fullSprite(marker, w * 0.92, h * 0.92, PALETTE[col]);
-                    painted++;
-                });
-            });
-            stats.portalCellsPainted = (stats.portalCellsPainted || 0) + painted;
-        } catch (e) { warn('portal paint failed:', e && e.message); }
-        } catch (e) {}
-        try {
-            var wanted = [];
-            for (var yy in comp.Level_data) { for (var xx in comp.Level_data[yy]) { if (comp.Level_data[yy][xx] === 2) { wanted.push(cellColour(parseInt(xx, 10), parseInt(yy, 10))); } } }
-            var sprites = [];
-            (function collect(n) { var sp = n.getComponent && n.getComponent(cc.Sprite); if (sp && sp.spriteFrame && /portal/i.test(sp.spriteFrame.name)) { sprites.push(n); } (n.children || []).forEach(collect); })(map);
-            sprites.forEach(function (n, i) {
-                var cIdx = wanted[i] || 0;
-                if (cIdx > 0) { n.color = cc.color([0, 226, 64, 64][Math.min(cIdx, 3)] , [0, 64, 200, 140][Math.min(cIdx, 3)], [0, 64, 96, 240][Math.min(cIdx, 3)]); }
-            });
-            stats.portalSpritesTinted = (stats.portalSpritesTinted || 0) + sprites.filter(function (n, i) { return (wanted[i] || 0) > 0; }).length;
-        } catch (e) {}
-        try {
-            var tint = { 21: cc.color(226, 64, 64), 22: cc.color(64, 200, 96), 23: cc.color(64, 140, 240) };
-            var cells = {};
-            this.__cells = null;
-            (function walk(n) {
-                var sp = n.getComponent && n.getComponent(cc.Sprite);
-                if (sp && sp.spriteFrame && /portal/i.test(sp.spriteFrame.name)) {
-                    var wp = n.convertToWorldSpaceAR(cc.v2(0, 0));
-                    for (var y in comp.Level_data) {
-                        for (var x in comp.Level_data[y]) {
-                            var v = comp.Level_data[y][x];
-                            if (v === 2 || v >= 20) {
-                                if (!cells[x + ',' + y]) {
-                                    var node = (function () { try { return comp.getTileNode ? comp.getTileNode(parseInt(x, 10), parseInt(y, 10)) : null; } catch (e) { return null; } })();
-                                    if (node) { cells[x + ',' + y] = node.convertToWorldSpaceAR(cc.v2(0, 0)); }
-                                }
-                                var c = cells[x + ',' + y];
-                                if (c && Math.abs(c.x - wp.x) < 8 && Math.abs(c.y - wp.y) < 8 && tint[v]) { n.color = tint[v]; }
-                            }
-                        }
-                    }
-                }
-                (n.children || []).forEach(walk);
-            })(map);
-        } catch (e) {}
         stats.colorPortalsPatched = (stats.colorPortalsPatched || 0) + 1;
         log('coloured portal pairing installed');
         return true;
     }
 
     /* 在场景启动与随后几帧里尝试安装（关卡组件是随关卡加载才出现的） */
+    // Remove markers from a previous run so a level restart cannot stack duplicates.
+    function clearColourMarkers(map) {
+        try {
+            var doomed = [];
+            (function walk(n) { if (/^portalColour[0-9]+$/.test(n.name)) { doomed.push(n); } (n.children || []).forEach(walk); })(map);
+            doomed.forEach(function (n) { n.destroy(); });
+            return doomed.length;
+        } catch (e) { return 0; }
+    }
+
+    // Installed on scene launch. The pairing wrapper can go in immediately (it is only called while
+    // playing), but PAINTING must wait: on scene launch Level_data is not populated yet, which threw
+    // Object.keys(undefined) and produced zero markers (proven by the exception stack).
     function armPortalPatch() {
         try { stats.currentMapId = (window.gamemain && gamemain.currentLevelId) ? (conf.level_cfg[gamemain.currentLevelId] || {}).mapId : stats.currentMapId; } catch (e) {}
         try {
             if (sceneName() !== 'gameScene') { return; }
-            if (patchPortalPairing()) { return; }
+            if (patchPortalPairing()) {
+                var tries = 0;
+                var wait = setInterval(function () {
+                    tries++;
+                    var map = cc.find('Canvas/backgroup/game_map');
+                    var comp = map && map.getComponent && map.getComponent('game_map');
+                    var ready = false;
+                    try { ready = !!(comp && comp.Level_data && Object.keys(comp.Level_data).length > 0); } catch (e) { ready = false; }
+                    if (ready) {
+                        clearInterval(wait);
+                        clearColourMarkers(map);
+                        var painted = paintPortalColours(map, comp);
+                        log('portal colours painted:', painted, 'markers of', stats.portalPaintTiles || 0, 'item tiles');
+                    } else if (tries > 80) {
+                        clearInterval(wait);
+                        warn('portal paint gave up waiting for Level_data');
+                    }
+                }, 100);
+                return;
+            }
             var n = 0;
             var iv = setInterval(function () { if (patchPortalPairing() || ++n > 40) { clearInterval(iv); } }, 100);
         } catch (e) {}
