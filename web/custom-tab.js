@@ -2552,6 +2552,10 @@
         var starter = { id: starterId, wordId: id, levelId: 1, mapId: starterMap, sz_solution: 'R' };
         conf.level_cfg[starterId] = starter;
         conf.stage_level_cfg[id][String(starterId)] = starter;
+        /* same twin-key rule as injectSavedLevels / seedTestLevel: the engine looks a level up by
+           LEVEL ID as well, so both keys must exist or t comes back undefined and its .wordId
+           dereference throws during the hall rebuild. */
+        if (starter && starter.levelId) { conf.stage_level_cfg[id][String(starter.levelId)] = starter; }
 
         /* Deliberately NOT inserted into the built-in pager: custom worlds must not appear
            in the original level select. They live only behind the editor's preview screen,
