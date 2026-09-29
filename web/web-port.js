@@ -148,11 +148,34 @@
         designCoercion.installed = true;
         return true;
     }
-    /* the engine may not exist yet at this point, so grab it as soon as it does */
-    (function waitForEngine(n) {
-        if (installDesignCoercion() || n > 600) { return; }
-        setTimeout(function () { waitForEngine(n + 1); }, 8);
-    })(0);
+    /* Install as early as physically possible, because the game's own call may happen in the
+       very same tick the engine appears - a polling race I lost in the packaged build, which is
+       why the change appeared to do nothing there.
+       1) synchronously, in case the engine is already loaded (it is, in the single-file build);
+       2) via a property trap on window.cc, so the patch is applied the instant the engine
+          assigns it, before any game code can call into it;
+       3) polling as a last resort. */
+    installDesignCoercion();
+    try {
+        if (!window.__mazeDashCcTrap) {
+            window.__mazeDashCcTrap = true;
+            var realCc = window.cc;
+            Object.defineProperty(window, 'cc', {
+                configurable: true,
+                get: function () { return realCc; },
+                set: function (v) {
+                    realCc = v;
+                    try { installDesignCoercion(); } catch (e) {}
+                },
+            });
+            if (realCc) { window.cc = realCc; }
+        }
+    } catch (e) {
+        (function waitForEngine(n) {
+            if (installDesignCoercion() || n > 600) { return; }
+            setTimeout(function () { waitForEngine(n + 1); }, 8);
+        })(0);
+    }
     function applyFit() {
         var p = policyForWindow();
         if (p === undefined || p === null) { return; }
