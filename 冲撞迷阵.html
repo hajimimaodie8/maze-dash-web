@@ -87190,7 +87190,9 @@ cc._RF.pop();
         }
         /* Exhausting a conservative model does NOT prove unsolvability (bricks are modelled as
            walls here), so this is reported as undecided rather than unsolvable. */
-        return { state: 'undecided', reason: 'noSolutionInConservativeModel' };
+        /* Report the search size and what the best state achieved, so a false negative can be
+           diagnosed instead of guessed (the 3x3 case came back undecided with no numbers at all). */
+        return { state: 'undecided', reason: 'noSolutionInConservativeModel', nodes: nodes, floors: floors.length };
     }
     var FILTER_REASON = { noHero: 'noHero', noFloor: 'noFloor', isolatedFloor: 'isolatedFloor', disconnectedFloor: 'noFloorReach' };
     var editorSolvability = null;
@@ -87220,6 +87222,7 @@ cc._RF.pop();
     }
 
     function openGridEditor() {
+
         var host = cc.find('Canvas');
         if (!host) { return null; }
         closeGridEditor();
@@ -87970,6 +87973,28 @@ cc._RF.pop();
                 },
             });
             conf.worlds.__guarded = true;
+            /* Same treatment for the level table: getLastWordId() does
+               conf.level_cfg[parseInt(e)].wordId and initStageLayer calls it with NO argument, so
+               parseInt(undefined) is NaN and the dereference threw inside the hall rebuild. A
+               Proxy makes unknown/NaN keys return a harmless record instead - which fixes it no
+               matter which instance or prototype reference performs the call. Only `get` is
+               intercepted, so Object.keys()/for-in enumeration is untouched. */
+            try {
+                if (conf.level_cfg && !conf.level_cfg.__guarded) {
+                    var rawLevels = conf.level_cfg;
+                    conf.level_cfg = new Proxy(rawLevels, {
+                        get: function (t, k) {
+                            var v = t[k];
+                            if (v === undefined && typeof k === 'string' && k !== '__guarded') {
+                                return { id: 0, wordId: stats.lastEnteredWordId || stats.lastWorldId || 1, levelId: 0, mapId: -1, sz_solution: '', __fallback: true };
+                            }
+                            return v;
+                        },
+                    });
+                    conf.level_cfg.__guarded = true;
+                    stats.levelTableGuarded = 1;
+                }
+            } catch (e) { warn('level table guard failed:', e && e.message); }
             stats.worldsGuarded = 1;
         } catch (e) { warn('world table guard failed:', e && e.message); }
     }
@@ -88514,6 +88539,22 @@ cc._RF.pop();
         }
         function armWordIdWrappers() {
             wrapWordIdGetter(gamemain, 'gamemain');
+            /* The instance wrap alone did not stop the crash, so wrap the prototype too: every
+               instance of that class then gets the safe getter. */
+            try {
+                var proto = gamemain && Object.getPrototypeOf(gamemain);
+                if (proto && typeof proto.getLastWordId === 'function' && !proto.__wordIdProtoWrapped) {
+                    var origProto = proto.getLastWordId;
+                    proto.getLastWordId = function () {
+                        var v = null;
+                        try { v = origProto.apply(this, arguments); } catch (e) { v = null; }
+                        if (!v) { v = stats.lastEnteredWordId || stats.lastWorldId || 1; }
+                        return v;
+                    };
+                    proto.__wordIdProtoWrapped = true;
+                    stats.wordIdProtoWrapped = 1;
+                }
+            } catch (e) {}
             wrapWordIdGetter(window.hallScene, 'hallScene');
             try { wrapWordIdGetter(cc.find('Canvas/backgroup/game_map') && cc.find('Canvas/backgroup/game_map').getComponent('game_map'), 'game_map'); } catch (e) {}
             try {

@@ -24,13 +24,20 @@ async function boot(browser) {
 
 /* 打开编辑器并返回可用工具 id 列表（顺便确认 setTool 的合法值） */
 async function openEditor(page) {
-    return await page.evaluate(() => {
+    return await page.evaluate(async () => {
         const api = window.MazeDashCustomTab;
         if (api.openGridEditor) { api.openGridEditor(); }
-        const ed = api.gridEditor;
-        const ids = [];
-        if (ed && ed.tools) { try { ed.tools().forEach((t) => ids.push(t.id)); } catch (e) {} }
-        return { hasEditor: !!ed, ids: ids, keys: ed ? Object.keys(ed) : [] };
+        // poll: the debug object is only complete once the editor has finished building
+        for (let i = 0; i < 80; i++) {
+            const ed = api.gridEditor;
+            if (ed && ed.grid && ed.solve && !ed.pending) {
+                const ids = [];
+                if (ed.tools) { try { ed.tools().forEach((t) => ids.push(t.id)); } catch (e) {} }
+                return { hasEditor: true, ids: ids, keys: Object.keys(ed), waited: i * 100 };
+            }
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        return { hasEditor: false, keys: Object.keys(api) };
     });
 }
 
