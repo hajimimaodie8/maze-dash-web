@@ -534,7 +534,7 @@
     }
 
     if (window.cc && cc.director) {
-        cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, function () { setTimeout(apply, 400); });
+        cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, function () {             /* Widen immediately, and again before each of the next three draws. The old 400 ms                delay here is exactly the narrow-then-wide flash that was captured mid-return: the                hall scene is rebuilt narrow, and the fixing pass arrived far too late. */             try { apply(); } catch (e) {}             var n = 0;             var preDraw = function () {                 try { apply(); } catch (e) {}                 if (++n >= 3) { cc.director.off(cc.Director.EVENT_BEFORE_DRAW, preDraw); }             };             cc.director.on(cc.Director.EVENT_BEFORE_DRAW, preDraw);             setTimeout(apply, 400);         });
     }
     setTimeout(apply, 800);
     // re-check: window resizes, pages created lazily, and the game re-showing labels
