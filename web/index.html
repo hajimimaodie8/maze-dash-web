@@ -157,7 +157,20 @@
            even though the boot sequence re-shows it inline */
         body.boot-failed #splash { display: none !important; }
     </style>
-</head>
+<style id="maze-dash-loadbar">
+/* the startup loading line / bar: make it red instead of white */
+#progress, #progress-bar, #loader, .progress, .loading, .loader,
+#splash, #splash-line, [id*="progress" i], [class*="progress" i],
+[id*="loading" i], [class*="loading" i] > .bar {
+  background-color: #d64040 !important;
+  border-color: #d64040 !important;
+  color: #d64040 !important;
+}
+[id*="progress" i] *, [class*="progress" i] *, [id*="loading" i] * {
+  background-color: #d64040 !important;
+  border-color: #d64040 !important;
+}
+</style></head>
 <body>
     <div id="GameDiv">
         <canvas id="GameCanvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>

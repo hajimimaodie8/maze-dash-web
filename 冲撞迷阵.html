@@ -86912,7 +86912,7 @@ cc._RF.pop();
         close.x = -W / 2 + 30 + 150;
         close.y = H / 2 - 24 - 65;
         roundedPanel(close, cc.color(30, 26, 34, 235), 300, 130);
-        makeLabel(close, '\u2190 ' + t('backToEditor'), 0, 30, cc.color(255, 255, 255, 255)).name = 'previewCloseLabel';
+        makeLabel(close, '\u2190 ' + t('backToEditor'), 0, 30, cc.color(214, 64, 64, 255)).name = 'previewCloseLabel';
         /* the pager covers the full screen and registers touch handlers, so it was sitting on
            top of this button and swallowing its taps; zIndex puts the way out above it. */
         close.zIndex = 50;
@@ -87611,7 +87611,7 @@ cc._RF.pop();
             back.parent = c.SelectLayer;
             back.setContentSize(150, 150);
             roundedPanel(back, cc.color(30, 26, 34, 220), 150, 150);
-            var g = makeLabel(back, '\u2190', 0, 72, cc.color(255, 255, 255, 255));
+            var g = makeLabel(back, '\u2190', 0, 72, cc.color(214, 64, 64, 255));
             g.name = 'backGlyph';
             back.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(back, true); });
             back.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(back, false); });
