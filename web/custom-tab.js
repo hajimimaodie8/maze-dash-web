@@ -1236,6 +1236,29 @@
             var ed = MazeDashCustomTab.gridEditor;
             if (ed && ed.grid && ed.grid[cell.__gy]) { ed.grid[cell.__gy][cell.__gx] = v; }
         } catch (e) {}
+        /* The readout and the "no hero" warning are derived from the MATRIX, which is the only source
+           of truth: the previous counters disagreed with it (Floor 12 was right while Hero stayed 0
+           with a hero on the board, and the editor then showed "Unsolvable: no hero"). */
+        try {
+            var ed2 = MazeDashCustomTab.gridEditor;
+            var g2 = ed2 && ed2.grid;
+            if (g2) {
+                var cnt = { floor: 0, wall: 0, hero: 0, brick: 0, key: 0, lock: 0, portal: 0, arrow: 0 };
+                g2.forEach(function (row) { row.forEach(function (v) {
+                    if (v === 1) { cnt.floor++; } else if (v === -1) { cnt.hero++; cnt.floor++; }
+                    else if (v === 0) { cnt.wall++; } else if (v === -4) { cnt.brick++; }
+                    else if (v === 4) { cnt.key++; } else if (v === -3) { cnt.lock++; }
+                    else if (v === 2) { cnt.portal++; } else if (v >= 5 && v <= 8) { cnt.arrow++; }
+                }); });
+                var root2 = (typeof gridRootRef !== 'undefined' && gridRootRef && gridRootRef.isValid) ? gridRootRef : null;
+                var ro = root2 && root2.getChildByName('gridReadout');
+                if (ro) { var l1 = ro.getComponent(cc.Label); if (l1) { l1.string = 'Floor ' + cnt.floor + '  Hero ' + cnt.hero + '  Portal ' + cnt.portal + '  Key ' + cnt.key + '  Lock ' + cnt.lock + '  Brick ' + cnt.brick + '  Arrow ' + cnt.arrow; } }
+                var stn = root2 && root2.getChildByName('gridStatus');
+                if (stn) { var l2 = stn.getComponent(cc.Label); if (l2 && cnt.hero > 0 && /no hero/i.test(String(l2.string || ''))) { l2.string = ''; } }
+                stats.readoutFromMatrix = (stats.readoutFromMatrix || 0) + 1;
+                stats.readoutHero = cnt.hero;
+            }
+        } catch (e) {}
         stats.gridPaints = (stats.gridPaints || 0) + 1;
     }
     function toggleGridCell(cell) { applyToolToCell(cell); }
@@ -1511,6 +1534,29 @@
         return res;
     }
 
+    /* The editor laid the grid and the button row out from a size that was about TWICE the real
+       screen (measured: nodes at world x = -1981 while cc.view.getVisibleSize().width = 2276), which
+       pushed the cells off screen and left only a few decorations visible. visibleWidth/Height are
+       therefore clamped here, at module scope, before anything builds a layout: the Canvas' own size
+       is the reliable design-space screen size. */
+    (function clampVisibleSize() {
+        try {
+            var curW = visibleWidth, curH = visibleHeight;
+            var canvasW = (cc.find('Canvas') || {}).width;
+            var canvasH = (cc.find('Canvas') || {}).height;
+            visibleWidth = function () {
+                var raw = curW();
+                var lim = (cc.find('Canvas') || {}).width || canvasW || raw;
+                return (raw && raw > 0) ? Math.min(raw, lim) : (lim || raw);
+            };
+            visibleHeight = function () {
+                var raw = curH();
+                var lim = (cc.find('Canvas') || {}).height || canvasH || raw;
+                return (raw && raw > 0) ? Math.min(raw, lim) : (lim || raw);
+            };
+            window.__vwClamped = true;
+        } catch (e) {}
+    })();
     function openGridEditor() {
 
         var host = cc.find('Canvas');
@@ -1867,7 +1913,37 @@
            x = +-690 * 1.28 pushed the fourth button off screen in a 1700-wide window and truncated
            labels. Buttons are equal-width, evenly spaced, with a 60px margin at each end, and the
            label size shrinks until it fits. */
+        var H_BOTTOM_ROW = 210;   /* its removal was the real abort: btn.y = -H_BOTTOM_ROW threw a ReferenceError inside the row loop, leaving only the first button created */
         var VIS_W = visibleWidth();
+        var SMALL_MARGIN = 60;   /* declared BEFORE any layout runs (its old position after the relayout block made SMALL_W NaN and aborted the row after one button) */
+        /* the view is not necessarily sized at build time (the same trap wide-ui.js solves), so the
+           row is laid out again at 800ms and on the next few frames, always recomputing from the
+           live visible size - never from a cached value. */
+        var layoutSmallRow = function () {
+            var vw = visibleWidth();
+            var w2 = Math.min(470, Math.floor((vw - SMALL_MARGIN * 2 - SMALL_GAP * (SMALL_IDS.length - 1)) / SMALL_IDS.length));
+            var tot = SMALL_IDS.length * w2 + (SMALL_IDS.length - 1) * SMALL_GAP;
+            SMALL_IDS.forEach(function (sid, si) {
+                var nd = view.getChildByName('editorSmall_' + sid);
+                if (!nd || !nd.isValid) { return; }
+                nd.setContentSize(w2, 150);
+                var sc2 = visibleWidth() / 2;
+                var vwx = view.convertToWorldSpaceAR(cc.v2(0, 0)).x;
+                nd.x = (sc2 - vwx) - tot / 2 + w2 / 2 + si * (w2 + SMALL_GAP);
+                var rr = nd.getChildByName('editorSmallPanel');
+                if (rr && rr.isValid) { rr.setContentSize(w2, 150); }
+                var lb2 = nd.getChildByName('editorSmallLabel_' + sid);
+                if (lb2 && lb2.isValid) { var lc = lb2.getComponent(cc.Label); if (lc) { var fs2 = 30; while ((lc.actualWidth || 0) * 1.02 > w2 - 24 && fs2 > 16) { fs2 -= 2; lc.fontSize = fs2; } } }
+            });
+            stats.smallRowLayouts = (stats.smallRowLayouts || 0) + 1;
+        };
+        setTimeout(layoutSmallRow, 800);
+        var framesLeft = 4;
+        (function relayoutTick() {
+            try { layoutSmallRow(); } catch (e) {}
+            if (framesLeft-- > 0) { cc.director.once(cc.Director.EVENT_BEFORE_DRAW, relayoutTick); }
+        })();
+        var SMALL_MARGIN = 60;
         var VIS_H = visibleHeight();
         var SMALL_IDS = ['previewWorld', 'previewLevel', 'exportJson', 'importJson'];
         var SMALL_GAP = 26;
@@ -1877,7 +1953,17 @@
             var btn = new cc.Node('editorSmall_' + sid);
             btn.parent = view;
             btn.setContentSize(SMALL_W, 150);
-            btn.x = -VIS_W / 2 + SMALL_MARGIN + SMALL_W / 2 + si * (SMALL_W + SMALL_GAP);
+            /* The row lives in the VIEW's local space, and the view itself is offset inside the pager
+               (measured: cells are fine at world x 803..1472 while the buttons landed at -1981).
+               So centre the row on the view's own origin, never on -VIS_W/2. */
+            /* Screen-frame centring. The hall views sit at a world offset (measured
+               customLevelsView/tabBar x = -1138 while the usable range is 0..visibleWidth), so a row
+               centred on the VIEW's local origin still lands off screen. Compute the offset that
+               moves the row's screen centre onto the middle of the visible range, every time. */
+            var total = SMALL_IDS.length * SMALL_W + (SMALL_IDS.length - 1) * SMALL_GAP;
+            var scrCentre = visibleWidth() / 2;
+            var viewWorldX = view.convertToWorldSpaceAR(cc.v2(0, 0)).x;
+            btn.x = (scrCentre - viewWorldX) - total / 2 + SMALL_W / 2 + si * (SMALL_W + SMALL_GAP);
             btn.y = -H_BOTTOM_ROW;
             roundedPanel(btn, cc.color(60, 54, 66, 235), SMALL_W, 150);
             var fs = 30;
