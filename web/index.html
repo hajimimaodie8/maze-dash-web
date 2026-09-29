@@ -158,15 +158,13 @@
         body.boot-failed #splash { display: none !important; }
     </style>
 <style id="maze-dash-loadbar">
-/* the startup loading line / bar: make it red instead of white */
-#progress, #progress-bar, #loader, .progress, .loading, .loader,
-#splash, #splash-line, [id*="progress" i], [class*="progress" i],
-[id*="loading" i], [class*="loading" i] > .bar {
-  background-color: #d64040 !important;
-  border-color: #d64040 !important;
-  color: #d64040 !important;
-}
-[id*="progress" i] *, [class*="progress" i] *, [id*="loading" i] * {
+/* The startup line: main.js drives a .progress-bar span inside #splash. Target exactly that and
+   its fill, and nothing else - an earlier, broader rule also coloured the whole splash screen. */
+#splash .progress-bar,
+#splash .progress-bar span,
+#splash .progress-bar > *,
+.progress-bar, .progress-bar span {
+  background: #d64040 !important;
   background-color: #d64040 !important;
   border-color: #d64040 !important;
 }

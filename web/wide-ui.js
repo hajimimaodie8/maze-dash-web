@@ -405,9 +405,11 @@
     /* Only the mascot artwork: the splash image and the cheetah face. The name artwork at
        /Canvas/begin/label is the game's own title lettering and was hidden by mistake last
        round, which left the title card showing a bare face. */
+    /* ONLY the splash image. /AnimScene/Canvas/begin/main is the PROTAGONIST (it is the red
+       figure on the title card) - hiding it was a mistake that left a white block with floating
+       eyes, which is exactly what was reported as "why is the protagonist still white". */
     var TITLE_ART_PATHS = [
         /New Sprite\(Splash\)\/New Sprite$/,
-        /AnimScene\/Canvas\/begin\/main$/,
     ];
     var LOGO_RE = /logo|cheetah|leopard|splash|launch|cmcm|brand|icon|img_?logo|login_/i;
     /* The title scene is designed 720x1280 portrait, so in a wide window it sat as a narrow
@@ -418,9 +420,11 @@
         if (!scene || (scene.name !== 'AnimScene' && scene.name !== 'LaunchScene')) { return; }
         var W = cc.view.getVisibleSize().width;
         (function walk(n) {
-            if (/^(bg|white_bg)$/.test(n.name) && n.width > 300 && Math.abs(n.width - W) > 4) {
+            /* the title scene's backdrop must span the window; the old guard skipped it */
+            if (/^(bg|white_bg)$/.test(n.name) && n.width > 40 && Math.abs(n.width - W) > 4 && !/main/.test(n.parent ? n.parent.name : '')) {
                 n.width = W;
                 stats.titleBgWidened = (stats.titleBgWidened || 0) + 1;
+                stats.titleBgWidenedName = n.name;
             }
             (n.children || []).forEach(walk);
         })(scene);
@@ -433,7 +437,9 @@
             var sp = x.getComponent && x.getComponent(cc.Sprite);
             if (sp && sp.spriteFrame && x.activeInHierarchy) {
                 var byPath = TITLE_ART_PATHS.some(function (re) { return re.test(p); });
-                var byName = LOGO_RE.test(x.name);
+                /* Path matching only. The name-based rule kept hiding things I had deliberately
+                   restored - it matched login_* and so removed the title lettering every tick. */
+                var byName = false;
                 var w = x.width, h = x.height;
                 if ((byPath || byName) && w > 80 && h > 80) {
                     x.active = false;
