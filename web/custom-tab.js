@@ -1189,6 +1189,35 @@
     function solverIsFloor(v) { return v === 1 || v === -1; }
     function solverPassable(v) { return v === 1 || v === -1 || v === 2 || v === 4 || (v >= 5 && v <= 8); }
     function solverConsumable(v) { return v === 2 || v === 4 || v === -3 || v === -4; }
+    /* 求解器用的传送门配对表：键 "x,y" → 配对另一门的坐标。
+       与运行时 getOutPortal 的语义保持一致：
+         · 有颜色的门只与同色门配对（颜色取自 colours 旁表，键同 "x,y"）；
+         · 无色门（0 或未记录）可与任意门配对；
+         · 取扫描顺序（行优先）里的第一个，与引擎的 for..in 顺序一致。
+       已知限制：运行时一次穿越会**消耗两端**，本模型未建模这个"一次性"，
+       所以对多门关卡它是保守近似（详见 docs/level-format.md §5 与本次验证报告）。 */
+    function solverPortalMap(grid, colours) {
+        var list = [];
+        var H = grid.length, W = grid[0] ? grid[0].length : 0;
+        for (var y = 0; y < H; y++) {
+            for (var x = 0; x < W; x++) {
+                if (grid[y][x] === 2) { list.push([x, y, (colours && colours[x + ',' + y]) || 0]); }
+            }
+        }
+        var link = {};
+        for (var i = 0; i < list.length; i++) {
+            var a = list[i];
+            for (var j = 0; j < list.length; j++) {
+                if (i === j) { continue; }
+                var b = list[j];
+                if (a[2] > 0 && b[2] !== a[2]) { continue; }
+                link[a[0] + ',' + a[1]] = [b[0], b[1]];
+                break;
+            }
+        }
+        return link;
+    }
+
     function solveGrid(grid, colours) {
         var H = grid.length, W = H ? grid[0].length : 0;
         var floors = [], head = null, keys = 0, cells = {};
@@ -2574,7 +2603,54 @@
             if (!gamemain || gamemain.__colourEntryHook) { return false; }
             gamemain.__colourEntryHook = true;
             var orig = gamemain.enterEnterGameScene.bind(gamemain);
-            gamemain.enterEnterGameScene = function (id) {
+            /* gamemain.getLastWordId() reads .wordId off a world record and threw
+           "Cannot read properties of undefined (reading 'wordId')" from initStageLayer whenever the
+           hall was rebuilt after entering a CUSTOM level. Wrapping the method is the same low-risk
+           technique already used for the other engine methods in this port. */
+        try {
+            var origGetLastWordId = gamemain.getLastWordId.bind(gamemain);
+            gamemain.getLastWordId = function () {
+                var v = null;
+                try { v = origGetLastWordId(); } catch (e) { v = null; }
+                if (!v) { v = stats.lastEnteredWordId || stats.lastWorldId || 1; }
+                return v;
+            };
+            stats.getLastWordIdWrapped = 1;
+        } catch (e) { warn('getLastWordId wrap failed:', e && e.message); }
+        /* The crash came from a SCENE component, not from gamemain: the stack was
+           getLastWordId <- initStageLayer <- start, and start() is a component lifecycle. So wrap
+           the getter on whichever object actually owns it (hall scene, game scene, gamemain). */
+        function wrapWordIdGetter(obj, tag) {
+            try {
+                if (!obj || typeof obj.getLastWordId !== 'function' || obj.__wordIdWrapped) { return false; }
+                var orig = obj.getLastWordId.bind(obj);
+                obj.getLastWordId = function () {
+                    var v = null;
+                    try { v = orig(); } catch (e) { v = null; }
+                    if (!v) { v = stats.lastEnteredWordId || stats.lastWorldId || 1; }
+                    return v;
+                };
+                obj.__wordIdWrapped = true;
+                stats.wordIdGetterWrapped = (stats.wordIdGetterWrapped || 0) + 1;
+                stats.wordIdGetterWhere = tag;
+                return true;
+            } catch (e) { return false; }
+        }
+        function armWordIdWrappers() {
+            wrapWordIdGetter(gamemain, 'gamemain');
+            wrapWordIdGetter(window.hallScene, 'hallScene');
+            try { wrapWordIdGetter(cc.find('Canvas/backgroup/game_map') && cc.find('Canvas/backgroup/game_map').getComponent('game_map'), 'game_map'); } catch (e) {}
+            try {
+                var sc = cc.director.getScene();
+                if (sc) { (sc._components || []).forEach(function (comp) { wrapWordIdGetter(comp, 'scene:' + (comp && comp.__classname__ ? comp.__classname__ : '?')); }); }
+            } catch (e) {}
+        }
+        armWordIdWrappers();
+        gamemain.enterEnterGameScene = function (id) {
+            try {
+                var w = conf.level_cfg && conf.level_cfg[id] && conf.level_cfg[id].wordId;
+                if (w) { stats.lastEnteredWordId = w; }
+            } catch (e) {}
                 try { if (conf.level_cfg && conf.level_cfg[id] && portalColoursByMap[id]) { activePortalColours = portalColoursByMap[id]; stats.colourTableRestored = (stats.colourTableRestored || 0) + 1; } } catch (e) {}
                 return orig(id);
             };
@@ -2850,6 +2926,7 @@
     if (window.cc && cc.director) {
         cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, function () {
             try { armPortalPatch(); } catch (e) {}
+            try { armWordIdWrappers(); } catch (e) {}
             scheduleInstall(0);
         });
     }
