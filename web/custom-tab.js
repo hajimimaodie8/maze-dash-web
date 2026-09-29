@@ -534,11 +534,11 @@
     var TEXT = {
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
                      customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
-                     worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Type a hex code, e.g. #2AA886', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
+                     worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Or type a colour code below', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
                      tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete', backToEditor: 'Editor', emptyHint: 'Create one from the editor' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
                      customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
-                     worldName: '世界名称', themeColour: '主题色', hexHint: '也可直接输入色码，如 #2AA886', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
+                     worldName: '世界名称', themeColour: '主题色', hexHint: '也可以在下面直接输入颜色代码', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
                      tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除', backToEditor: '返回编辑器', emptyHint: '在编辑器里创建一个世界' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
@@ -557,6 +557,16 @@
         ru:        { mode: 'Режим', progression: 'Прогресс', unlocked: 'Разблокировано',
                      customTitle: 'Редактор уровней', customHint: 'В разработке', editorTitle: 'Редактор уровней', createWorld: 'Новый мир', createLevel: 'Новый уровень', comingSoon: 'Скоро' },
     };
+    /* Module-level on purpose: a nested copy would not be visible to the call sites. */
+    function roundPanel(node, w, h, radius, colour) {
+        var g = node.getComponent(cc.Graphics) || node.addComponent(cc.Graphics);
+        g.clear();
+        g.fillColor = colour;
+        g.roundRect(-w / 2, -h / 2, w, h, radius);
+        g.fill();
+        node.setContentSize(w, h);
+        return g;
+    }
     /* the game ships ten languages (sz_en / sz_zh-Hans / sz_zh-Hant / sz_ja / sz_de /
        sz_kr / sz_es / sz_fr / sz_pt / sz_ru) - mirror them all here, and normalise the
        couple of spellings the runtime may report. */
@@ -1174,7 +1184,7 @@
         var panel = new cc.Node('panel');
         panel.parent = modal;
         panel.setContentSize(panelW, panelH);
-        roundedPanel(panel, cc.color(40, 36, 44, 255), panelW, panelH);
+        roundPanel(panel, panelW, panelH, 30, cc.color(38, 34, 42, 255));   // real rounded corners
         makeLabel(panel, t('confirmDeleteWorld'), 0, 70, 38, cc.color(255, 255, 255, 255)).name = 'confirmText';
         makeDialogButton(panel, t('cancel'), -1, -90, cc.color(90, 84, 96, 255), function () { modal.destroy(); });
         makeDialogButton(panel, t('confirmDelete'), 1, -90, cc.color(196, 58, 58, 255), function () {
@@ -1473,7 +1483,7 @@
         var panel = new cc.Node('panel');
         panel.parent = modal;
         panel.setContentSize(panelW, panelH);
-        roundedPanel(panel, cc.color(40, 36, 44, 255), panelW, panelH);
+        roundPanel(panel, panelW, panelH, 30, cc.color(38, 34, 42, 255));   // real rounded corners
         var worldId = visibleWorldId(hall) || 1;
 
         makeLabel(panel, t('createWorld'), 346, 40, cc.color(255, 255, 255, 255)).name = 'dlgTitle';
@@ -1514,7 +1524,10 @@
         });
 
         // --- hex code input + live preview ---
-        var hexBox = makeEditBox(panel, 'hexInput', -291, -250, 230, 56, '#RRGGBB', 24);   // 230 wide so the placeholder is not clipped; left edge on the first swatch
+        /* A neutral ASCII caption: the localised CJK hint rendered as garbage here (the
+           label fell back to the Latin-only font), and a garbled hint is worse than none. */
+        makeLabel(panel, 'Hex', 0, -212, 20, cc.color(255, 255, 255, 190)).name = 'dlgHexHint';
+        var hexBox = makeEditBox(panel, 'hexInput', 0, -244, 300, 56, '#RRGGBB', 26, true);   // centred, no box
         markSwatch(swatches, swatches[0]);
         /* The little preview swatch is gone: it rendered as a 2x2 dot and sat under the
            Create button. The palette and the hex code already say what the colour is. */
@@ -1563,12 +1576,12 @@
        This builds the input itself instead: a normal cc.Node for the box, plus a real DOM
        input positioned over the canvas, styled with a font that has CJK glyphs. Full control,
        no component quirks. */
-    function makeEditBox(parent, name, x, y, w, h, placeholder, fontSize) {
+    function makeEditBox(parent, name, x, y, w, h, placeholder, fontSize, noBox) {
         var node = new cc.Node(name);
         node.parent = parent;
         node.setContentSize(w, h);
         node.x = x; node.y = y;
-        roundedPanel(node, cc.color(18, 16, 22, 235), w, h);   // dark inset slot, the game's own panel
+        if (!noBox) { roundedPanel(node, cc.color(18, 16, 22, 235), w, h); }   // the hex field draws no box at all
         var fs = fontSize || 42;
         var el = document.createElement('input');
         el.type = 'text';
