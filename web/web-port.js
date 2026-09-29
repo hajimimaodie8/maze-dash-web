@@ -133,29 +133,7 @@
        asks for, it gets the wide one. The first frame is then already wide - no flip, no stutter
        - and no periodic re-layout is needed. */
     var designCoercion = { installed: false, calls: 0, lastAsked: null, lastApplied: null };
-    /* The Cocos loading UI draws its progress bar itself, so CSS cannot reach it: find the node
-       and tint it red instead. It only exists during load, hence the short poll. */
-    function reddenLoadBar() {
-        try {
-            var scene = cc.director.getScene();
-            if (!scene) { return 0; }
-            var n = 0;
-            (function walk(x) {
-                var sp = x.getComponent && x.getComponent(cc.Sprite);
-                if (sp && x.name && /bar|progress|line|loading/i.test(x.name) && x.width > 20 && x.height < 60) {
-                    x.color = cc.color(214, 64, 64, 255);
-                    n++;
-                }
-                (x.children || []).forEach(walk);
-            })(scene);
-            if (n) { stats.loadBarReddened = (stats.loadBarReddened || 0) + n; }
-            return n;
-        } catch (e) { return 0; }
-    }
-    (function pollLoadBar(n) {
-        if (reddenLoadBar() || n > 300) { return; }
-        setTimeout(function () { pollLoadBar(n + 1); }, 20);
-    })(0);
+
     function installDesignCoercion() {
         if (designCoercion.installed) { return true; }
         if (typeof cc === 'undefined' || !cc.view || typeof cc.view.setDesignResolutionSize !== 'function') { return false; }
