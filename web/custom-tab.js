@@ -1950,26 +1950,49 @@
            impossible. Instead paint each portal cell myself: the floor layer has one spaceTile per
            cell in scan order, which gives me the exact position to place a coloured square on. */
         try {
-            var tiles = [];
+        try {
+            /* The engine draws a run of adjacent portals as ONE sprite, so per-cell tinting needs
+               that sprite split. Portal cells are grouped into horizontal runs in scan order, and
+               each run sprite is sliced evenly, one coloured square per cell. */
+            var runs = [];
             (function collect(n) {
-                if (n.name === 'spaceTile' && n.parent && /fllor_space_layer/.test(n.parent.name)) { tiles.push(n); }
+                var sp = n.getComponent && n.getComponent(cc.Sprite);
+                if (sp && sp.spriteFrame && /portal/i.test(sp.spriteFrame.name) && n.width > 4) { runs.push(n); }
                 (n.children || []).forEach(collect);
             })(map);
-            var cellOrder = [];
-            for (var yy in comp.Level_data) { for (var xx in comp.Level_data[yy]) { cellOrder.push([parseInt(xx, 10), parseInt(yy, 10)]); } }
+            var cells = [];
+            var rows = Object.keys(comp.Level_data);
+            for (var ri = 0; ri < rows.length; ri++) {
+                var y = rows[ri], row = comp.Level_data[y];
+                for (var x in row) { if (row[x] === 2) { cells.push([parseInt(x, 10), parseInt(y, 10)]); } }
+            }
+            var groups = [];
+            cells.forEach(function (c) {
+                var g = groups[groups.length - 1];
+                if (g && g.y === c[1] && c[0] === g.xs[g.xs.length - 1] + 1) { g.xs.push(c[0]); }
+                else { groups.push({ y: c[1], xs: [c[0]] }); }
+            });
             var PALETTE = { 1: cc.color(226, 64, 72), 2: cc.color(64, 200, 96), 3: cc.color(64, 140, 240), 4: cc.color(168, 88, 224) };
             var painted = 0;
-            cellOrder.forEach(function (cell, i) {
-                var col = cellColour(cell[0], cell[1]);
-                if (!col || !PALETTE[col] || !tiles[i]) { return; }
-                var marker = new cc.Node('portalColour' + col);
-                marker.parent = tiles[i];
-                marker.setContentSize(46, 46);
-                marker.x = 0; marker.y = 0;
-                fullSprite(marker, 46, 46, PALETTE[col]);
-                painted++;
+            groups.forEach(function (g, gi) {
+                var host = runs[gi];
+                if (!host) { return; }
+                var n = g.xs.length;
+                g.xs.forEach(function (x, k) {
+                    var col = cellColour(x, g.y);
+                    if (!col || !PALETTE[col]) { return; }
+                    var w = host.width / n, h = host.height;
+                    var marker = new cc.Node('portalColour' + col);
+                    marker.parent = host;
+                    marker.setContentSize(w * 0.92, h * 0.92);
+                    marker.x = -host.width / 2 + (k + 0.5) * w;
+                    marker.y = 0;
+                    fullSprite(marker, w * 0.92, h * 0.92, PALETTE[col]);
+                    painted++;
+                });
             });
             stats.portalCellsPainted = (stats.portalCellsPainted || 0) + painted;
+        } catch (e) { warn('portal paint failed:', e && e.message); }
         } catch (e) {}
         try {
             var wanted = [];
