@@ -72,6 +72,56 @@
                     st3.levelCfgOneSample = JSON.stringify(conf.level_cfg[1] || null).slice(0, 80);
                 }
             } catch (e) {}
+            /* EARLY WRAP OF getLastWordId - installed at module scope, i.e. BEFORE the engine's first
+               scene start(). Every other wrap in this file is installed from a director scene-launch
+               hook, which runs AFTER start(), which is why the ORIGINAL method still won on a fresh boot
+               (captured stack: getLastWordId 84521 <- initStageLayer 80827 <- start 80674).
+               It records the real argument (what we have been trying to see), delegates when the id is
+               known, and returns a legal value when it is not. No try/catch masking, no storage writes,
+               no broad Proxy. */
+            (function armEarlyWordIdWrap() {
+                function wrap(obj, tag) {
+                    try {
+                        if (!obj || typeof obj.getLastWordId !== 'function' || obj.__earlyWordIdWrapped) { return false; }
+                        var orig = obj.getLastWordId;
+                        var fn = function (arg) {
+                            try {
+                                var s = window.MazeDashCustomTab && window.MazeDashCustomTab.stats;
+                                if (s) {
+                                    if (!s.getLastWordIdArgs) { s.getLastWordIdArgs = []; }
+                                    s.getLastWordIdArgs.push([tag, (arg === undefined ? 'undefined' : String(arg))]);
+                                    if (s.getLastWordIdArgs.length > 20) { s.getLastWordIdArgs.shift(); }
+                                    s.getLastWordIdCalls = (s.getLastWordIdCalls || 0) + 1;
+                                    s.getLastWordIdWhere = tag;
+                                }
+                            } catch (e) {}
+                            var key = (arg === undefined || arg === null) ? null : parseInt(arg, 10);
+                            var known = (key !== null && !isNaN(key) && window.conf && conf.level_cfg && conf.level_cfg[key] !== undefined);
+                            if (!known) {
+                                try { var s2 = window.MazeDashCustomTab && window.MazeDashCustomTab.stats; if (s2) { s2.getLastWordIdFallbacks = (s2.getLastWordIdFallbacks || 0) + 1; } } catch (e) {}
+                                return 1;
+                            }
+                            var v = null;
+                            try { v = orig.apply(this, arguments); } catch (e) { v = null; }
+                            return v || 1;
+                        };
+                        try {
+                            Object.defineProperty(obj, 'getLastWordId', { value: fn, writable: true, configurable: true, enumerable: false });
+                        } catch (e) { obj.getLastWordId = fn; }
+                        obj.__earlyWordIdWrapped = true;
+                        try { var s3 = window.MazeDashCustomTab && window.MazeDashCustomTab.stats; if (s3) { s3.earlyWordIdWrapped = (s3.earlyWordIdWrapped || 0) + 1; s3.earlyWordIdWhere = tag; } } catch (e) {}
+                        return true;
+                    } catch (e) { return false; }
+                }
+                var t = 0;
+                (function tick() {
+                    t++;
+                    try { if (window.gamemain) { wrap(window.gamemain, 'gamemain'); } } catch (e) {}
+                    try { if (window.gamemain) { var p = Object.getPrototypeOf(window.gamemain); if (p) { wrap(p, 'proto'); } } } catch (e) {}
+                    try { if (window.hallScene) { wrap(window.hallScene, 'hallScene'); } } catch (e) {}
+                    if (t < 3000) { setTimeout(tick, 0); }
+                })();
+            })();
             /* READ-ONLY storage recorder. It NEVER changes a return value - a broad Proxy on a config
                object was measured to hang the save path, so nothing here may alter behaviour. It records
                level-related reads so the key that the engine's getLastWordId actually reads becomes
