@@ -1151,12 +1151,32 @@
         } catch (e) {}
         if (gridRootRef && gridRootRef.isValid) { gridRootRef.destroy(); closed = true; }
         gridRootRef = null;
+        dragCellsRef = null;
         try {
             var hallBar2 = window.hallScene && window.hallScene.tabBar && window.hallScene.tabBar.parent;
             /* the tab bar is never hidden by the editor any more */
 
         } catch (e) {}
-        try { var svr = null; (function up2(n) { if (!svr && n.getComponent && n.getComponent(cc.ScrollView)) { svr = n.getComponent(cc.ScrollView); } if (n.parent) { up2(n.parent); } })(window.hallScene && window.hallScene.tabBar ? window.hallScene.tabBar.parent : cc.find('Canvas')); if (svr && svr.__dragDisabled) { svr.enabled = true; svr.__dragDisabled = false; stats.dragScrollRestored = (stats.dragScrollRestored || 0) + 1; } } catch (e) {}
+        /* Restore with the SAME lookup the drag mute uses. The old code only walked up from
+           tabBar.parent, which is a different path from Canvas/gameView/scrollView, so a muted pager
+           was never switched back on (measured: scrollEnabled stayed false after closing). */
+        try {
+            /* Re-enable the EXACT component that was muted. cc.find('Canvas/gameView/scrollView')
+               resolved to a different component when checked later (measured: dragScrollRestored
+               incremented while the probe's scroll view was still disabled), so keep the reference. */
+            var svr = dragPaintState.mutedSv || null;
+            if (!svr) {
+                var svnR = cc.find('Canvas/gameView/scrollView');
+                if (svnR) { svr = svnR.getComponent(cc.ScrollView); }
+            }
+            if (!svr) { (function up2(n) { if (!svr && n.getComponent && n.getComponent(cc.ScrollView)) { svr = n.getComponent(cc.ScrollView); } if (n.parent) { up2(n.parent); } })(window.hallScene && window.hallScene.tabBar ? window.hallScene.tabBar.parent : cc.find('Canvas')); }
+            if (svr && (svr.__dragDisabled || dragPaintState.mutedSv)) { svr.enabled = true; svr.__dragDisabled = false; stats.dragScrollRestored = (stats.dragScrollRestored || 0) + 1; }
+            /* also re-enable the path-resolved one, in case both exist */
+            var svnR2 = cc.find('Canvas/gameView/scrollView');
+            var svr2 = svnR2 && svnR2.getComponent(cc.ScrollView);
+            if (svr2 && svr2 !== svr) { svr2.enabled = true; svr2.__dragDisabled = false; }
+            dragPaintState.mutedSv = null;
+        } catch (e) {}
         stats.gridEditorClosed = (stats.gridEditorClosed || 0) + 1;
         return closed;
     }
@@ -1230,35 +1250,32 @@
         var key = cell.__gx + ',' + cell.__gy;
         if (v === 2) { editorColours[key] = editorTool.portalColour; } else { delete editorColours[key]; }
         paintGridCell(cell);
-        refreshGridReadout();
-        updateSolvability();
-        /* write into the grid array the save path reads - the phase-1 version did this and it
-           must not be lost: without it the cells paint correctly but save an empty matrix */
+        /* ORDER MATTERS: write the matrix the save path reads BEFORE refreshing anything derived from
+           it. The old order called updateSolvability() first, so a freshly placed hero was still read
+           as "Hero 0 / Unsolvable: no hero" (both the counter and the red line disagreed with the
+           board). The matrix is the single source of truth. */
         try {
             var ed = MazeDashCustomTab.gridEditor;
             if (ed && ed.grid && ed.grid[cell.__gy]) { ed.grid[cell.__gy][cell.__gx] = v; }
         } catch (e) {}
-        /* The readout and the "no hero" warning are derived from the MATRIX, which is the only source
-           of truth: the previous counters disagreed with it (Floor 12 was right while Hero stayed 0
-           with a hero on the board, and the editor then showed "Unsolvable: no hero"). */
+        refreshGridReadout();
+        updateSolvability();
+        /* The readout/status nodes live under gridReadoutBg, NOT directly under the grid root
+           (measured), so the old root.getChildByName('gridReadout') always returned null. */
         try {
+            var root2 = (typeof gridRootRef !== 'undefined' && gridRootRef && gridRootRef.isValid) ? gridRootRef : null;
+            var bg2 = root2 && root2.getChildByName('gridReadoutBg');
             var ed2 = MazeDashCustomTab.gridEditor;
             var g2 = ed2 && ed2.grid;
-            if (g2) {
-                var cnt = { floor: 0, wall: 0, hero: 0, brick: 0, key: 0, lock: 0, portal: 0, arrow: 0 };
-                g2.forEach(function (row) { row.forEach(function (v) {
-                    if (v === 1) { cnt.floor++; } else if (v === -1) { cnt.hero++; cnt.floor++; }
-                    else if (v === 0) { cnt.wall++; } else if (v === -4) { cnt.brick++; }
-                    else if (v === 4) { cnt.key++; } else if (v === -3) { cnt.lock++; }
-                    else if (v === 2) { cnt.portal++; } else if (v >= 5 && v <= 8) { cnt.arrow++; }
-                }); });
-                var root2 = (typeof gridRootRef !== 'undefined' && gridRootRef && gridRootRef.isValid) ? gridRootRef : null;
-                var ro = root2 && root2.getChildByName('gridReadout');
-                if (ro) { var l1 = ro.getComponent(cc.Label); if (l1) { l1.string = 'Floor ' + cnt.floor + '  Hero ' + cnt.hero + '  Portal ' + cnt.portal + '  Key ' + cnt.key + '  Lock ' + cnt.lock + '  Brick ' + cnt.brick + '  Arrow ' + cnt.arrow; } }
-                var stn = root2 && root2.getChildByName('gridStatus');
-                if (stn) { var l2 = stn.getComponent(cc.Label); if (l2 && cnt.hero > 0 && /no hero/i.test(String(l2.string || ''))) { l2.string = ''; } }
+            if (bg2 && g2) {
+                var rn = bg2.getChildByName('gridReadout');
+                if (rn) { var l1 = rn.getComponent(cc.Label); if (l1) { l1.string = gridReadout(g2); } }
+                var hero = 0;
+                g2.forEach(function (row) { row.forEach(function (v2) { if (v2 === -1) { hero++; } }); });
+                stats.readoutHero = hero;
+                var stn = bg2.getChildByName('gridStatus');
+                if (stn) { var l2 = stn.getComponent(cc.Label); if (l2 && hero > 0 && /no hero/i.test(String(l2.string || ''))) { l2.string = ''; } }
                 stats.readoutFromMatrix = (stats.readoutFromMatrix || 0) + 1;
-                stats.readoutHero = cnt.hero;
             }
         } catch (e) {}
         stats.gridPaints = (stats.gridPaints || 0) + 1;
@@ -1293,7 +1310,9 @@
            y = -410 with a height of 140 (so -480..-340), while the tab bar occupies roughly
            -640..-520: a 40px gap, and nothing needs hiding - the tab bar stays visible and
            simply never overlaps this row, so it cannot swallow the taps. */
-        var panelW = 2100, panelH = 140, panelY = -410;
+        /* The row must fit the ACTUAL visible width: at 1200x800 the design width is 1920, and a fixed
+           2100px palette put two tool labels off screen (found by tools/verify/probe-layout-audit.js). */
+        var panelW = Math.max(760, Math.min(2100, visibleWidth() - 100)), panelH = 140, panelY = -410;
         var panel = new cc.Node('gridPalette');
         panel.parent = root;
         panel.setContentSize(panelW, panelH);
@@ -1565,17 +1584,29 @@
        de-duplicated so a single cell is never applied twice, and the surrounding scroll view's touch
        is disabled for the duration so the pager cannot steal the drag. */
     var dragPaintState = { active: false, last: null };
+    /* cellsRef is declared INSIDE openGridEditor, so this module-level function could not see it:
+       every call threw ReferenceError inside its own try/catch and silently returned null (measured:
+       dragCellsResolved never incremented even though the pointer mapped to a valid world point). */
+    var dragCellsRef = null;
     function nearestCellFromWorld(wx, wy) {
         try {
-            var first = cellsRef && cellsRef[0];
+            var first = dragCellsRef && dragCellsRef[0];
             if (!first || !first.isValid) { return null; }
+            var n = GRID_N || 20;
             var fw = first.convertToWorldSpaceAR(cc.v2(0, 0));
-            var pitch = first.width + (first.parent && first.parent.children[1] ? (cellsRef[1] ? (cellsRef[1].convertToWorldSpaceAR(cc.v2(0, 0)).x - fw.x) : 0) : 0);
-            var p = Math.abs(pitch) > 1 ? Math.abs(pitch) : (first.width || 40);
-            var gx = Math.round((wx - fw.x) / p);
-            var gy = Math.round((fw.y - wy) / p);
-            if (gy < 0 || gy > 19 || gx < 0 || gx > 19) { return null; }
-            var cell = cellsRef[gy * 20 + gx];
+            /* MEASURED, not derived: cell_0_0 world (803.4, 1044.8), cell_1_0 x 838.6, cell_0_1 y 1009.6
+               => the real pitch is 35.2 in BOTH axes, while the node width is 36. The old code used
+               first.width + (cells[1].x - fw.x) = 36 + 35.2 = 71.2, i.e. double the true pitch, so the
+               row/column it derived was wrong (and with a pointer slightly outside, always out of range). */
+            var c1 = dragCellsRef[1], c2 = dragCellsRef[n];
+            var px = (c1 && c1.isValid) ? (c1.convertToWorldSpaceAR(cc.v2(0, 0)).x - fw.x) : 0;
+            var py = (c2 && c2.isValid) ? (fw.y - c2.convertToWorldSpaceAR(cc.v2(0, 0)).y) : 0;
+            if (!(Math.abs(px) > 0.5)) { px = first.width || 40; }
+            if (!(Math.abs(py) > 0.5)) { py = px; }
+            var gx = Math.round((wx - fw.x) / px);
+            var gy = Math.round((fw.y - wy) / py);
+            if (gy < 0 || gy > n - 1 || gx < 0 || gx > n - 1) { return null; }
+            var cell = dragCellsRef[gy * n + gx];
             if (cell && cell.isValid) { stats.dragCellsResolved = (stats.dragCellsResolved || 0) + 1; stats.dragLastIndex = gx + ',' + gy; }
             return (cell && cell.isValid) ? cell : null;
         } catch (e) { return null; }
@@ -1586,6 +1617,18 @@
         var key = cell.__gx + ',' + cell.__gy;
         if (dragPaintState.last === key) { return; }          // de-dupe: one apply per cell per drag
         dragPaintState.last = key;
+        /* Mute the pager only once the pointer has actually resolved to a grid cell, so a tap on the
+           palette or the back button can never leave the hall pager switched off. */
+        if (!dragPaintState.muted) {
+            dragPaintState.muted = true;
+            try {
+                var sv = null;
+                var svn = cc.find('Canvas/gameView/scrollView');
+                if (svn) { sv = svn.getComponent(cc.ScrollView); }
+                if (!sv) { (function up(n) { if (!sv && n.getComponent) { sv = n.getComponent(cc.ScrollView); } if (!sv && n.parent) { up(n.parent); } })(window.hallScene && window.hallScene.tabBar ? window.hallScene.tabBar.parent : cc.find('Canvas')); }
+                if (sv && sv.enabled !== false) { sv.__dragDisabled = true; sv.enabled = false; dragPaintState.mutedSv = sv; stats.dragScrollDisabled = (stats.dragScrollDisabled || 0) + 1; }
+            } catch (e) {}
+        }
         applyToolToCell(cell);
         stats.dragPaintApplies = (stats.dragPaintApplies || 0) + 1;
         stats.dragCellsApplied = (stats.dragCellsApplied || 0) + 1;
@@ -1595,40 +1638,52 @@
             var root = gridRootRef;
             if (!root || !root.isValid || root.__dragArmed) { return; }
             root.__dragArmed = true;
-            /* Cocos getLocation() is canvas-relative CSS pixels with the origin at the BOTTOM LEFT,
-               which is why the previous node-space round trip always landed outside the grid. My
-               probes already prove the correct mapping in the other direction, so invert exactly that:
-                 world.x = loc.x * (visibleWidth  / canvasWidthPx)
-                 world.y = loc.y * (visibleHeight / canvasHeightPx)
-               and the cells' own convertToWorldSpaceAR positions are then the same space. */
-            var toWorld = function (ev) {
-                var loc = ev.getLocation ? ev.getLocation() : null;
-                if (!loc) { return null; }
+            var toWorldFromLoc = function (lx, ly) {
                 var vs = cc.view.getVisibleSize();
                 var rect = cc.game.canvas.getBoundingClientRect();
                 var sx = vs.width / (rect.width || vs.width);
                 var sy = vs.height / (rect.height || vs.height);
-                var p = cc.v2(loc.x * sx, loc.y * sy);
+                var p = cc.v2(lx * sx, ly * sy);
                 stats.dragLastWorld = Math.round(p.x) + ',' + Math.round(p.y);
                 return p;
             };
-            var begin = function (ev) {
-                dragPaintState.active = true; dragPaintState.last = null;
-                stats.dragDowns = (stats.dragDowns || 0) + 1;
-                try {
-                    var sv = null;
-                    (function up(n) { if (!sv && n.getComponent && n.getComponent(cc.ScrollView)) { sv = n.getComponent(cc.ScrollView); } if (n.parent) { up(n.parent); } })(root);
-                    if (sv) { sv.__dragDisabled = true; sv.enabled = false; stats.dragScrollDisabled = (stats.dragScrollDisabled || 0) + 1; }
-                } catch (e) {}
-                var p = toWorld(ev); if (p) { applyDragAt(p.x, p.y); }
+            var beginWith = function (lx, ly, src) {
+                dragPaintState.active = true; dragPaintState.last = null; dragPaintState.muted = false;
+                stats.dragDowns = (stats.dragDowns || 0) + 1; stats.dragSource = src;
+                var p = toWorldFromLoc(lx, ly); applyDragAt(p.x, p.y);
             };
-            var move = function (ev) { stats.dragMoves = (stats.dragMoves || 0) + 1; if (!dragPaintState.active) { return; } var p = toWorld(ev); if (p) { applyDragAt(p.x, p.y); } };
-            var end = function () { dragPaintState.active = false; dragPaintState.last = null; };
-            [cc.Node.EventType.TOUCH_START, cc.Node.EventType.TOUCH_MOVE, cc.Node.EventType.TOUCH_END, cc.Node.EventType.TOUCH_CANCEL].forEach(function (t, i) {
-                root.on(t, i === 0 ? begin : (i === 1 ? move : end), root);
-            });
-            if (cc.Node.EventType.MOUSE_DOWN) {
-                [[cc.Node.EventType.MOUSE_DOWN, begin], [cc.Node.EventType.MOUSE_MOVE, move], [cc.Node.EventType.MOUSE_UP, end], [cc.Node.EventType.MOUSE_LEAVE, end]].forEach(function (pair) { if (pair[0]) { root.on(pair[0], pair[1], root); } });
+            var moveWith = function (lx, ly) {
+                stats.dragMoves = (stats.dragMoves || 0) + 1;
+                if (!dragPaintState.active) { return; }
+                var p = toWorldFromLoc(lx, ly); applyDragAt(p.x, p.y);
+            };
+            var endDrag = function () { dragPaintState.active = false; dragPaintState.last = null; dragPaintState.muted = false; };
+            /* DOM listeners only. Both sources were tried together, but Cocos's
+               Event.getLocation() did not match the canvas-relative space this code needs (measured:
+               the derived world point was 1890,1423, outside the 0..2276 x 0..1280 world), and because
+               both fired for the same drag the wrong one kept resetting the de-dupe key. The DOM path
+               is exact - it is the same mapping the probes verify - and it fires for touch as well. */
+            /* DOM listeners on the canvas are the GUARANTEED input path. The Cocos listeners on the
+               container never fired for a drag (measured: dragDowns/dragMoves stayed undefined) because
+               the cells are children with their own handlers; DOM events cannot be swallowed that way.
+               Mapping is the one the probes verified: world = cssPointer * (visibleSize / cssSize). */
+            var cv = cc.game.canvas;
+            if (cv && !cv.__gridDragBound) {
+                cv.__gridDragBound = true;
+                var domLoc = function (e) {
+                    var r = cv.getBoundingClientRect();
+                    return { x: e.clientX - r.left, y: r.height - (e.clientY - r.top) };
+                };
+                var domBegin = function (e) { var l = domLoc(e); beginWith(l.x, l.y, 'dom'); };
+                var domMove = function (e) { var l = domLoc(e); moveWith(l.x, l.y); };
+                cv.addEventListener('mousedown', domBegin, true);
+                cv.addEventListener('mousemove', domMove, true);
+                window.addEventListener('mouseup', endDrag, true);
+                cv.addEventListener('touchstart', domBegin, true);
+                cv.addEventListener('touchmove', domMove, true);
+                window.addEventListener('touchend', endDrag, true);
+                window.addEventListener('touchcancel', endDrag, true);
+                stats.dragDomBound = (stats.dragDomBound || 0) + 1;
             }
             stats.dragPaintArmed = (stats.dragPaintArmed || 0) + 1;
         } catch (e) {}
@@ -1644,7 +1699,17 @@
         root.parent = host;
         root.setContentSize(W, H);
         root.zIndex = 999;                                   // above the preview overlay (998)
-        fullSprite(root, W, H, cc.color(20, 18, 24, 255));   // opaque: nothing may show through
+        /* The opaque backdrop must NOT cover the bottom tab bar: the user requires the tab bar to stay
+           visible while editing, and a full-screen sprite on the root hid it (found by
+           tools/verify/probe-layout-audit.js: "gridEditor [tabbar]" at all three sizes). The root
+           itself stays transparent and has no input blocker, so taps below still reach the tab bar. */
+        var TABBAR_STRIP = 130;
+        var backdrop = new cc.Node('gridBackdrop');
+        backdrop.parent = root;
+        backdrop.setContentSize(W, Math.max(200, H - TABBAR_STRIP));
+        backdrop.y = TABBAR_STRIP / 2;
+        backdrop.zIndex = 0;
+        fullSprite(backdrop, W, Math.max(200, H - TABBAR_STRIP), cc.color(20, 18, 24, 255));
 
         /* --- the way out, created first and unconditionally, on top of everything --- */
         var close = new cc.Node('gridBack');
@@ -1742,6 +1807,11 @@
             verdict: function () { return editorSolvability; },
         };
         gridRootRef = root;
+        dragCellsRef = cellsRef;
+        /* Arm the drag listeners HERE. The lazy call from paintGridCell fires while the cells are
+           being built, which happens BEFORE this assignment, so gridRootRef was still null and the
+           listeners were never attached (measured: a real mouse drag produced no counters at all). */
+        try { armDragPaint(); } catch (e) {}
         animateIn(root);
 
         /* The tab bar is deliberately kept above every sibling, so it would swallow taps on the
@@ -1768,20 +1838,13 @@
                '  ' + t('toolKey') + ' ' + n[4] + '  ' + t('toolLock') + ' ' + n['-3'] + '  ' + t('toolBrick') + ' ' + n['-4'] + '  ' + t('toolArrow') + ' ' + arrows;
     }
 
+    /* This used to be REDEFINED here as a plain floor/wall toggle, and since a later function
+       declaration wins, every cell tap went through it and IGNORED the selected tool. That is
+       exactly the user's report: "I picked the hero tool, and it added floor instead". It now
+       delegates to the single write path that honours the current tool. */
     function toggleGridCell(cell) {
         if (!cell || !cell.isValid) { return; }
-        cell.__value = cell.__value === 1 ? 0 : 1;
-        try {
-            var ed = MazeDashCustomTab.gridEditor;
-            if (ed && ed.grid && ed.grid[cell.__gy]) { ed.grid[cell.__gy][cell.__gx] = cell.__value; }
-        } catch (e) {}
-        paintGridCell(cell);
-        try {
-            var root = cell.parent;
-            var ro = root && root.getChildByName('gridReadoutBg');
-            var lb = ro && ro.getChildByName('gridReadout') && ro.getChildByName('gridReadout').getComponent(cc.Label);
-            if (lb && MazeDashCustomTab.gridEditor) { lb.string = gridReadout(MazeDashCustomTab.gridEditor.grid); }
-        } catch (e) {}
+        applyToolToCell(cell);
         stats.gridToggles = (stats.gridToggles || 0) + 1;
     }
 
@@ -1920,10 +1983,18 @@
        Unknown languages fall back to English through t(). */
     (function addEditorStrings() {
         var add = {
-            'zh-Hans': { gridTitle: '\u5173\u5361\u7f16\u8f91\u5668 \u00b7 20\u00d720', saveAndPlay: '\u4fdd\u5b58\u5e76\u8bd5\u73a9', floorCount: '\u5730\u677f' },
-            'zh-Hant': { gridTitle: '\u95dc\u5361\u7de8\u8f2f\u5668 \u00b7 20\u00d720', saveAndPlay: '\u4fdd\u5b58\u4e26\u8a66\u73a9', floorCount: '\u5730\u677f' },
-            'en':      { gridTitle: 'Level editor \u00b7 20\u00d720', saveAndPlay: 'Save & Play', floorCount: 'Floor' },
-            'ja':      { gridTitle: '\u30b9\u30c6\u30fc\u30b8\u7de8\u96c6 \u00b7 20\u00d720', saveAndPlay: '\u4fdd\u5b58\u3057\u3066\u30d7\u30ec\u30a4', floorCount: '\u5e8a' },
+            'zh-Hans': { gridTitle: '\u5173\u5361\u7f16\u8f91\u5668 \u00b7 20\u00d720', saveAndPlay: '\u4fdd\u5b58\u5e76\u8bd5\u73a9', floorCount: '\u5730\u677f',
+                         previewWorld: '\u9884\u89c8\u5df2\u7f16\u8f91\u7684\u4e16\u754c', previewLevel: '\u9884\u89c8\u5df2\u7f16\u8f91\u7684\u5173\u5361', exportJson: '\u5bfc\u51fa JSON', importJson: '\u5bfc\u5165 JSON',
+                         toolHero: '\u4e3b\u89d2', toolPortal: '\u4f20\u9001\u95e8', toolKey: '\u94a5\u5319', toolLock: '\u9501', toolBrick: '\u7816\u5757', toolArrow: '\u7bad\u5934' },
+            'zh-Hant': { gridTitle: '\u95dc\u5361\u7de8\u8f2f\u5668 \u00b7 20\u00d720', saveAndPlay: '\u4fdd\u5b58\u4e26\u8a66\u73a9', floorCount: '\u5730\u677f',
+                         previewWorld: '\u9810\u89bd\u5df2\u7de8\u8f2f\u7684\u4e16\u754c', previewLevel: '\u9810\u89bd\u5df2\u7de8\u8f2f\u7684\u95dc\u5361', exportJson: '\u532f\u51fa JSON', importJson: '\u532f\u5165 JSON',
+                         toolHero: '\u4e3b\u89d2', toolPortal: '\u50b3\u9001\u9580', toolKey: '\u9470\u5319', toolLock: '\u9396', toolBrick: '\u7926\u584a', toolArrow: '\u7bad\u982d' },
+            'en':      { gridTitle: 'Level editor \u00b7 20\u00d720', saveAndPlay: 'Save & Play', floorCount: 'Floor',
+                         previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', importJson: 'Import JSON',
+                         toolHero: 'Hero', toolPortal: 'Portal', toolKey: 'Key', toolLock: 'Lock', toolBrick: 'Brick', toolArrow: 'Arrow' },
+            'ja':      { gridTitle: '\u30b9\u30c6\u30fc\u30b8\u7de8\u96c6 \u00b7 20\u00d720', saveAndPlay: '\u4fdd\u5b58\u3057\u3066\u30d7\u30ec\u30a4', floorCount: '\u5e8a',
+                         previewWorld: '\u4e16\u754c\u3092\u898b\u308b', previewLevel: '\u30b9\u30c6\u30fc\u30b8\u3092\u898b\u308b', exportJson: 'JSON\u3092\u66f8\u304d\u51fa\u3059', importJson: 'JSON\u3092\u8aad\u307f\u8fbc\u3080',
+                         toolHero: '\u4e3b\u4eba\u516c', toolPortal: '\u30dd\u30fc\u30bf\u30eb', toolKey: '\u9375', toolLock: '\u30ed\u30c3\u30af', toolBrick: '\u30d6\u30ed\u30c3\u30af', toolArrow: '\u77e2\u5370' },
         };
         Object.keys(add).forEach(function (lang) {
             if (!TEXT[lang]) { TEXT[lang] = {}; }
@@ -2011,6 +2082,26 @@
                 var lb2 = nd.getChildByName('editorSmallLabel_' + sid);
                 if (lb2 && lb2.isValid) { var lc = lb2.getComponent(cc.Label); if (lc) { var fs2 = 30; while ((lc.actualWidth || 0) * 1.02 > w2 - 24 && fs2 > 16) { fs2 -= 2; lc.fontSize = fs2; } } }
             });
+            /* Self-correcting pass: measure where the row ACTUALLY landed and shift it so its centre
+               sits on the screen centre. The formula above depends on the view's world offset at call
+               time, which changes while the pager settles (measured: the row centre was 864 while the
+               screen centre is 1138, and previewWorld's left edge was -25px off screen). Measuring the
+               result and correcting it is independent of that. */
+            var sumX = 0, seen = 0;
+            SMALL_IDS.forEach(function (sid) {
+                var nd = view.getChildByName('editorSmall_' + sid);
+                if (nd && nd.isValid) { sumX += nd.convertToWorldSpaceAR(cc.v2(0, 0)).x; seen++; }
+            });
+            if (seen === SMALL_IDS.length && seen > 0) {
+                var delta = visibleWidth() / 2 - sumX / seen;
+                stats.smallRowDelta = Math.round(delta);
+                if (Math.abs(delta) > 0.5) {
+                    SMALL_IDS.forEach(function (sid) {
+                        var nd = view.getChildByName('editorSmall_' + sid);
+                        if (nd && nd.isValid) { nd.x += delta; }
+                    });
+                }
+            }
             stats.smallRowLayouts = (stats.smallRowLayouts || 0) + 1;
         };
         setTimeout(layoutSmallRow, 800);
@@ -3480,6 +3571,7 @@
 
     /* Small API so the editor (and the tests) can drive the tab. */
     window.MazeDashCustomTab = {
+        t: t,   /* exposed so verification probes can detect a label that still prints its i18n KEY */
         editorAction: function (id) { return editorAction(id); },
         openGridEditor: function () { return openGridEditor(); },
         buildExportData: buildExportData,
