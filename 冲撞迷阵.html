@@ -87955,6 +87955,42 @@ cc._RF.pop();
 
     /* ---- persistence: levels live in localStorage and are re-injected on boot ---- */
     var CUSTOM_LEVELS_KEY = 'maze_dash_custom_levels';
+
+    /* ---- the user's OWN level library ---------------------------------------------------------
+       Every "Save & Play" also lands here, under its own localStorage key - the custom-level store
+       above is left completely alone. The "Move in" picker then lists what THIS user has saved,
+       instead of world 1's shipped levels. Same name overwrites (the user asked for that), so
+       tapping Save & Play repeatedly does not pile up duplicates. Never throws, never clears. */
+    var LEVEL_LIB_KEY = 'maze_dash_my_levels';
+    function libLoad() {
+        try {
+            var raw = JSON.parse(localStorage.getItem(LEVEL_LIB_KEY) || '{}') || {};
+            var items = raw && raw.items && raw.items.length !== undefined ? raw.items : [];
+            return { version: raw.version || 1, items: items };
+        } catch (e) { return { version: 1, items: [] }; }
+    }
+    function libSave(list) {
+        try { localStorage.setItem(LEVEL_LIB_KEY, JSON.stringify({ version: 1, items: list || [] })); } catch (e2) {}
+        return list || [];
+    }
+    function libUpsert(item) {
+        if (!item) { return null; }
+        var lib = libLoad();
+        var hit = -1;
+        for (var i = 0; i < lib.items.length; i++) { if (lib.items[i] && lib.items[i].name === item.name) { hit = i; break; } }
+        if (hit >= 0) {
+            var old = lib.items[hit];
+            lib.items[hit] = { id: old.id, name: item.name, grid: item.grid, colours: item.colours || {},
+                               createdAt: old.createdAt || item.createdAt || Date.now(), updatedAt: Date.now() };
+        } else {
+            item.createdAt = item.createdAt || Date.now();
+            item.updatedAt = Date.now();
+            lib.items.push(item);
+        }
+        libSave(lib.items);
+        stats.libItems = lib.items.length;
+        return lib.items;
+    }
     function customLevels() {
         try { return JSON.parse(localStorage.getItem(CUSTOM_LEVELS_KEY) || '{}') || {}; } catch (e) { return {}; }
     }
@@ -88033,7 +88069,10 @@ cc._RF.pop();
             conf.level_cfg[id] = entry;
             conf.stage_level_cfg[world][String(id)] = entry;
             conf.stage_level_cfg[world][String(entry.levelId)] = entry;
-            saveCustomLevel(id, { grid: copy, colours: JSON.parse(JSON.stringify(editorColours)), world: world, levelId: display, name: t('createLevel') + ' ' + display });
+            var libName = t('createLevel') + ' ' + display;
+            saveCustomLevel(id, { grid: copy, colours: JSON.parse(JSON.stringify(editorColours)), world: world, levelId: display, name: libName });
+            /* also into the user's own library, so "Move in" can list it later (same name overwrites) */
+            libUpsert({ id: id, name: libName, grid: copy, colours: JSON.parse(JSON.stringify(editorColours)) });
             try { if (window.MazeDashCustomTab && MazeDashCustomTab.refreshStagePages) { MazeDashCustomTab.refreshStagePages(); } } catch (e) {}
             stats.editorSavedLevel = id;
             stats.editorSavedWorld = world;
@@ -88767,7 +88806,7 @@ cc._RF.pop();
        exactly like every other write path in this file) */
     function adoptLevelInto(world, srcEntry, label) {
         var target = world || gridTargetWorld || TEST_WORLD;
-        var src = conf.all_Level[srcEntry.mapId];
+        var src = (srcEntry && srcEntry.grid) ? srcEntry.grid : conf.all_Level[srcEntry.mapId];   /* library items carry their own matrix */
         if (!src) { return 0; }
         var id = nextCustomLevelId();
         var copy = JSON.parse(JSON.stringify(src));
@@ -88781,7 +88820,7 @@ cc._RF.pop();
         conf.level_cfg[id] = entry;
         conf.stage_level_cfg[target][String(id)] = entry;
         conf.stage_level_cfg[target][String(display)] = entry;
-        saveCustomLevel(id, { grid: copy, colours: {}, world: target, levelId: display, name: label || ('L' + display) });
+        saveCustomLevel(id, { grid: copy, colours: (srcEntry && srcEntry.colours) ? JSON.parse(JSON.stringify(srcEntry.colours)) : {}, world: target, levelId: display, name: label || ('L' + display) });
         stats.moveLevelsIn = (stats.moveLevelsIn || 0) + 1;
         return id;
     }
@@ -88791,33 +88830,38 @@ cc._RF.pop();
         var grid = panel0 && panel0.getChildByName('pickerGrid');
         if (!grid) { return; }
         grid.removeAllChildren();
-        var W = visibleWidth();
-        var entries = shippedLevelsOf(pickerWorld);
+        /* the user's OWN saved levels (everything that went through "Save & Play"), newest first.
+           It used to list world 1's shipped levels - that was the misunderstanding the user flagged. */
+        var items = libLoad().items.slice(0);
+        items.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
         var panel1 = root.getChildByName('pickerPanel');
         var title = panel1 && panel1.getChildByName('pickerTitle');
         if (title) {
             var tl = title.getComponent(cc.Label);
-            if (tl) { tl.string = t('tileMoveLevels') + '   ·   ' + pickerWorld + ' - ' + entries.length; }
+            /* no new i18n keys (a missing key prints itself): reuse tileMoveLevels and show the
+               destination world plus how many saved levels there are */
+            if (tl) { tl.string = t('tileMoveLevels') + '   ·   ' + (gridTargetWorld || TEST_WORLD) + '   ·   ' + items.length; }
         }
-        stats.pickerTiles = entries.length;
-        entries.forEach(function (e, i) {
+        stats.pickerTiles = items.length;
+        items.forEach(function (e, i) {
             var col = i % 5, row = Math.floor(i / 5);
-            var tile = new cc.Node('pickerTile_' + e.mapId);
+            var tile = new cc.Node('pickerTile_' + (e.id !== undefined ? e.id : i));
             tile.parent = grid;
             tile.setContentSize(148, 84);
             tile.x = (col - 2) * 158;
             tile.y = 130 - row * 96;
-            roundedPanel(tile, cc.color(52, 46, 60, 235), 190, 110);
-            makeLabel(tile, String(pickerWorld) + '-' + (e.levelId || '?'), 0, 30, cc.color(255, 236, 200, 255));
+            roundedPanel(tile, cc.color(226, 210, 172, 255), 190, 110);
+            var nm = String(e.name || ('L' + (i + 1)));
+            makeLabel(tile, nm.length > 9 ? nm.substring(0, 9) : nm, 0, 28, cc.color(74, 56, 40, 255));
             tile.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(tile, true); });
             tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
             tile.on(cc.Node.EventType.TOUCH_END, function () {
                 pressFeedback(tile, false);
-                var made = adoptLevelInto(gridTargetWorld, e, String(pickerWorld) + '-' + (e.levelId || '?'));
+                var made = adoptLevelInto(gridTargetWorld, e, nm);
                 stats.pickerAdopted = made;
                 closeLevelPicker();
                 try { if (window.MazeDashCustomTab && MazeDashCustomTab.refreshStagePages) { MazeDashCustomTab.refreshStagePages(); } } catch (er) {}
-                log('adopted shipped level', e.mapId, 'as custom level', made, 'into world', gridTargetWorld);
+                log('adopted library level', e.id, 'as custom level', made, 'into world', gridTargetWorld);
             });
         });
     }
@@ -88838,10 +88882,10 @@ cc._RF.pop();
         var panel = new cc.Node('pickerPanel');
         panel.parent = root;
         panel.setContentSize(Math.min(900, W - 80), Math.min(760, H - 220));
-        roundedPanel(panel, cc.color(40, 36, 48, 245), panel.width, panel.height);
-        var title = makeLabel(panel, t('moveLevels'), panel.height / 2 - 60, 40, cc.color(255, 255, 255, 255));
+        roundedPanel(panel, cc.color(226, 210, 172, 255), panel.width, panel.height);
+        var title = makeLabel(panel, t('moveLevels'), panel.height / 2 - 60, 40, cc.color(74, 56, 40, 255));
         title.name = 'pickerTitle';
-        makeLabel(panel, '<  ' + pickerWorld + '  >', panel.height / 2 - 112, 26, cc.color(190, 186, 200, 255)).name = 'pickerHint';
+        makeLabel(panel, '<  ' + (gridTargetWorld || TEST_WORLD) + '  >', panel.height / 2 - 112, 26, cc.color(74, 56, 40, 235)).name = 'pickerHint';
         var grid = new cc.Node('pickerGrid');
         grid.parent = panel;
         grid.setContentSize(panel.width - 60, 470);
@@ -88849,21 +88893,28 @@ cc._RF.pop();
         var prev = new cc.Node('pickerPrev');
         prev.parent = panel; prev.setContentSize(120, 90);
         prev.x = -panel.width / 2 + 90; prev.y = -panel.height / 2 + 62;
-        roundedPanel(prev, cc.color(70, 60, 80, 240), 120, 90);
-        makeLabel(prev, '<', 0, 44, cc.color(255, 255, 255, 255));
+        roundedPanel(prev, cc.color(154, 143, 117, 255), 120, 90);
+        makeLabel(prev, '<', 0, 44, cc.color(74, 56, 40, 255));
         prev.on(cc.Node.EventType.TOUCH_END, function () {
-            pickerWorld = pickerWorld <= 1 ? 8 : pickerWorld - 1;
-            pickerWorld = (conf.stage_level_cfg && conf.stage_level_cfg[pickerWorld]) ? pickerWorld : 1;
+            /* the arrows now pick the DESTINATION world (the list is the user's own library) */
+            var ws = Object.keys(customWorlds()).map(Number).filter(function (v) { return v >= 100; }).sort(function (a, b) { return a - b; });
+            if (ws.length) {
+                var cur = ws.indexOf(gridTargetWorld || TEST_WORLD);
+                gridTargetWorld = ws[(cur <= 0 ? ws.length : cur) - 1];
+            }
             refreshPickerGrid(root);
         });
         var next = new cc.Node('pickerNext');
         next.parent = panel; next.setContentSize(120, 90);
         next.x = panel.width / 2 - 90; next.y = -panel.height / 2 + 62;
-        roundedPanel(next, cc.color(70, 60, 80, 240), 120, 90);
-        makeLabel(next, '>', 0, 44, cc.color(255, 255, 255, 255));
+        roundedPanel(next, cc.color(154, 143, 117, 255), 120, 90);
+        makeLabel(next, '>', 0, 44, cc.color(74, 56, 40, 255));
         next.on(cc.Node.EventType.TOUCH_END, function () {
-            pickerWorld = pickerWorld >= 8 ? 1 : pickerWorld + 1;
-            pickerWorld = (conf.stage_level_cfg && conf.stage_level_cfg[pickerWorld]) ? pickerWorld : 1;
+            var ws = Object.keys(customWorlds()).map(Number).filter(function (v) { return v >= 100; }).sort(function (a, b) { return a - b; });
+            if (ws.length) {
+                var cur = ws.indexOf(gridTargetWorld || TEST_WORLD);
+                gridTargetWorld = ws[(cur + 1) % ws.length];
+            }
             refreshPickerGrid(root);
         });
         var cancel = new cc.Node('pickerCancel');
@@ -90054,6 +90105,9 @@ cc._RF.pop();
         relayout: function () { try { layoutTabs(window.hallScene); } catch (e) {} },
         install: tryInstall,
         stats: stats,
+        /* the "my levels" library, exposed so probes can verify the same-name overwrite end to end */
+        libLoad: libLoad,
+        libUpsert: libUpsert,
         /** switch 闯关模式 / 解锁模式 (persisted) */
         applyMode: applyMode,
         /** re-run the game's lock/grid decision for every world page */
