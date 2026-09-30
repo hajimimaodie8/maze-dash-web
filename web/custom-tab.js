@@ -1760,6 +1760,7 @@
         root.parent = host;
         root.setContentSize(W, H);
         root.zIndex = 999;                                   // above the preview overlay (998)
+        addBuildTag(root, 'gridBuildTag');
         /* The opaque backdrop must NOT cover the bottom tab bar: the user requires the tab bar to stay
            visible while editing, and a full-screen sprite on the root hid it (found by
            tools/verify/probe-layout-audit.js: "gridEditor [tabbar]" at all three sizes). The root
@@ -1966,7 +1967,7 @@
         stats.editorForceSave = 0;
         var id = nextCustomLevelId();
         var worlds = customWorlds();
-        var world = Number(Object.keys(worlds)[0] || 0) || TEST_WORLD;
+        var world = gridTargetWorld || Number(Object.keys(worlds)[0] || 0) || TEST_WORLD;   /* P2: a tile opens the editor for ITS world */
         try {
             conf.worlds[world] = conf.worlds[world] || { id: world, require: 0 };
             conf.stage_cfg[world] = conf.stage_cfg[world] || {};
@@ -2389,7 +2390,7 @@
                 makeLabel(tile, t(s.key), 0, 34, cc.color(40, 32, 20, 255)).name = 'previewTileLabel_' + s.id;
                 tile.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(tile, true); });
                 tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
-                tile.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(tile, false); editorAction(s.id); });
+                tile.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(tile, false); gridTargetWorld = id; editorAction(s.id); });
             });
             /* delete this world - red, with a confirmation step */
             var del = new cc.Node('previewDelete');
@@ -2685,6 +2686,168 @@
         } catch (e) { return false; }
     }
 
+    /* ==================== 移入关卡 / 新建关卡（P2 修复） ====================
+       The tiles that call editorAction('newLevel') / editorAction('moveLevels') - both on a
+       custom world's level-select page and on the world preview page - had NO handler at all,
+       so they fell into the "destination screen not built yet" branch and simply looked dead
+       (the user reported exactly that). newLevel now opens the grid editor for the world the
+       tile belongs to; moveLevels opens this picker, which copies a shipped level's matrix
+       into that world as a brand new custom level. */
+    var gridTargetWorld = 0;        /* set by the tile handlers; 0 = derive the world as before */
+    var pickerWorld = 1;            /* which shipped world the picker is listing */
+    var pickerRootRef = null;
+
+    function closeLevelPicker() {
+        if (pickerRootRef && pickerRootRef.isValid) { pickerRootRef.removeFromParent(); pickerRootRef.destroy(); }
+        pickerRootRef = null;
+    }
+
+    /* the shipped levels of one world, deduplicated by mapId (the table stores both id and levelId keys) */
+    function shippedLevelsOf(world) {
+        var out = [], seen = {};
+        var cfg = conf.stage_level_cfg && conf.stage_level_cfg[world];
+        if (!cfg) { return out; }
+        Object.keys(cfg).forEach(function (k) {
+            var e = cfg[k];
+            if (!e || seen[e.mapId] || conf.all_Level[e.mapId] === undefined) { return; }
+            seen[e.mapId] = 1;
+            out.push(e);
+        });
+        out.sort(function (a, b) { return (a.levelId || 0) - (b.levelId || 0); });
+        return out;
+    }
+
+    /* copy one shipped level's matrix into a custom world as a new level (both registration keys,
+       exactly like every other write path in this file) */
+    function adoptLevelInto(world, srcEntry, label) {
+        var target = world || gridTargetWorld || TEST_WORLD;
+        var src = conf.all_Level[srcEntry.mapId];
+        if (!src) { return 0; }
+        var id = nextCustomLevelId();
+        var copy = JSON.parse(JSON.stringify(src));
+        conf.worlds[target] = conf.worlds[target] || { id: target, require: 0 };
+        conf.stage_cfg[target] = conf.stage_cfg[target] || {};
+        conf.stage_level_cfg[target] = conf.stage_level_cfg[target] || {};
+        conf.theme_cfg[target] = conf.theme_cfg[target] || JSON.parse(JSON.stringify(conf.theme_cfg[1] || {}));
+        var display = Object.keys(conf.stage_level_cfg[target]).length + 1;
+        conf.all_Level[id] = copy;
+        var entry = { id: id, wordId: target, levelId: display, mapId: id, sz_solution: '' };
+        conf.level_cfg[id] = entry;
+        conf.stage_level_cfg[target][String(id)] = entry;
+        conf.stage_level_cfg[target][String(display)] = entry;
+        saveCustomLevel(id, { grid: copy, colours: {}, world: target, levelId: display, name: label || ('L' + display) });
+        stats.moveLevelsIn = (stats.moveLevelsIn || 0) + 1;
+        return id;
+    }
+
+    function refreshPickerGrid(root) {
+        var panel0 = root.getChildByName('pickerPanel');
+        var grid = panel0 && panel0.getChildByName('pickerGrid');
+        if (!grid) { return; }
+        grid.removeAllChildren();
+        var W = visibleWidth();
+        var entries = shippedLevelsOf(pickerWorld);
+        var panel1 = root.getChildByName('pickerPanel');
+        var title = panel1 && panel1.getChildByName('pickerTitle');
+        if (title) {
+            var tl = title.getComponent(cc.Label);
+            if (tl) { tl.string = t('tileMoveLevels') + '   ·   ' + pickerWorld + ' - ' + entries.length; }
+        }
+        stats.pickerTiles = entries.length;
+        entries.forEach(function (e, i) {
+            var col = i % 5, row = Math.floor(i / 5);
+            var tile = new cc.Node('pickerTile_' + e.mapId);
+            tile.parent = grid;
+            tile.setContentSize(148, 84);
+            tile.x = (col - 2) * 158;
+            tile.y = 130 - row * 96;
+            roundedPanel(tile, cc.color(52, 46, 60, 235), 190, 110);
+            makeLabel(tile, String(pickerWorld) + '-' + (e.levelId || '?'), 0, 30, cc.color(255, 236, 200, 255));
+            tile.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(tile, true); });
+            tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
+            tile.on(cc.Node.EventType.TOUCH_END, function () {
+                pressFeedback(tile, false);
+                var made = adoptLevelInto(gridTargetWorld, e, String(pickerWorld) + '-' + (e.levelId || '?'));
+                stats.pickerAdopted = made;
+                closeLevelPicker();
+                try { if (window.MazeDashCustomTab && MazeDashCustomTab.refreshStagePages) { MazeDashCustomTab.refreshStagePages(); } } catch (er) {}
+                log('adopted shipped level', e.mapId, 'as custom level', made, 'into world', gridTargetWorld);
+            });
+        });
+    }
+
+    function openLevelPicker() {
+        var host = cc.find('Canvas');
+        if (!host) { return null; }
+        closeLevelPicker();
+        var W = visibleWidth(), H = visibleHeight();
+        var root = new cc.Node('levelPicker');
+        root.parent = host;
+        root.setContentSize(W, H);
+        root.zIndex = 1001;                       /* above the world preview (998) and the grid editor (999) */
+        var dim = new cc.Node('pickerDim');
+        dim.parent = root;
+        fullSprite(dim, W, H, cc.color(12, 10, 16, 210));
+        dim.on(cc.Node.EventType.TOUCH_END, function () { closeLevelPicker(); });
+        var panel = new cc.Node('pickerPanel');
+        panel.parent = root;
+        panel.setContentSize(Math.min(900, W - 80), Math.min(760, H - 220));
+        roundedPanel(panel, cc.color(40, 36, 48, 245), panel.width, panel.height);
+        var title = makeLabel(panel, t('moveLevels'), panel.height / 2 - 60, 40, cc.color(255, 255, 255, 255));
+        title.name = 'pickerTitle';
+        makeLabel(panel, '<  ' + pickerWorld + '  >', panel.height / 2 - 112, 26, cc.color(190, 186, 200, 255)).name = 'pickerHint';
+        var grid = new cc.Node('pickerGrid');
+        grid.parent = panel;
+        grid.setContentSize(panel.width - 60, 470);
+        grid.y = 10;
+        var prev = new cc.Node('pickerPrev');
+        prev.parent = panel; prev.setContentSize(120, 90);
+        prev.x = -panel.width / 2 + 90; prev.y = -panel.height / 2 + 62;
+        roundedPanel(prev, cc.color(70, 60, 80, 240), 120, 90);
+        makeLabel(prev, '<', 0, 44, cc.color(255, 255, 255, 255));
+        prev.on(cc.Node.EventType.TOUCH_END, function () {
+            pickerWorld = pickerWorld <= 1 ? 8 : pickerWorld - 1;
+            pickerWorld = (conf.stage_level_cfg && conf.stage_level_cfg[pickerWorld]) ? pickerWorld : 1;
+            refreshPickerGrid(root);
+        });
+        var next = new cc.Node('pickerNext');
+        next.parent = panel; next.setContentSize(120, 90);
+        next.x = panel.width / 2 - 90; next.y = -panel.height / 2 + 62;
+        roundedPanel(next, cc.color(70, 60, 80, 240), 120, 90);
+        makeLabel(next, '>', 0, 44, cc.color(255, 255, 255, 255));
+        next.on(cc.Node.EventType.TOUCH_END, function () {
+            pickerWorld = pickerWorld >= 8 ? 1 : pickerWorld + 1;
+            pickerWorld = (conf.stage_level_cfg && conf.stage_level_cfg[pickerWorld]) ? pickerWorld : 1;
+            refreshPickerGrid(root);
+        });
+        var cancel = new cc.Node('pickerCancel');
+        cancel.parent = panel; cancel.setContentSize(220, 90);
+        cancel.y = -panel.height / 2 + 62;
+        roundedPanel(cancel, cc.color(150, 60, 60, 240), 220, 90);
+        makeLabel(cancel, t('cancel'), 0, 32, cc.color(255, 255, 255, 255));
+        cancel.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(cancel, true); });
+        cancel.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(cancel, false); });
+        cancel.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(cancel, false); closeLevelPicker(); });
+        pickerRootRef = root;
+        pickerWorld = (conf.stage_level_cfg && conf.stage_level_cfg[1]) ? 1 : pickerWorld;
+        refreshPickerGrid(root);
+        animateIn(root);
+        stats.pickersOpened = (stats.pickersOpened || 0) + 1;
+        return root;
+    }
+
+    /* a tiny build tag in the corner of OUR screens: the user has twice been testing a stale page,
+       and this makes "which build am I running" a one-glance question */
+    var BUILD_TAG = 'build ' + new Date().toISOString().slice(5, 16).replace('T', ' ');
+    function addBuildTag(parent, name) {
+        if (!parent || parent.getChildByName(name)) { return; }
+        var n = makeLabel(parent, BUILD_TAG, 0, 22, cc.color(255, 245, 210, 205));
+        n.name = name;
+        n.setPosition(-visibleWidth() / 2 + 150, visibleHeight() / 2 - 34);
+        n.zIndex = 500;
+        return n;
+    }
+
     function editorAction(id) {
         stats.editorAction = id;
         if (id === 'createWorld') { openCreateWorldDialog(window.hallScene); return; }
@@ -2693,6 +2856,8 @@
         if (id === 'exportJson') { exportCustomJson(); return; }
         if (id === 'importJson') { pickAndImportJson(); return; }
         if (id === 'createLevel') { openGridEditor(); return; }
+        if (id === 'newLevel') { openGridEditor(); return; }
+        if (id === 'moveLevels') { openLevelPicker(); return; }
         stats.editorActionAt = Date.now();
         log('editor action:', id, '(destination screen not built yet)');
         var hall = window.hallScene;
@@ -2712,6 +2877,7 @@
            addView() had created and registered viewGroup[5], so it was handed undefined
            and returned silently. The tick runs after the page exists. */
         if (!view.__editorHome) { buildEditorHome(view); }
+        addBuildTag(view, 'editorBuildTag');   /* P3: make a stale page obvious at a glance */
         /* FRAME-CORRECT: derive the local x/y from the page's CURRENT world position. A parked page
            sits at +-one page width while the shown one is centred, so the old formula (which assumed
            the view sat at the world origin) put the buttons off screen the moment the page was really
@@ -3160,7 +3326,7 @@
             }
             tile.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(tile, true); });
             tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
-            tile.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(tile, false); editorAction(s.id); });
+            tile.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(tile, false); gridTargetWorld = id; editorAction(s.id); });
             tile.runAction(cc.repeatForever(cc.sequence(cc.scaleTo(0.9, 1.06, 1.06), cc.scaleTo(0.9, 1, 1))));
             /* the game's palette for a playable level, so the tile reads like the others */
             applyThemeColour(tile, worldId, s.id === 'newLevel' ? 'list_level_next' : 'list_level_complete', cc.color(240, 200, 90, 255));
