@@ -86294,9 +86294,11 @@ cc._RF.pop();
                 var target = null;
                 try { target = (window.gamemain && gamemain.showTabBarViewIndex); } catch (e) {}
                 var toEditor = (target !== null && target !== undefined && String(target) === String(CFG.index));
-                if (toEditor) { setEditorButtonsShown(hall, false); }
+                /* No hide-then-show any more. The home layout is page-local, so it is already
+                   correct before the page finishes sliding in; hiding the buttons just made the
+                   user stare at an empty page for ~0.36s. */
                 var r = orig.apply(this, arguments);
-                if (toEditor) { settleEditorHomeLayout(hall, 6); } else { try { relayoutEditorHomeNow(); } catch (e) {} }
+                try { relayoutEditorHomeNow(); } catch (e) {}
                 return r;
             } catch (e) {
                 stats.showBarViewRetries = (stats.showBarViewRetries || 0) + 1;
@@ -88218,34 +88220,20 @@ cc._RF.pop();
                 var nd = view.getChildByName('editorSmall_' + sid);
                 if (!nd || !nd.isValid) { return; }
                 nd.setContentSize(w2, 150);
-                var sc2 = visibleWidth() / 2;
-                var vwx = view.convertToWorldSpaceAR(cc.v2(0, 0)).x;
-                nd.x = (sc2 - vwx) - tot / 2 + w2 / 2 + si * (w2 + SMALL_GAP);
+                /* page-local centring. The editor page's own origin is the visible centre when the
+                   page is active (the grid cells are laid out that way and land centred), so a
+                   page-local x is correct whether the page is docked or active - no dependence on
+                   the live world offset, hence no jump and no need to hide the buttons. */
+                nd.x = -tot / 2 + w2 / 2 + si * (w2 + SMALL_GAP);
                 var rr = nd.getChildByName('editorSmallPanel');
                 if (rr && rr.isValid) { rr.setContentSize(w2, 150); }
                 var lb2 = nd.getChildByName('editorSmallLabel_' + sid);
                 if (lb2 && lb2.isValid) { var lc = lb2.getComponent(cc.Label); if (lc) { var fs2 = 30; while ((lc.actualWidth || 0) * 1.02 > w2 - 24 && fs2 > 16) { fs2 -= 2; lc.fontSize = fs2; } } }
             });
-            /* Self-correcting pass: measure where the row ACTUALLY landed and shift it so its centre
-               sits on the screen centre. The formula above depends on the view's world offset at call
-               time, which changes while the pager settles (measured: the row centre was 864 while the
-               screen centre is 1138, and previewWorld's left edge was -25px off screen). Measuring the
-               result and correcting it is independent of that. */
-            var sumX = 0, seen = 0;
-            SMALL_IDS.forEach(function (sid) {
-                var nd = view.getChildByName('editorSmall_' + sid);
-                if (nd && nd.isValid) { sumX += nd.convertToWorldSpaceAR(cc.v2(0, 0)).x; seen++; }
-            });
-            if (seen === SMALL_IDS.length && seen > 0) {
-                var delta = visibleWidth() / 2 - sumX / seen;
-                stats.smallRowDelta = Math.round(delta);
-                if (Math.abs(delta) > 0.5) {
-                    SMALL_IDS.forEach(function (sid) {
-                        var nd = view.getChildByName('editorSmall_' + sid);
-                        if (nd && nd.isValid) { nd.x += delta; }
-                    });
-                }
-            }
+            /* The old self-correcting pass measured the row's WORLD position and shifted it. That is
+               exactly what produced the "wrong place first, corrected later" jump: while the pager
+               animates, the world offset is not the final one. With page-local centring above there
+               is nothing to correct. */
             stats.smallRowLayouts = (stats.smallRowLayouts || 0) + 1;
         };
         /* exposed so the page-switch hook can re-run it against the CURRENT frame */
@@ -88274,9 +88262,8 @@ cc._RF.pop();
                centred on the VIEW's local origin still lands off screen. Compute the offset that
                moves the row's screen centre onto the middle of the visible range, every time. */
             var total = SMALL_IDS.length * SMALL_W + (SMALL_IDS.length - 1) * SMALL_GAP;
-            var scrCentre = visibleWidth() / 2;
-            var viewWorldX = view.convertToWorldSpaceAR(cc.v2(0, 0)).x;
-            btn.x = (scrCentre - viewWorldX) - total / 2 + SMALL_W / 2 + si * (SMALL_W + SMALL_GAP);
+            /* page-local, same reason as layoutSmallRow */
+            btn.x = -total / 2 + SMALL_W / 2 + si * (SMALL_W + SMALL_GAP);
             btn.y = -H_BOTTOM_ROW;
             /* Game-native tan, measured from the game's own tiles (the floor colour is 226,210,172).
                The dark grey panel here was the "style does not match" the user reported: the game's
@@ -88750,21 +88737,17 @@ cc._RF.pop();
         try {
             var hall = window.hallScene;
             var view = hall && hall.viewGroup ? hall.viewGroup[CFG.index] : null;
-            if (!view || !view.isValid || !view.activeInHierarchy) { return false; }
+            if (!view || !view.isValid) { return false; }
             var W = visibleWidth();
             if (view.__layoutSmallRow) { try { view.__layoutSmallRow(); } catch (e) {} }
             [['createWorld', 0], ['createLevel', 1]].forEach(function (pair) {
                 var btn = view.getChildByName('editorBtn_' + pair[0]);
                 if (!btn || !btn.isValid) { return; }
-                /* desired WORLD x: 60px margin from the screen edge */
-                var want = (pair[1] === 0) ? (60 + btn.width / 2) : (W - 60 - btn.width / 2);
-                var got = btn.convertToWorldSpaceAR(cc.v2(0, 0)).x;
-                if (Math.abs(got - want) > 1) {
-                    btn.x += (want - got);
-                    stats.editorBigBtnShifted = (stats.editorBigBtnShifted || 0) + 1;
-                }
-                var after = btn.convertToWorldSpaceAR(cc.v2(0, 0)).x;
-                if (Math.abs(after - want) > 1) { stats.editorBigBtnStillOff = (stats.editorBigBtnStillOff || 0) + 1; }
+                /* page-local x: the same 60px margin expressed in the page's own space. The page's
+                   origin is the visible centre, so this is correct even while the page is docked -
+                   the buttons are already in place before the page arrives. */
+                btn.x = (pair[1] === 0) ? (-W / 2 + 60 + btn.width / 2) : (W / 2 - 60 - btn.width / 2);
+                stats.editorBigBtnPlaced = (stats.editorBigBtnPlaced || 0) + 1;
             });
             stats.editorHomeRelayouts = (stats.editorHomeRelayouts || 0) + 1;
             return true;
