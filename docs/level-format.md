@@ -375,6 +375,85 @@ hallScene.StageSelectLayer.insertPage(page, index)      // 插入整页
 | `node tools/verify/solver.js 10` | puppeteer 打开**真实游戏**，读当前关**自己的 `sz_solution`**，用真实滑动逐步重放，并用 `checkClearSatge` 的 hook 判定是否过关 |
 | `node tools/verify/alllevels.js` | 不滑动：重建全部 290 张棋盘，灌入各自 `sz_solution`，instant 模式重放 `moveSanke()`，逐关问 `checkClearSatge()`。预期 **289/290**（`mapId 5` 是已知瑕疵） |
 | `python tools/apk/pkgcheck.py` | 检查 8 个 package 的编号范围/重叠/矩形 |
+
+---
+
+## 7. 求解器建模需要的三条规则（**源码确认**，@HEAD `aed5abd`）
+
+本节把 §12 里原本标为【推断】的第 2、3 条**升级为源码确认**（行号均指 `web/src/project.js`），
+供 `solveGrid()` 补齐模型时直接照写；方向仍是**保守**：宁可 `undecided`，绝不假称可解。
+
+### 7.1 砖块（`-4`，`kTileDataDestroyable`）撞碎后变地板
+`moveSanke()` 的移动回调里（`4271-4291`）：
+
+```js
+var l = h.getNextTile(i, e);                       // 蛇头下一步将去的格子
+if (h.Level_data[l.y][l.x] == tileType.kTileDataDestroyable) {
+    h.TileItems[l.y][l.x].removeFromParent(!0);
+    h.addTileAt(l);
+    h.Level_data[l.y][l.x] = tileType.kTileDataSpace;   // 立刻变成「空格」= 地板 1
+    ...砖块碎裂特效 + sfx_gply_snake_hit_brick...
+    a++;                                                // 这一拍记作"移动过"
+}
+```
+
+- 判定对象是**蛇头下一步要进的格子**，不是当前格；
+- 撞上后砖块**同一拍**变成 `kTileDataSpace`（= `1` 地板）；
+- **蛇头这一拍不进入该格**（它停在原地）→ **必须下一拍再压一次**才算填格；
+- `a++`：这一拍算作有效移动（不是"撞墙不动"）。
+
+### 7.2 钥匙与锁（`4` / `-3`）：**集齐全部钥匙**才一次性全开
+`checkTileItem()` 的钥匙分支（`4426-4442`）+ `unLock()`（`4445-4457`）：
+
+```js
+} else if (a == tileType.kTileDataKey) {
+    ...
+    this.Level_item_data[e.y][e.x] = tileType.kTileDataSpace;   // 钥匙物品被吃掉
+    this.unLock(1);
+}
+...
+unLock: function (e) {
+    if (this.isAllKey()) {                                      // ← 必须集齐全部
+        for (var t in this.Level_data)
+            ... this.Level_data[t][i] == kTileDataLock && (this.Level_data[t][i] = kTileDataSpace);
+        ... 同时清 Level_item_data 里的锁 ...
+    }
+}
+```
+
+- **不是"一把钥匙开一把锁"**，而是 **`isAllKey()` 为真时，把全部 `kTileDataLock` 一次性变成地板**；
+- 锁格在开启前**不可穿越**；开启后变成 `1`，**仍需再被压一次**才算填满（与 §2.1 第 3 点一致）。
+
+### 7.3 传送门出口方向：由**出口瓦片类型**决定
+`checkTileItem()` 的门分支（`4385-4391`）：
+
+```js
+if (a == kTileDataPortal || a == kTileDataPortU || a == kTileDataPortD || a == kTileDataPortL || a == kTileDataPortR) {
+    var o = cc.instantiate(this.Prortal_out);
+    ... i == DirectionUp ? o.rotation = 180 : ...        // 先按进入方向摆
+    a == kTileDataPortU ? o.rotation = -180 :            // 再按出口瓦片类型覆盖
+    a == kTileDataPortD ? o.rotation = 180 :
+    a == kTileDataPortL ? o.rotation = -90 :
+    a == kTileDataPortR && (o.rotation = 90);
+    ...
+}
+```
+
+- 出口格是 **`kTileDataPortU/D/L/R`**（= §2 表里的 `1001-1004`）时，**出口方向写在该格类型里**，
+  并且**覆盖**按进入方向推出的默认朝向 → 这就是"不许原路撞回"的机制；
+- 建模时：穿过门后应把蛇头方向设为**出口瓦片类型对应的方向**，并禁止下一步直接反向撞回；
+- 箭头（`4397-4425`）同理：**改写移动方向**（`i = Direction.X`）后继续冲刺。
+
+### 7.4 「说可解 → 真引擎回放 → 断言过关」的现成骨架
+健全性校验**不需要新写引擎**，工作区已有两条现成路径：
+
+| 工具 | 能做什么 | 复用方式 |
+| --- | --- | --- |
+| `tools/verify/solver.js <mapId>` | 打开**真实游戏**，读该关 `sz_solution`，用**真实滑动**逐步重放，并以 `checkClearSatge` hook 判定 | 若求解器给出的走法串能编码成滑动序列，可直接照它的重放方式验证 |
+| `tools/verify/alllevels.js` | **不滑动**：重建全部 290 张棋盘、灌入各自 `sz_solution`、instant 模式重放 `moveSanke()`、逐关问 `checkClearSatge()`（预期 289/290，`mapId 5` 是已知瑕疵） | **首选**：把"求解器解出的棋盘 + 走法串"喂进 instant 重放，直接问 `checkClearSatge()` 是否过关 |
+
+**注意**（踩过的坑）：在关卡内再调 `enterEnterGameScene` **不会重新初始化关卡** → 要重复验证必须**每次全新加载页面**；
+另：无答案的走法串**不能**用 `sz_solution` 冒充（那只是提示串，原包 `mapId 5` 的本身就是错的）。
 | `python tools/apk/levelcheck.py` | 汇总每个世界的关卡数、地图编号覆盖、用到的字符 |
 
 **两者的前提都是"这一关已经有解法串"**，所以这套工具**证明不了新画的关可解**。
