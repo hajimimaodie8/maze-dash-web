@@ -1424,8 +1424,8 @@
                 var tool = it.tool;
                 b = new cc.Node('tool_' + tool.id);
                 b.setContentSize(bw, bh);
-                roundedPanel(b, cc.color(52, 46, 58, 235), bw, bh);
-                makeLabel(b, tool.glyph + ' ' + t(tool.key), 0, 24, cc.color(255, 255, 255, 225)).name = 'toolLabel';
+                roundedPanel(b, cc.color(226, 210, 172, 255), bw, bh);   /* the game's own tan, same as the home row (the dark plate was the "style does not match" offender) */
+                makeLabel(b, tool.glyph + ' ' + t(tool.key), 0, 24, cc.color(74, 56, 40, 255)).name = 'toolLabel';   /* dark text on tan, as the game's own tiles */
                 b.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(b, false); setEditorTool(tool.id); });
             }
             b.parent = panel;
