@@ -87163,7 +87163,7 @@ cc._RF.pop();
             if (ed && ed.grid && ed.grid[cell.__gy]) { ed.grid[cell.__gy][cell.__gx] = v; }
         } catch (e) {}
         refreshGridReadout();
-        updateSolvability();
+        scheduleSolvability();   /* debounced: a full solve on every cell edit made portal placement freeze */
         /* The readout/status nodes live under gridReadoutBg, NOT directly under the grid root
            (measured), so the old root.getChildByName('gridReadout') always returned null. */
         try {
@@ -87434,6 +87434,28 @@ cc._RF.pop();
     }
     var FILTER_REASON = { noHero: 'noHero', noFloor: 'noFloor', isolatedFloor: 'isolatedFloor', disconnectedFloor: 'noFloorReach' };
     var editorSolvability = null;
+    /* The live readout used to run a full search on every single cell edit. With portals on the
+       board that search explodes, so placing the second portal froze the editor. The verdict shown
+       while editing is now debounced; the SAVE path still solves synchronously (it re-checks right
+       before it decides), so the gate never acts on a stale verdict.
+       stats.solveDebounceRuns / solveDebounceSkipped let a probe prove the saving. */
+    var solveTimer = null, solvePending = 0;
+    function scheduleSolvability() {
+        solvePending++;
+        stats.solveDebounceSkipped = (stats.solveDebounceSkipped || 0) + 1;
+        if (solveTimer) { clearTimeout(solveTimer); }
+        solveTimer = setTimeout(function () {
+            solveTimer = null;
+            var ran = solvePending;
+            solvePending = 0;
+            var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+            try { updateSolvability(); } catch (e) { warn('debounced solve failed:', e && e.message); }
+            var t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+            stats.solveDebounceRuns = (stats.solveDebounceRuns || 0) + 1;
+            stats.solveDebounceLastMs = Math.round((t1 - t0) * 100) / 100;
+            stats.solveDebounceBatched = ran;
+        }, 350);
+    }
     function updateSolvability() {
         var ed = MazeDashCustomTab.gridEditor;
         if (!ed) { return null; }
