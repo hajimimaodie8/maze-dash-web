@@ -299,22 +299,48 @@
     function makeShowBarViewResilient(hall) {
         if (!hall || typeof hall.showBarView !== 'function' || hall.showBarView.__retryable) { return false; }
         var orig = hall.showBarView;
+        /* A page switch ANIMATES the page into place (parked pages sit at +-one page width, the active
+           one is centred), so a layout computed in the middle of that animation is computed for the
+           wrong world offset and the buttons visibly slide/jump afterwards. Fix: when the switch is
+           aimed at the editor page, HIDE those buttons first, keep re-laying them out while the page
+           settles, and only show them once the animation is over - so no frame is ever drawn with them
+           in the wrong place. */
+        function setEditorButtonsShown(hallRef, on) {
+            try {
+                var v = hallRef.viewGroup ? hallRef.viewGroup[CFG.index] : null;
+                if (!v || !v.isValid) { return; }
+                var kids = v.children || [];
+                for (var i = 0; i < kids.length; i++) {
+                    var n = kids[i];
+                    if (n && n.isValid && /^editorSmall_|^editorBtn_/.test(n.name)) { n.opacity = on ? 255 : 0; }
+                }
+                stats.editorHomeButtonsShown = on ? 1 : 0;
+            } catch (e) {}
+        }
+        function settleEditorHomeLayout(hallRef, tries) {
+            try { relayoutEditorHomeNow(); } catch (e) {}
+            if (tries <= 0) {
+                stats.editorHomeSettleRuns = (stats.editorHomeSettleRuns || 0) + 1;
+                setEditorButtonsShown(hallRef, true);
+                return;
+            }
+            setTimeout(function () { try { settleEditorHomeLayout(hallRef, tries - 1); } catch (e) { setEditorButtonsShown(hallRef, true); } }, 60);
+        }
         hall.showBarView = function () {
             try {
+                var target = null;
+                try { target = (window.gamemain && gamemain.showTabBarViewIndex); } catch (e) {}
+                var toEditor = (target !== null && target !== undefined && String(target) === String(CFG.index));
+                if (toEditor) { setEditorButtonsShown(hall, false); }
                 var r = orig.apply(this, arguments);
-                /* A page switch moves the page in world space (parked pages sit at +-one page width,
-                   the active one is centred), so anything laid out from the parked frame lands off
-                   screen once the page is really shown - that is why the editor home's button row was
-                   invisible while its numbers said "inside". Re-run the editor-home layout against the
-                   CURRENT frame right after every switch, once now and once on the next frames. */
-                try { relayoutEditorHomeNow(); } catch (e) {}
-                setTimeout(function () { try { relayoutEditorHomeNow(); } catch (e) {} }, 320);
+                if (toEditor) { settleEditorHomeLayout(hall, 6); } else { try { relayoutEditorHomeNow(); } catch (e) {} }
                 return r;
             } catch (e) {
                 stats.showBarViewRetries = (stats.showBarViewRetries || 0) + 1;
                 log('showBarView threw (retrying once):', e && e.message);
                 var r2 = orig.apply(this, arguments);
                 try { relayoutEditorHomeNow(); } catch (e2) {}
+                try { setEditorButtonsShown(hall, true); } catch (e3) {}
                 return r2;
             }
         };
