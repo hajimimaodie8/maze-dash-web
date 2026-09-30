@@ -2687,14 +2687,31 @@
            addView() had created and registered viewGroup[5], so it was handed undefined
            and returned silently. The tick runs after the page exists. */
         if (!view.__editorHome) { buildEditorHome(view); }
+        /* FRAME-CORRECT: derive the local x/y from the page's CURRENT world position. A parked page
+           sits at +-one page width while the shown one is centred, so the old formula (which assumed
+           the view sat at the world origin) put the buttons off screen the moment the page was really
+           displayed - the same class of bug as the small button row. Because the 1.5s tick runs this,
+           it must agree with the switch-time correction instead of fighting it. */
+        var wp = view.convertToWorldSpaceAR(cc.v2(0, 0));
         var W = visibleWidth(), H = visibleHeight();
         ['createWorld', 'createLevel'].forEach(function (id, i) {
             var btn = view.getChildByName('editorBtn_' + id);
             if (!btn || !btn.isValid) { return; }
-            var bx = (i === 0 ? -1 : 1) * (W / 2 - 60 - btn.width / 2);
-            var by = -H / 2 + 60 + btn.height / 2;
-            if (Math.abs(btn.x - bx) > 1 || Math.abs(btn.y - by) > 1) { btn.x = bx; btn.y = by; }
+            var wantWorldX = (i === 0) ? (60 + btn.width / 2) : (W - 60 - btn.width / 2);
+            var wantWorldY = 60 + btn.height / 2;
+            var bx = wantWorldX - wp.x;
+            var by = wantWorldY - wp.y;
+            if (Math.abs(btn.x - bx) > 1 || Math.abs(btn.y - by) > 1) {
+                btn.x = bx; btn.y = by;
+                stats.editorBigBtnByTimer = (stats.editorBigBtnByTimer || 0) + 1;
+            }
+            /* same-frame assertion: read the world position straight back after writing */
+            var aw = btn.convertToWorldSpaceAR(cc.v2(0, 0));
+            if (Math.abs(aw.x - wantWorldX) > 1 || Math.abs(aw.y - wantWorldY) > 1) {
+                stats.editorBigBtnTimerOff = (stats.editorBigBtnTimerOff || 0) + 1;
+            }
         });
+        try { relayoutEditorHomeNow(); } catch (e) {}
     }
     /* The built-in flow reads conf.worlds[wordId].require when you tap "next level"; a
        custom world with a single level makes that id undefined and the game throws
