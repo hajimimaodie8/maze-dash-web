@@ -1247,7 +1247,10 @@
         if (v === -4) { return cc.color(150, 96, 56, 255); }
         if (v === 4) { return cc.color(240, 200, 80, 255); }
         if (v === -3) { return cc.color(120, 124, 140, 255); }
-        if (v >= 5 && v <= 8) { return cc.color(96, 180, 220, 255); }
+        if (v === 5) { return cc.color(96, 180, 220, 255); }   /* Up    - light blue */
+        if (v === 6) { return cc.color(70, 205, 165, 255); }   /* Right - teal */
+        if (v === 7) { return cc.color(150, 120, 235, 255); }  /* Down  - violet */
+        if (v === 8) { return cc.color(235, 170, 80, 255); }   /* Left  - amber */
         if (v === 2) { return PORTAL_PALETTE[editorColours[cell.__gx + ',' + cell.__gy] || 0] || cc.color(168, 88, 224, 255); }
         return cc.color(80, 80, 90, 255);
     }
@@ -3521,6 +3524,18 @@
     // Installed on scene launch. The pairing wrapper can go in immediately (it is only called while
     // playing), but PAINTING must wait: on scene launch Level_data is not populated yet, which threw
     // Object.keys(undefined) and produced zero markers (proven by the exception stack).
+    /* Decorations (vignettes) are siblings of game_map inside backgroup and sit at a higher
+       sibling index, so Cocos draws them ON TOP of the level. The user asked for the opposite:
+       force them explicitly below the level with a negative zIndex (idempotent). */
+    function pushVignettesBelowMap() {
+        try {
+            var v = cc.find('Canvas/backgroup/vignettes');
+            if (!v) { return false; }
+            if (v.zIndex !== -1) { v.zIndex = -1; }
+            stats.vignettesBelowMap = (stats.vignettesBelowMap || 0) + 1;
+            return true;
+        } catch (e) { return false; }
+    }
     function armPortalPatch() {
         try { stats.currentMapId = (window.gamemain && gamemain.currentLevelId) ? (conf.level_cfg[gamemain.currentLevelId] || {}).mapId : stats.currentMapId; } catch (e) {}
         try {
@@ -3654,6 +3669,7 @@
     if (window.cc && cc.director) {
         cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, function () {
             try { armPortalPatch(); } catch (e) {}
+            try { pushVignettesBelowMap(); } catch (e) {}
             try { armWordIdWrappers(); } catch (e) {}
 
             scheduleInstall(0);
