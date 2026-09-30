@@ -2233,14 +2233,18 @@
             var viewWorldX = view.convertToWorldSpaceAR(cc.v2(0, 0)).x;
             btn.x = (scrCentre - viewWorldX) - total / 2 + SMALL_W / 2 + si * (SMALL_W + SMALL_GAP);
             btn.y = -H_BOTTOM_ROW;
-            roundedPanel(btn, cc.color(60, 54, 66, 235), SMALL_W, 150);
+            /* Game-native tan, measured from the game's own tiles (the floor colour is 226,210,172).
+               The dark grey panel here was the "style does not match" the user reported: the game's
+               own buttons are tan with dark text, not dark grey plates. */
+            roundedPanel(btn, cc.color(226, 210, 172, 255), SMALL_W, 150);
             var fs = 30;
             /* t('importJson') has no entry in the string tables, so t() echoes the key and the button
                read literally "importJson" (the user saw this). Translate it here until the key is
                added to the real tables; the other three keys resolve normally. */
             var labelText = t(sid);
             if (labelText === sid && sid === 'importJson') { labelText = '导入 JSON'; }
-            var lb = makeLabel(btn, labelText, 0, fs, cc.color(255, 255, 255, 235));
+            /* dark text on the tan panel, matching the game's own tan tiles */
+            var lb = makeLabel(btn, labelText, 0, fs, cc.color(74, 56, 40, 255));
             var guard = 0;
             while (lb && (lb.actualWidth || 0) * 1.02 > SMALL_W - 24 && fs > 16 && guard++ < 12) {
                 fs -= 2;
