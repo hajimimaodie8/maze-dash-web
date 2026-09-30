@@ -1445,7 +1445,10 @@
          · "unsolvable" = **结构性不可能**（无主角 / 没有地板 / 有孤立地板 / 地板分区不连通）
          · "undecided"  = 达到节点上限，判定不了（绝不猜）
        机制按源码实现：冲刺到被挡为止、沿途填格、箭头强制转向且反向视为墙、
-       传送门按同色配对（与已验收的 pairing 规则一致）、砖块/锁按"不可穿越"处理（保守 → 找到的解在游戏里一定成立）。 */
+       传送门按同色配对（与已验收的 pairing 规则一致）、
+       **砖块**：撞上它的那一拍它变成地板、蛇头不进格、必须下一拍再压（project.js 4271-4291）；
+       **锁**：集齐全部钥匙时所有锁一次性变地板，之前是墙（project.js 4426-4457）。
+       门出口方向仍未建模（留给块 C）。 */
     var SOLVER_NODE_CAP = 200000;
     var SOLVER_DIRS = [[0, -1, 5], [1, 0, 6], [0, 1, 7], [-1, 0, 8]];
     /* Corrected per the authoritative format research (docs/level-format.md new sections):
@@ -1497,6 +1500,25 @@
                 if (v === 4) { keys++; }
             }
         }
+        /* Coverage set: every cell the engine can turn into floor has to end up occupied by the snake
+           before the stage clears, and the authoritative clear condition is "no cell may keep a value
+           outside {0,-1,-2}". Bricks, locks, keys and portals all get an explicit
+           "Level_data = kTileDataSpace" write in the engine (project.js 4271-4291 for bricks,
+           4426-4442 checks the key, 4445-4457 turns every lock into space, 4385-4396 consumes the
+           portal tiles), so they are treated as cells that must be COVERED - not merely "resolved".
+           Being stricter than the old model can only turn a would-be "solvable" into "undecided",
+           never the other way round: the conservative direction is preserved. */
+        var cover = [];
+        Object.keys(cells).forEach(function (k2) {
+            var v2 = cells[k2];
+            if (v2 === 1 || v2 === -1 || v2 === 2 || v2 === 4 || v2 === -3 || v2 === -4) {
+                var pp = k2.split(',');
+                cover.push([parseInt(pp[0], 10), parseInt(pp[1], 10)]);
+            }
+        });
+        cover.sort(function (a2, b2) { return (a2[1] - b2[1]) || (a2[0] - b2[0]); });   /* row-major, matching the engine's for..in order */
+        var bricks = [], brickIdx = {};
+        Object.keys(cells).forEach(function (k3) { if (cells[k3] === -4) { var q3 = k3.split(','); brickIdx[k3] = bricks.length; bricks.push([parseInt(q3[0], 10), parseInt(q3[1], 10)]); } });
         if (!head) { return { state: 'unsolvable', reason: 'noHero' }; }
         if (!floors.length) { return { state: 'unsolvable', reason: 'noFloor' }; }
         for (var i = 0; i < floors.length; i++) {
@@ -1504,7 +1526,10 @@
             for (var d = 0; d < 4; d++) {
                 var nx = p[0] + SOLVER_DIRS[d][0], ny = p[1] + SOLVER_DIRS[d][1];
                 if (ny < 0 || ny >= H || nx < 0 || nx >= W) { continue; }
-                if (solverPassable(grid[ny][nx])) { nb++; }
+                /* A brick or a lock BECOMES floor, so for these structural pre-checks it counts as
+                   potentially passable. Relaxing a pre-check cannot create a false "solvable": the
+                   search below still has to find a real route (and reports undecided if it cannot). */
+                if (solverPassable(grid[ny][nx]) || grid[ny][nx] === -4 || grid[ny][nx] === -3) { nb++; }
             }
             if (!nb) { return { state: 'unsolvable', reason: 'isolatedFloor', at: p }; }
         }
@@ -1519,7 +1544,7 @@
             cand.forEach(function (q) {
                 var k = q[0] + ',' + q[1];
                 if (q[0] < 0 || q[0] >= W || q[1] < 0 || q[1] >= H || seen[k]) { return; }
-                if (!solverPassable(grid[q[1]][q[0]])) { return; }
+                if (!solverPassable(grid[q[1]][q[0]]) && grid[q[1]][q[0]] !== -4 && grid[q[1]][q[0]] !== -3) { return; }
                 seen[k] = 1; count++; stack.push(k);
             });
         }
@@ -1528,14 +1553,16 @@
            floor must be covered AND every consumable (portal / key / lock / brick) must be gone. */
         var leftover = 0;
         Object.keys(cells).forEach(function (k) { if (solverConsumable(cells[k])) { leftover++; } });
-        var idx = {}; floors.forEach(function (p2, i2) { idx[p2[0] + ',' + p2[1]] = i2; });
+        var idx = {}; cover.forEach(function (p2, i2) { idx[p2[0] + ',' + p2[1]] = i2; });
+        var lockTotal = 0;
+        Object.keys(cells).forEach(function (k4) { if (cells[k4] === -3) { lockTotal++; } });
         function bitsOf(list, n) {
             var a = []; for (var i3 = 0; i3 < n; i3++) { a.push('0'); }
             list.forEach(function (k2) { var j = idx[k2]; if (j !== undefined) { a[j] = '1'; } });
             return a.join('');
         }
-        var queue = [{ x: head[0], y: head[1], bits: bitsOf([head[0] + ',' + head[1]], floors.length), left: leftover, keys: 0, depth: 0 }];
-        var visited = {}; visited[head[0] + ',' + head[1] + '|' + queue[0].bits + '|' + leftover + '|0'] = 1;
+        var queue = [{ x: head[0], y: head[1], bits: bitsOf([head[0] + ',' + head[1]], cover.length), left: leftover, keys: 0, depth: 0, broken: {}, locksOpen: false, path: '' }];
+        var visited = {}; visited[head[0] + ',' + head[1] + '|' + queue[0].bits + '|' + leftover + '|0||'] = 1;
         var nodes = 0, trace = {}, maxCovered = 0, sawFull = 0, bestState = null;
         while (queue.length) {
             if (++nodes > SOLVER_NODE_CAP) { return { state: 'undecided', reason: 'nodeCap', nodes: nodes }; }
@@ -1544,27 +1571,41 @@
             var cov = 0; for (var ci = 0; ci < st.bits.length; ci++) { if (st.bits[ci] === '1') { cov++; } }
             if (cov > maxCovered) { maxCovered = cov; bestState = st.bits + ' left=' + st.left + ' at ' + st.x + ',' + st.y; }
             if (st.bits.indexOf('0') < 0) { sawFull++; }
-            if (st.left === 0 && st.bits.indexOf('0') < 0) { return { state: 'solvable', moves: st.depth, nodes: nodes }; }
+            if (st.left === 0 && st.bits.indexOf('0') < 0) { return { state: 'solvable', moves: st.depth, path: st.path, nodes: nodes }; }
             for (var dd = 0; dd < 4; dd++) {
                 var dir = SOLVER_DIRS[dd], x = st.x, y = st.y, bits = st.bits.split(''), left = st.left, keys2 = st.keys;
+                var broken = {}; Object.keys(st.broken || {}).forEach(function (bk2) { broken[bk2] = 1; });   /* per-branch copy of the smashed-brick set */
+                var locksOpen = !!st.locksOpen;
                 var dx = dir[0], dy = dir[1], wantArrow = dir[2], moved = false, guard = 0;
                 while (guard++ < 400) {
                     var nx2 = x + dx, ny2 = y + dy;
                     if (ny2 < 0 || ny2 >= H || nx2 < 0 || nx2 >= W) { break; }
                     var nv = grid[ny2][nx2];
                     if (nv >= 5 && nv <= 8) { if (nv !== wantArrow) { break; } }
-                    else if (nv === 0 || nv === -4) { break; }                      // wall / whole brick (conservative)
-                    else if (nv === -3) {
-                        /* a lock is passable only once every key is collected; entering it uses
-                           the lock up (the authoritative rule: locks become floor at that point) */
-                        if (keys2 < keys) { break; }
-                        left--;
+                    else if (nv === 0) { break; }                                   // wall
+                    else if (nv === -4) {
+                        /* Authoritative rule (web/src/project.js 4271-4291): the head smashes the brick
+                           it is ABOUT TO step into, the cell becomes floor in that same beat, and the
+                           head does NOT enter it - so the smash counts as an effective move and the
+                           slide stops here; later beats can then drive over the (now floor) cell. */
+                        var bkey = nx2 + ',' + ny2;
+                        if (!broken[bkey]) { broken[bkey] = 1; left--; moved = true; break; }
                     }
-                    else if ((nv === 1 || nv === -1) && bits[idx[nx2 + ',' + ny2]] === '1') { break; }   // its own body stops the slide
-                    else if (nv !== 1 && nv !== -1 && nv !== 2 && nv !== 4) { break; }                    // anything else blocks
+                    else if (nv === -3) {
+                        /* Authoritative rule (web/src/project.js 4426-4457): locks are NOT consumed one
+                           by one. When - and only when - the LAST key is collected, unLock() turns
+                           EVERY lock into floor at once. Until then a lock is a wall. */
+                        if (!locksOpen) { break; }
+                    }
+                    else if ((nv === 1 || nv === -1 || nv === 2 || nv === 4 || nv === -3 || nv === -4) && bits[idx[nx2 + ',' + ny2]] === '1') { break; }   // its own body stops the slide
+                    else if (nv !== 1 && nv !== -1 && nv !== 2 && nv !== 4 && nv !== -3 && nv !== -4) { break; }                    // anything else blocks
                     x = nx2; y = ny2; moved = true;
                     var j2 = idx[x + ',' + y]; if (j2 !== undefined) { bits[j2] = '1'; }
-                    if (nv === 4) { keys2++; left--; }                                  // the key is eaten
+                    if (nv === 4) {
+                        keys2++; left--;                                            // the key is eaten
+                        /* the last key opens every lock at once: account for all of them here */
+                        if (keys > 0 && keys2 >= keys && !locksOpen) { locksOpen = true; left -= lockTotal; }
+                    }
                     if (nv >= 5 && nv <= 8) { for (var q2 = 0; q2 < 4; q2++) { if (SOLVER_DIRS[q2][2] === nv) { dx = SOLVER_DIRS[q2][0]; dy = SOLVER_DIRS[q2][1]; wantArrow = nv; } } }
                     if (nv === 2) {
                         var pk = link[x + ',' + y];
@@ -1578,17 +1619,19 @@
                     }
                 }
                 if (!moved) { continue; }
-                var bk = x + ',' + y + '|' + bits.join('') + '|' + left + '|' + keys2;
+                var brokenKey = Object.keys(broken).sort().join(';');
+                var bk = x + ',' + y + '|' + bits.join('') + '|' + left + '|' + keys2 + '|' + brokenKey + '|' + (locksOpen ? 'L' : '-');
                 if (visited[bk]) { continue; }
                 visited[bk] = 1;
-                queue.push({ x: x, y: y, bits: bits.join(''), left: left, keys: keys2, depth: st.depth + 1 });
+                queue.push({ x: x, y: y, bits: bits.join(''), left: left, keys: keys2, depth: st.depth + 1, broken: broken, locksOpen: locksOpen, path: st.path + 'URDL'.charAt(dd) });
             }
         }
-        /* Exhausting a conservative model does NOT prove unsolvability (bricks are modelled as
-           walls here), so this is reported as undecided rather than unsolvable. */
+        /* Exhausting the model does NOT prove unsolvability (the portal "one-shot" pairing and the
+           portal exit direction are still approximations), so this is reported as undecided rather
+           than unsolvable. */
         /* Report the search size and what the best state achieved, so a false negative can be
            diagnosed instead of guessed (the 3x3 case came back undecided with no numbers at all). */
-        return { state: 'undecided', reason: 'noSolutionInConservativeModel', nodes: nodes, floors: floors.length,
+        return { state: 'undecided', reason: 'noSolutionInModel', nodes: nodes, floors: floors.length, cover: cover.length,
                  maxCovered: maxCovered, sawFullBitmap: sawFull, bestState: bestState, states: Object.keys(visited).length,
                  perDepth: JSON.parse(JSON.stringify(trace)) };
     }
