@@ -1,0 +1,27 @@
+﻿audio: never dispatch a synthetic touchstart - it CLEARED the engine's pending queue
+
+Root cause (evidence chain from a read-only bisect): 0a2a684 rewrote unlockAudio and added
+flushPendingAudio(), which dispatched a synthetic empty touchstart on the canvas hoping the
+engine would replay its queued audio. Measured: that synthetic event does NOT run the engine
+flusher - it only clears touchPlayList - so the opening sfx queued while the AudioContext was
+suspended were silently dropped. Matches the user's report that it worked right after the
+original port, when the real opening click produced a REAL touchstart that the engine's own
+flusher (web/cocos2d-js.js:4562) replays.
+
+Fix (bounded line-range replacement in web/web-port.js, node --check gated):
+- flushPendingAudio() dispatches nothing now. It REPLAYS our own recorded calls.
+- cc.audioEngine.play / playEffect / playMusic are wrapped as soon as the engine exists
+  (read-only recording; the original is still invoked unchanged). Calls made while the
+  context is not running are remembered (PORT.audioQueuedByUs, cap 24).
+- On the first real gesture that is NOT a touchstart: resume(), then replay what was recorded
+  (PORT.audioReplayed / PORT.audioFlushed kept as a compat counter). A real touchstart is left
+  to the engine's own flusher so the sound is not doubled. resume() and the music nudge stay.
+
+Verified on dist/MazeDash-standalone.html with NO autoplay-policy override:
+  suspend -> state suspended, wrapper installed
+  3 play calls while suspended -> queued 6, canvas touchstart count 0 (no synthetic dispatch)
+  one real mouse click -> state running, replayed 6, touchstart count 0, zero pageerrors
+
+NOT verified this round: 8-item regression, three-size layout audit, and the console check for
+"audio unavailable, using silence:". Delivery copies were intentionally NOT refreshed
+(E:\maze_dash\冲撞迷阵.html is still 19:15:05).
