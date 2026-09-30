@@ -87240,7 +87240,7 @@ cc._RF.pop();
     function colourForValue(cell) {
         var v = cell.__value;
         if (v === 1) { return cc.color(226, 210, 172, 255); }   /* MEASURED in-game floor tile: spaceTile under fllor_space_layer, colour 226,210,172 */
-        if (v === 0) { return cc.color(46, 40, 52, 255); }
+        if (v === 0) { return cc.color(154, 143, 117, 255); }   /* solid: a darker shade of the game's own tile colour (measured 226,210,172), so the grid reads beige instead of a dark matrix */
         if (v === -1) { return cc.color(255, 196, 48, 255); }   /* MEASURED in-game hero tile colour; the 'C' glyph marks it as the hero */
         if (v === -4) { return cc.color(150, 96, 56, 255); }
         if (v === 4) { return cc.color(240, 200, 80, 255); }
@@ -87819,7 +87819,7 @@ cc._RF.pop();
                 cell.x = Math.round((gx - (GRID_N - 1) / 2) * GRID_PITCH);
                 cell.y = Math.round((((GRID_N - 1) / 2 - gy) * GRID_PITCH) + GRID_OFFSET_Y);
                 cell.zIndex = 10;
-                fullSprite(cell, GRID_TILE, GRID_TILE, cc.color(46, 40, 52, 255));
+                fullSprite(cell, GRID_TILE, GRID_TILE, cc.color(154, 143, 117, 255));   /* game-toned solid cell, see paintGridCell */
                 cell.__value = 0;
                 cell.__gx = gx; cell.__gy = gy;
                 /* the tick mark: the checkbox look, only visible when the cell is floor */
