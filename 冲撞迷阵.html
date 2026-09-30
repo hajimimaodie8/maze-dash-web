@@ -86649,11 +86649,11 @@ cc._RF.pop();
         en:        { mode: 'Mode', progression: 'Progression', unlocked: 'Unlocked',
                      customTitle: 'Level Editor', customHint: 'Work in progress', editorTitle: 'Level Editor', createWorld: 'New World', createLevel: 'New Level', comingSoon: 'Coming soon',
                      worldName: 'World name', themeColour: 'Theme colour', hexHint: 'Or type a colour code below', confirm: 'Create', cancel: 'Cancel', untitledWorld: 'My World', moveLevels: 'Move levels here',
-                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete', backToEditor: 'Editor', emptyHint: 'Create one from the editor', testWorldName: 'Test World (3 heroes + 3 colours)' },
+                     tileNewLevel: 'New level', tileMoveLevels: 'Move in', createFailed: 'Could not create', computing: 'Working...', previewWorld: 'Preview worlds', previewLevel: 'Preview levels', exportJson: 'Export JSON', noWorldsYet: 'No worlds created yet', deleteWorld: 'Delete world', confirmDeleteWorld: 'Delete this world?', confirmDelete: 'Delete', backToEditor: 'Editor', emptyHint: 'Create one from the editor', testWorldName: 'Test World (3 heroes + 3 colours)' },
         'zh-Hans': { mode: '模式', progression: '闯关模式', unlocked: '解锁模式',
                      customTitle: '关卡编辑器', customHint: '开发中', editorTitle: '关卡编辑器', createWorld: '创建新世界', createLevel: '创建新关卡', comingSoon: '即将推出',
                      worldName: '世界名称', themeColour: '主题色', hexHint: '也可以在下面直接输入颜色代码', confirm: '创建', cancel: '取消', untitledWorld: '新世界', moveLevels: '转移关卡至本世界',
-                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除', backToEditor: '返回编辑器', emptyHint: '在编辑器里创建一个世界', testWorldName: '测试世界（3 主角 + 3 色传送门）' },
+                     tileNewLevel: '新建关卡', tileMoveLevels: '移入关卡', createFailed: '创建失败', computing: '计算中…', previewWorld: '预览已编辑的世界', previewLevel: '预览已编辑的关卡', exportJson: '导出 JSON', noWorldsYet: '还没有创建任何世界', deleteWorld: '删除世界', confirmDeleteWorld: '是否确认删除此世界？', confirmDelete: '确认删除', backToEditor: '返回编辑器', emptyHint: '在编辑器里创建一个世界', testWorldName: '测试世界（3 主角 + 3 色传送门）' },
         'zh-Hant': { mode: '模式', progression: '闖關模式', unlocked: '解鎖模式',
                      customTitle: '關卡編輯器', customHint: '開發中', editorTitle: '關卡編輯器', createWorld: '建立新世界', createLevel: '建立新關卡', comingSoon: '即將推出' },
         ja:        { mode: 'モード', progression: '通常モード', unlocked: '全解放',
@@ -86671,6 +86671,13 @@ cc._RF.pop();
         ru:        { mode: 'Режим', progression: 'Прогресс', unlocked: 'Разблокировано',
                      customTitle: 'Редактор уровней', customHint: 'В разработке', editorTitle: 'Редактор уровней', createWorld: 'Новый мир', createLevel: 'Новый уровень', comingSoon: 'Скоро' },
     };
+
+    /* Every language must carry 'computing', or t() falls back to printing the raw key -
+       exactly the bug we hit with importJson. Fill gaps once, after the table is built. */
+    (function () {
+        var src = (TEXT['zh-Hans'] && TEXT['zh-Hans'].computing) || (TEXT.en && TEXT.en.computing) || '\u2026';
+        for (var k in TEXT) { if (TEXT[k] && TEXT[k].computing === undefined) { TEXT[k].computing = src; } }
+    })();
     /* Module-level on purpose: a nested copy would not be visible to the call sites. */
     function roundPanel(node, w, h, radius, colour) {
         var g = node.getComponent(cc.Graphics) || node.addComponent(cc.Graphics);
@@ -87495,6 +87502,9 @@ cc._RF.pop();
     function scheduleSolvability() {
         solvePending++;
         stats.solveDebounceSkipped = (stats.solveDebounceSkipped || 0) + 1;
+        /* show progress immediately: the verdict is debounced, the user should still see that
+           something is being computed (the solve itself must stay off the input path). */
+        try { var bgC = gridRootRef && gridRootRef.getChildByName('gridReadoutBg'); var stC = bgC && bgC.getChildByName('gridStatus') && bgC.getChildByName('gridStatus').getComponent(cc.Label); if (stC) { stC.string = t('computing'); } } catch (e) {}
         if (solveTimer) { clearTimeout(solveTimer); }
         solveTimer = setTimeout(function () {
             solveTimer = null;
@@ -88763,12 +88773,13 @@ cc._RF.pop();
 
     /* a tiny build tag in the corner of OUR screens: the user has twice been testing a stale page,
        and this makes "which build am I running" a one-glance question */
-    var BUILD_TAG = 'build ' + new Date().toISOString().slice(5, 16).replace('T', ' ');
+    function buildStamp() { var d = new Date(); function p(v) { return (v < 10 ? '0' : '') + v; } return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+    var BUILD_TAG = 'build ' + buildStamp();
     function addBuildTag(parent, name) {
         if (!parent || parent.getChildByName(name)) { return; }
         var n = makeLabel(parent, BUILD_TAG, 0, 22, cc.color(255, 245, 210, 205));
         n.name = name;
-        n.setPosition(-visibleWidth() / 2 + 150, visibleHeight() / 2 - 34);
+        n.setPosition(-visibleWidth() / 2 + 480, visibleHeight() / 2 - 30);
         n.zIndex = 500;
         return n;
     }
