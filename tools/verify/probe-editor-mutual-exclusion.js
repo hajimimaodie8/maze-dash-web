@@ -57,45 +57,21 @@ const ACTIVE_UIS = function () {
     for (let i = 0; i < 90; i++) { if ((await scene()) === 'HallScene') { break; } if (i % 3 === 1) { await tap(720, 400, 500); } else { await sleep(400); } }
     await sleep(3200);
 
-    /* step 0: how does the custom tab really switch? print the items' clickEvents and call the handler */
+    /* Step 0: how the game really switches pages, read out of the built bundle:
+         showBarView: function () { var e = gamemain.showTabBarViewIndex; if (this.currentIndex != e) {
+           this.tabBar.children[e].getComponent("TabBarItem").setHighlight(); ... this.viewGroup[e] moveIn() } }
+       The target page comes from gamemain.showTabBarViewIndex - NOT from hall.currentIndex (that is the
+       CURRENT page) and not from the tab items' clickEvents (empty). Using this is an INTERNAL path, not
+       a real click: the hit test proved the real click does reach customBar, it just does not switch. */
     const wiring = await page.evaluate(() => {
         const hall = window.hallScene;
-        const bar = hall && hall.tabBar;
-        const out = { events: [], called: [] };
-        (bar ? bar.children : []).forEach((c) => {
-            (c._components || []).forEach((comp) => {
-                if (comp && comp.clickEvents && comp.clickEvents.length) {
-                    comp.clickEvents.forEach((ce) => {
-                        out.events.push({
-                            item: c.name, target: ce.target ? ce.target.name : null,
-                            comp: ce.component ? (ce.component.__classname__ || 'anon') : null, handler: ce.handler
-                        });
-                    });
-                }
-            });
-        });
-        return out;
-    });
-    console.log('WIRING=' + JSON.stringify(wiring));
-    const called = await page.evaluate((evs) => {
         const log = [];
-        const hall = window.hallScene;
-        evs.forEach((e) => {
-            try {
-                const bar = hall.tabBar;
-                const item = (bar.children || []).filter((c) => c.name === e.item)[0];
-                if (!item) { log.push('no item ' + e.item); return; }
-                const comps = item._components || [];
-                for (const comp of comps) {
-                    if (e.comp && comp.__classname__ !== e.comp) { continue; }
-                    if (typeof comp[e.handler] === 'function') { comp[e.handler](); log.push('called ' + e.item + '.' + e.handler); break; }
-                }
-            } catch (err) { log.push('err ' + err.message); }
-        });
-        return log;
-    }, wiring.events);
-    await sleep(1400);
-    console.log('CALLED(INTERNAL path, not a real click)=' + JSON.stringify(called));
+        try { gamemain.showTabBarViewIndex = 5; log.push('gamemain.showTabBarViewIndex=5'); } catch (e) { log.push('set failed'); }
+        try { hall.showBarView(); log.push('hall.showBarView() ok'); } catch (e) { log.push('showBarView threw ' + e.message); }
+        return { log: log, currentIndex: String(hall.currentIndex) };
+    });
+    await sleep(1800);
+    console.log('WIRING(internal path)=' + JSON.stringify(wiring));
     const s0 = await page.evaluate(ACTIVE_UIS);
     console.log('STEP0_home=' + JSON.stringify(s0));
     await shot('87-step0-editor-home.png');
