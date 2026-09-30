@@ -88442,7 +88442,7 @@ cc._RF.pop();
         var panel = new cc.Node('panel');
         panel.parent = modal;
         panel.setContentSize(panelW, panelH);
-        roundPanel(panel, panelW, panelH, 30, cc.color(38, 34, 42, 255));   // real rounded corners
+        roundPanel(panel, panelW, panelH, 30, cc.color(226, 210, 172, 255));   // game tan, matching the rest of the editor
         makeLabel(panel, t('confirmDeleteWorld'), 0, 70, 38, cc.color(255, 255, 255, 255)).name = 'confirmText';
         makeDialogButton(panel, t('cancel'), -1, -90, cc.color(90, 84, 96, 255), function () { modal.destroy(); });
         makeDialogButton(panel, t('confirmDelete'), 1, -90, cc.color(196, 58, 58, 255), function () {
@@ -89075,19 +89075,19 @@ cc._RF.pop();
         var panel = new cc.Node('panel');
         panel.parent = modal;
         panel.setContentSize(panelW, panelH);
-        roundPanel(panel, panelW, panelH, 30, cc.color(38, 34, 42, 255));   // real rounded corners
+        roundPanel(panel, panelW, panelH, 30, cc.color(226, 210, 172, 255));   // game tan, matching the rest of the editor
         var worldId = visibleWorldId(hall) || 1;
 
-        makeLabel(panel, t('createWorld'), 346, 40, cc.color(255, 255, 255, 255)).name = 'dlgTitle';
+        makeLabel(panel, t('createWorld'), 346, 40, cc.color(74, 56, 40, 255)).name = 'dlgTitle';
         var errLabel = makeLabel(panel, '', -panelH / 2 + 40, 22, cc.color(255, 120, 120, 255));
         errLabel.name = 'dlgError';
 
         // --- world name ---
-        makeLabel(panel, t('worldName'), 282, 22, cc.color(255, 255, 255, 200)).name = 'dlgNameLabel';
+        makeLabel(panel, t('worldName'), 282, 22, cc.color(74, 56, 40, 235)).name = 'dlgNameLabel';
         var nameBox = makeEditBox(panel, 'worldNameInput', 0, 236, 460, 56, 'My World', 26);
 
         // --- preset swatches (the eight shipped themes + the current custom colour) ---
-        makeLabel(panel, t('themeColour'), 160, 22, cc.color(255, 255, 255, 200)).name = 'dlgColourLabel';
+        makeLabel(panel, t('themeColour'), 160, 22, cc.color(74, 56, 40, 235)).name = 'dlgColourLabel';
         var presets = presetThemes();
         var swatchY = 70;
         var chosen = { hsva: presets.length ? presets[0].hsva.slice() : [160, 60, 80, 1] };
@@ -89116,7 +89116,7 @@ cc._RF.pop();
         });
 
         // --- hex code input + live preview ---
-        makeLabel(panel, t('hexHint'), -206, 22, cc.color(255, 255, 255, 205)).name = 'dlgHexHint';   // note: makeLabel takes (parent, text, y, fontSize, colour) - no x
+        makeLabel(panel, t('hexHint'), -206, 22, cc.color(74, 56, 40, 240)).name = 'dlgHexHint';   // note: makeLabel takes (parent, text, y, fontSize, colour) - no x
         var hexBox = makeEditBox(panel, 'hexInput', 0, -248, 320, 60, '#RRGGBB', 26);   // centred, with a visible slot again
         markSwatch(swatches, swatches[0]);
         /* The little preview swatch is gone: it rendered as a 2x2 dot and sat under the
@@ -89141,7 +89141,7 @@ cc._RF.pop();
                 warn('create world failed:', msg);
             }
         });
-        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, -350, cc.color(90, 84, 96, 255), function () { closeDialog(); });
+        var cancelBtn = makeDialogButton(panel, t('cancel'), -1, -350, cc.color(154, 143, 117, 255), function () { closeDialog(); });
 
         /* the game's own entrance motion: fade + scale */
         modal.opacity = 0;
