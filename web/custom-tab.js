@@ -438,9 +438,12 @@
        level-select backdrops showing down its sides. Raise the visible one each tick;
        it is a no-op when the order is already right. */
     function raiseActiveView() {
-        /* while the grid editor is open the tab bar is hidden on purpose, and the hall pages
-           behind it must not be reshuffled either */
-        /* the editor no longer hides the tab bar: nothing to skip here */
+        /* MUTUAL EXCLUSION between editor UIs: while the grid editor is on screen, no hall page may be
+           raised or hidden. The editor home page sits in the pager underneath, and because the grid
+           backdrop deliberately stops above the tab bar (so the tab bar stays visible), an active home
+           page showed through in that strip plus wherever the backdrop did not reach - that is the
+           overlap the user photographed. Hidden here, and restored on close. */
+        if (gridRootRef && gridRootRef.isValid) { return; }
         var hall = window.hallScene;
         if (!hall || !hall.viewGroup) { return; }
         /* Source of truth is the hall's own current tab index. The game can leave the
@@ -1178,6 +1181,14 @@
             dragPaintState.mutedSv = null;
         } catch (e) {}
         stats.gridEditorClosed = (stats.gridEditorClosed || 0) + 1;
+        /* restore the editor home page the grid editor hid (mutual exclusion, other half) */
+        try {
+            var homeShow = window.hallScene && window.hallScene.viewGroup ? window.hallScene.viewGroup[CFG.index] : null;
+            if (homeShow && homeShow.isValid && !homeShow.active) {
+                homeShow.active = true;
+                stats.editorHomeRestored = (stats.editorHomeRestored || 0) + 1;
+            }
+        } catch (e) {}
         return closed;
     }
 
@@ -1693,6 +1704,14 @@
         var host = cc.find('Canvas');
         if (!host) { return null; }
         closeGridEditor();
+        /* exactly one editor UI at a time: hide the editor home page while the grid editor is open */
+        try {
+            var homeHide = window.hallScene && window.hallScene.viewGroup ? window.hallScene.viewGroup[CFG.index] : null;
+            if (homeHide && homeHide.isValid && homeHide.activeInHierarchy) {
+                homeHide.active = false;
+                stats.editorHomeHiddenForGrid = (stats.editorHomeHiddenForGrid || 0) + 1;
+            }
+        } catch (e) {}
         var W = visibleWidth(), H = visibleHeight();
 
         var root = new cc.Node(GRID_NAME);
@@ -1708,6 +1727,7 @@
         backdrop.parent = root;
         backdrop.setContentSize(W, Math.max(200, H - TABBAR_STRIP));
         backdrop.y = TABBAR_STRIP / 2;
+        backdrop.zIndex = -1;                                 /* explicit: the backdrop is the bottom layer */
         backdrop.zIndex = 0;
         fullSprite(backdrop, W, Math.max(200, H - TABBAR_STRIP), cc.color(20, 18, 24, 255));
 
