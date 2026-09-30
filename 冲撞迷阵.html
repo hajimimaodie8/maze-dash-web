@@ -85813,28 +85813,26 @@ cc._RF.pop();
         finally { flushingAudio = false; }
     }
 
+    /* Measured with probe-audio-double.js (forced-suspend state, i.e. what a real
+     * device does): the engine ALREADY starts the WebAudio source while the
+     * context is suspended (cocos2d-js.js:4717/4719) and that source simply
+     * plays once the context is resumed - it does not need replaying. On a real
+     * touchstart the engine's own touchPlayList flusher plays the queued items
+     * too, and its play() stops the earlier source (measured: every pre-start
+     * had a matching stop), so the result is one audible playback.
+     *
+     * Our replay layer therefore ADDED a playback the engine had already
+     * started: the user heard every opening sound twice. It is retired - we only
+     * resume the context (and nudge music) now, which is all that was missing.
+     */
     function unlockAudio(ev) {
         var ctx = audioCtx();
         if (!ctx) { return; }
 
-        /* addEventListener passes the event; the scene-launch call passes
-         * nothing. Only a real gesture should resume / replay. A REAL
-         * touchstart is left to the engine's own flusher, so we do not replay
-         * there (that would double the sound). */
-        var isTouchStart = !!(ev && ev.type === 'touchstart');
-        var wantReplay = !!(ev && ev.type) && !isTouchStart;
-
         PORT.audioUnlocks = (PORT.audioUnlocks || 0) + 1;
 
         if (ctx.state === 'suspended' && ctx.resume) {
-            var p = ctx.resume();
-            if (p && p.then) {
-                p.then(function () { if (wantReplay) { flushPendingAudio(); } }, function () {});
-            } else if (wantReplay) {
-                flushPendingAudio();
-            }
-        } else if (ctx.state === 'running' && wantReplay) {
-            flushPendingAudio();
+            ctx.resume().catch(function () {});
         }
 
         // If music was requested while the context was suspended, nudge it.
