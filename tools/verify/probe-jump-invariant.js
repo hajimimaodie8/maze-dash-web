@@ -1,4 +1,4 @@
-﻿const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer-core');
 const CHROME = 'C:\\Users\\Lenovo\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe';
 const FILE = 'file:///E:/maze_dash/dist/MazeDash-standalone.html';
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -31,7 +31,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
           const inside = (p.x - c.width/2 >= -1) && (p.x + c.width/2 <= W+1) && (p.y - c.height/2 >= -1) && (p.y + c.height/2 <= H+1);
           rows.push([n, c.opacity, inside]);
         });
-        out.push({ tag: tag, pageActive: v.activeInHierarchy, rows: rows, shown: (window.MazeDashCustomTab && MazeDashCustomTab.stats) ? MazeDashCustomTab.stats.editorHomeButtonsShown : 'n/a' });
+        out.push({ tag: tag, pageActive: v.activeInHierarchy, pageX: v.convertToWorldSpaceAR(cc.v2(0,0)).x, rows: rows, shown: (window.MazeDashCustomTab && MazeDashCustomTab.stats) ? MazeDashCustomTab.stats.editorHomeButtonsShown : 'n/a' });
       } else { out.push({ tag: tag, pageActive: false, rows: [], shown: 'no-view' }); }
     }
     snap('t0');
@@ -40,7 +40,13 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     return out;
   });
   const violations = [];
-  samples.forEach(s => { (s.rows || []).forEach(r => { if (r[1] > 0 && r[2] === false) violations.push([s.tag, r[0], r[1]]); }); });
+  /* the last sample is the settled page; its world origin is the reference for "settled" */
+  const settledX = (samples[samples.length - 1] || {}).pageX;
+  /* Only frames where the editor page is VISIBLE AND SETTLED count. A page mid-slide is already
+     activeInHierarchy=true but is still travelling, so its buttons are legitimately outside the
+     viewport - they are riding in with the page, which is exactly what the fix is for. A settled
+     page (world origin at the visible centre) with a button outside the viewport IS a defect. */
+  samples.forEach(s => { (s.rows || []).forEach(r => { if (s.pageActive && settledX !== null && settledX !== undefined && Math.abs((s.pageX || 0) - settledX) < 2 && r[1] > 0 && r[2] === false) violations.push([s.tag, r[0], r[1]]); }); });
   const last = samples[samples.length - 1];
   console.log('SAMPLES:', samples.length);
   console.log('VIOLATIONS (visible && offscreen):', violations.length, JSON.stringify(violations.slice(0,4)));
