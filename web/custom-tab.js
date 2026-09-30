@@ -3666,11 +3666,98 @@
         setTimeout(function () { scheduleInstall(attempt + 1); }, attempt < 40 ? 120 : 1000);
     }
 
+    /* ------------------------------------------------------------------
+       P1: the completion screen for a CUSTOM level.
+       nextLevel() assumes the next world exists in the shipped data; for a
+       custom world it can fall through to world 101 (the test world) and then
+       call showVignettte() on a component whose vignette binding is gone,
+       which throws "Cannot read properties of null (reading 'children')".
+       Two zero-side-effect guards: keep showVignettte null-safe (re-bind the
+       vignettes node when possible, otherwise skip decorating), and route the
+       completion screen's "level list" / "next" back to the LEVEL EDITOR for
+       custom worlds, which is what the player expects.
+       ------------------------------------------------------------------ */
+    function goToEditorFromLevel() {
+        try { gamemain.enterHallScene(); } catch (e) {}
+        var tries = 0;
+        var iv = setInterval(function () {
+            tries++;
+            var scene = null;
+            try { scene = cc.director.getScene() && cc.director.getScene().name; } catch (e) {}
+            if (scene === 'HallScene' && window.hallScene) {
+                try { gamemain.showTabBarViewIndex = CFG.index; window.hallScene.showBarView(); } catch (e) {}
+                stats.backToEditorFromLevel = (stats.backToEditorFromLevel || 0) + 1;
+                clearInterval(iv);
+                return;
+            }
+            if (tries > 60) { clearInterval(iv); }
+        }, 100);
+    }
+
+    function installGameSceneGuards() {
+        var canvas = null;
+        try { canvas = cc.find('Canvas'); } catch (e) {}
+        var comp = canvas && canvas.getComponent ? canvas.getComponent('gameScene') : null;
+        if (!comp) { return false; }
+        var proto = Object.getPrototypeOf(comp);
+        if (!proto || proto.__mazeDashGameSceneGuards) { return true; }
+        proto.__mazeDashGameSceneGuards = true;
+
+        var origVignette = proto.showVignettte;
+        proto.showVignettte = function () {
+            try {
+                if (!this.vignette || !cc.find('Content', this.vignette)) {
+                    var fixed = null;
+                    try { fixed = cc.find('Canvas/backgroup/vignettes'); } catch (e) {}
+                    if (fixed && cc.find('Content', fixed)) {
+                        this.vignette = fixed;
+                        stats.vignetteRebound = (stats.vignetteRebound || 0) + 1;
+                    } else {
+                        stats.vignetteGuardHits = (stats.vignetteGuardHits || 0) + 1;
+                        return;
+                    }
+                }
+            } catch (e) {
+                stats.vignetteGuardHits = (stats.vignetteGuardHits || 0) + 1;
+                return;
+            }
+            return origVignette.apply(this, arguments);
+        };
+
+        var origNext = proto.nextLevel;
+        proto.nextLevel = function () {
+            try {
+                if (Number(this.worldId) >= 100) {
+                    stats.nextLevelRerouted = (stats.nextLevelRerouted || 0) + 1;
+                    goToEditorFromLevel();
+                    return;
+                }
+            } catch (e) {}
+            return origNext.apply(this, arguments);
+        };
+
+        var origHall = proto.clickEnterHallScene;
+        proto.clickEnterHallScene = function () {
+            try {
+                if (Number(this.worldId) >= 100) {
+                    stats.listRerouted = (stats.listRerouted || 0) + 1;
+                    goToEditorFromLevel();
+                    return;
+                }
+            } catch (e) {}
+            return origHall.apply(this, arguments);
+        };
+
+        stats.gameSceneGuards = (stats.gameSceneGuards || 0) + 1;
+        return true;
+    }
+
     if (window.cc && cc.director) {
         cc.director.on(cc.Director.EVENT_AFTER_SCENE_LAUNCH, function () {
             try { armPortalPatch(); } catch (e) {}
             try { pushVignettesBelowMap(); } catch (e) {}
             try { armWordIdWrappers(); } catch (e) {}
+            try { installGameSceneGuards(); } catch (e) {}
 
             scheduleInstall(0);
         });

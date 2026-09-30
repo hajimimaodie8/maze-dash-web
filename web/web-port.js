@@ -589,13 +589,62 @@
         } catch (e) { return null; }
     }
 
-    function unlockAudio() {
+    /* The engine queues any audio that failed to start while the context was
+     * suspended (its internal touchPlayList) and only flushes that queue from
+     * a canvas "touchstart" listener. A mouse-only player therefore never gets
+     * the already-queued BGM back, which is exactly the reported "no sound in
+     * the level until I touch the screen" symptom. Dispatch one synthetic
+     * touchstart with an EMPTY touch list: the engine's flusher ignores the
+     * event object entirely, while the engine's own input handling sees no
+     * touches and stays inert. */
+    var flushingAudio = false;
+
+    function flushPendingAudio() {
+        /* The synthetic touchstart bubbles back into our own capture-phase
+         * gesture listener, so this guard is what stops an infinite loop. */
+        if (flushingAudio) { return false; }
+        flushingAudio = true;
+        try {
+            var canvas = cc.game && cc.game.canvas;
+            if (!canvas) { return false; }
+            var ev = null;
+            try {
+                if (typeof TouchEvent === 'function') {
+                    ev = new TouchEvent('touchstart', {
+                        bubbles: true, cancelable: true,
+                        touches: [], targetTouches: [], changedTouches: []
+                    });
+                }
+            } catch (e) { ev = null; }
+            if (!ev) {
+                ev = document.createEvent('Event');
+                ev.initEvent('touchstart', true, true);
+                ev.touches = []; ev.targetTouches = []; ev.changedTouches = [];
+            }
+            canvas.dispatchEvent(ev);
+            PORT.audioFlushed = (PORT.audioFlushed || 0) + 1;
+            return true;
+        } catch (e) { return false; }
+        finally { flushingAudio = false; }
+    }
+
+    function unlockAudio(ev) {
         var ctx = audioCtx();
         if (!ctx) { return; }
 
+        /* addEventListener passes the event; the scene-launch call passes
+         * nothing. Only a real gesture should try to flush the engine queue. */
+        var fromGesture = !!(ev && ev.type);
+
+        PORT.audioUnlocks = (PORT.audioUnlocks || 0) + 1;
+
         if (ctx.state === 'suspended' && ctx.resume) {
             var p = ctx.resume();
-            if (p && p.catch) { p.catch(function () {}); }
+            if (p && p.then) {
+                p.then(function () { if (fromGesture) { flushPendingAudio(); } }, function () {});
+            }
+        } else if (ctx.state === 'running' && fromGesture) {
+            flushPendingAudio();
         }
 
         // If music was requested while the context was suspended, nudge it.
