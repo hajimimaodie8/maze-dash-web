@@ -3687,29 +3687,75 @@
         }
     }
 
+    /* ---- 多主角同拍穿越的"传送紊乱"修复 ------------------------------------------------------
+       实测（_work/test/probe-portal-chaos.js，单文件版 file://）：
+       1) 引擎拿"移动前所在格"来问出口（主角在 (1,1) 向下走进门 (1,2) 时 from = (1,1)）—— 旧代码用
+          cellColour(from) 取色永远是 0，颜色过滤从来没生效过。判别证据：从三个主角格
+          (1,1)/(2,1)/(3,1) 问出口，旧代码**全部**返回扫描顺序里的第一个门 7,1（异色）。
+       2) 多个主角同拍穿越时，引擎**先把人挪进门格**（门格随即被改写），**之后**才来问出口 ——
+          所以取色不能看当前矩阵（那时入口门格已经不是门了），必须看**关卡开始时**记下的门格表。
+       修法：关卡开始即记录一份门格表（位置 + 颜色，之后不再重建），取色只看这张表；配对要求颜色
+       相同（未定义颜色的一律归入**默认色**、彼此配对）；伙伴必须**尚未被用掉**（当前矩阵里仍是门）。
+       找不到同色伙伴就**原地不动**，绝不回落到"连第一个门"。 */
+    function buildPortalMap(comp) {
+        var cells = [], at = {};
+        var rows = Object.keys(comp.Level_data || {});
+        for (var ri = 0; ri < rows.length; ri++) {
+            var y = rows[ri], row = comp.Level_data[y];
+            for (var x in row) {
+                if (row[x] !== 2) { continue; }
+                var xi = parseInt(x, 10), yi = parseInt(y, 10);
+                var rec = { x: xi, y: yi, col: cellColour(xi, yi) || 0 };   // 0 = default colour
+                cells.push(rec);
+                at[xi + ',' + yi] = rec;
+            }
+        }
+        comp.__portalMap = { cells: cells, at: at };
+        stats.portalMapCells = cells.length;
+        return comp.__portalMap;
+    }
+    function ensurePortalMap(comp) {
+        if (comp.__portalMap && comp.__portalMap.cells) { return comp.__portalMap; }
+        return buildPortalMap(comp);   // fallback: even if late, colours still cannot cross
+    }
+    function entryPortalKey(pm, from) {
+        var key = from.x + ',' + from.y;
+        if (pm.at[key]) { return key; }
+        var dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        var plain = null;
+        for (var di = 0; di < dirs.length; di++) {
+            var k = (from.x + dirs[di][0]) + ',' + (from.y + dirs[di][1]);
+            var rec = pm.at[k];
+            if (!rec) { continue; }
+            if (rec.col > 0) { return k; }
+            if (plain === null) { plain = k; }
+        }
+        return plain;
+    }
+    function liveIsPortal(comp, x, y) {
+        try { return comp.Level_data[y][x] === 2; } catch (e) { return false; }
+    }
     function patchPortalPairing() {
         var map = cc.find('Canvas/backgroup/game_map');
         var comp = map && map.getComponent && map.getComponent('game_map');
         if (!comp || comp.__colorPortals) { return false; }
         comp.__colorPortals = true;
-        // pairing logic: unchanged from the verified version
         comp.getOutPortal = function (from) {
-            var want = cellColour(from.x, from.y);
-            var found = null;
-            for (var y in this.Level_data) {
-                for (var x in this.Level_data[y]) {
-                    var v = this.Level_data[y][x];
-                    if (v !== 2) { continue; }
-                    var xi = parseInt(x, 10), yi = parseInt(y, 10);
-                    if (xi === from.x && yi === from.y) { continue; }
-                    if (want > 0 && cellColour(xi, yi) !== want) { continue; }   // same colour only
-                    if (found === null) { found = cc.v2(xi, yi); }
-                }
+            var pm = ensurePortalMap(this);
+            var entryKey = entryPortalKey(pm, from);
+            var want = entryKey ? pm.at[entryKey].col : 0;
+            for (var i = 0; i < pm.cells.length; i++) {
+                var c = pm.cells[i];
+                if ((c.x + ',' + c.y) === entryKey) { continue; }
+                if (c.x === from.x && c.y === from.y) { continue; }
+                if (c.col !== want) { continue; }                  // 同色才配对；未知色归入默认色
+                if (!liveIsPortal(this, c.x, c.y)) { continue; }   // 已经用掉的门不再作为出口
+                return cc.v2(c.x, c.y);
             }
-            return found || cc.v2(from.x, from.y);   // no partner of that colour: no teleport
+            return cc.v2(from.x, from.y);                          // 找不到同色伙伴：原地不动
         };
         stats.colorPortalsPatched = (stats.colorPortalsPatched || 0) + 1;
-        log('coloured portal pairing installed');
+        log('coloured portal pairing installed (level-start portal map, colour-matched)');
         return true;
     }
 
@@ -3753,6 +3799,7 @@
                     try { ready = !!(comp && comp.Level_data && Object.keys(comp.Level_data).length > 0); } catch (e) { ready = false; }
                     if (ready) {
                         clearInterval(wait);
+                        buildPortalMap(comp);   // level-start portal table (before any move)
                         clearColourMarkers(map);
                         var painted = paintPortalColours(map, comp);
                         log('portal colours painted:', painted, 'markers of', stats.portalPaintTiles || 0, 'item tiles');
