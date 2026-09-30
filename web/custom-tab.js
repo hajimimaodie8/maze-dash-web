@@ -1595,12 +1595,22 @@
             var root = gridRootRef;
             if (!root || !root.isValid || root.__dragArmed) { return; }
             root.__dragArmed = true;
+            /* Cocos getLocation() is canvas-relative CSS pixels with the origin at the BOTTOM LEFT,
+               which is why the previous node-space round trip always landed outside the grid. My
+               probes already prove the correct mapping in the other direction, so invert exactly that:
+                 world.x = loc.x * (visibleWidth  / canvasWidthPx)
+                 world.y = loc.y * (visibleHeight / canvasHeightPx)
+               and the cells' own convertToWorldSpaceAR positions are then the same space. */
             var toWorld = function (ev) {
                 var loc = ev.getLocation ? ev.getLocation() : null;
                 if (!loc) { return null; }
-                var w = root.convertToNodeSpaceAR(cc.v2(loc.x, loc.y));
-                var wp = root.convertToWorldSpaceAR(w);
-                return wp;
+                var vs = cc.view.getVisibleSize();
+                var rect = cc.game.canvas.getBoundingClientRect();
+                var sx = vs.width / (rect.width || vs.width);
+                var sy = vs.height / (rect.height || vs.height);
+                var p = cc.v2(loc.x * sx, loc.y * sy);
+                stats.dragLastWorld = Math.round(p.x) + ',' + Math.round(p.y);
+                return p;
             };
             var begin = function (ev) {
                 dragPaintState.active = true; dragPaintState.last = null;
