@@ -88850,9 +88850,9 @@ cc._RF.pop();
             tile.setContentSize(148, 84);
             tile.x = (col - 2) * 158;
             tile.y = 130 - row * 96;
-            roundedPanel(tile, cc.color(226, 210, 172, 255), 190, 110);
+            roundedPanel(tile, cc.color(154, 143, 117, 255), 190, 110);   /* a step darker than the tan panel, or the tile is invisible on it */
             var nm = String(e.name || ('L' + (i + 1)));
-            makeLabel(tile, nm.length > 9 ? nm.substring(0, 9) : nm, 0, 28, cc.color(74, 56, 40, 255));
+            makeLabel(tile, nm.length > 11 ? nm.substring(0, 11) : nm, 0, 28, cc.color(58, 44, 32, 255));
             tile.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(tile, true); });
             tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
             tile.on(cc.Node.EventType.TOUCH_END, function () {
