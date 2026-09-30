@@ -85739,39 +85739,74 @@ cc._RF.pop();
         } catch (e) { return null; }
     }
 
-    /* The engine queues any audio that failed to start while the context was
-     * suspended (its internal touchPlayList) and only flushes that queue from
-     * a canvas "touchstart" listener. A mouse-only player therefore never gets
-     * the already-queued BGM back, which is exactly the reported "no sound in
-     * the level until I touch the screen" symptom. Dispatch one synthetic
-     * touchstart with an EMPTY touch list: the engine's flusher ignores the
-     * event object entirely, while the engine's own input handling sees no
-     * touches and stays inert. */
+    /* The engine queues audio that could not start while the context was
+     * suspended (its internal touchPlayList) and only REPLAYS that queue from a
+     * REAL canvas touchstart listener. Dispatching a synthetic touchstart does
+     * NOT run that flusher - it only clears the queue, which silently threw
+     * away the opening sound effects. So we do not dispatch anything: we record
+     * the calls ourselves and replay them once, on the first real gesture that
+     * is not a touchstart. */
+    var pendingAudio = [];
+    var audioEngineWrapped = false;
+
+    function rememberAudioCall(name, args) {
+        var ctx = audioCtx();
+        var state = ctx ? ctx.state : 'none';
+        if (state === 'running') { return; }
+        try {
+            if (pendingAudio.length < 24) {
+                pendingAudio.push({ name: name, args: args });
+            }
+            PORT.audioQueuedByUs = (PORT.audioQueuedByUs || 0) + 1;
+        } catch (e) {}
+    }
+
+    function wrapAudioEngine() {
+        if (audioEngineWrapped) { return true; }
+        var ae = (window.cc && cc.audioEngine) || null;
+        if (!ae) { return false; }
+        audioEngineWrapped = true;
+        ['play', 'playEffect', 'playMusic'].forEach(function (name) {
+            var orig = ae[name];
+            if (typeof orig !== 'function') { return; }
+            ae[name] = function () {
+                rememberAudioCall(name, Array.prototype.slice.call(arguments));
+                return orig.apply(this, arguments);
+            };
+        });
+        PORT.audioWrapped = true;
+        return true;
+    }
+
+    /* Wrap as soon as the engine exists: the opening effects fire a few seconds
+     * into the launch scene, so this is far too early to miss them. */
+    if (!wrapAudioEngine()) {
+        var wrapTries = 0;
+        var wrapTimer = setInterval(function () {
+            if (wrapAudioEngine() || ++wrapTries > 400) { clearInterval(wrapTimer); }
+        }, 25);
+    }
+
     var flushingAudio = false;
 
+    /* Replays what the engine never got to play. No event is dispatched. */
     function flushPendingAudio() {
-        /* The synthetic touchstart bubbles back into our own capture-phase
-         * gesture listener, so this guard is what stops an infinite loop. */
         if (flushingAudio) { return false; }
         flushingAudio = true;
         try {
-            var canvas = cc.game && cc.game.canvas;
-            if (!canvas) { return false; }
-            var ev = null;
-            try {
-                if (typeof TouchEvent === 'function') {
-                    ev = new TouchEvent('touchstart', {
-                        bubbles: true, cancelable: true,
-                        touches: [], targetTouches: [], changedTouches: []
-                    });
-                }
-            } catch (e) { ev = null; }
-            if (!ev) {
-                ev = document.createEvent('Event');
-                ev.initEvent('touchstart', true, true);
-                ev.touches = []; ev.targetTouches = []; ev.changedTouches = [];
+            var ae = (window.cc && cc.audioEngine) || null;
+            var list = pendingAudio;
+            pendingAudio = [];
+            if (!ae || !list.length) { return false; }
+            for (var i = 0; i < list.length; i++) {
+                try {
+                    var item = list[i];
+                    if (typeof ae[item.name] === 'function') {
+                        ae[item.name].apply(ae, item.args);
+                    }
+                } catch (e) {}
             }
-            canvas.dispatchEvent(ev);
+            PORT.audioReplayed = (PORT.audioReplayed || 0) + list.length;
             PORT.audioFlushed = (PORT.audioFlushed || 0) + 1;
             return true;
         } catch (e) { return false; }
@@ -85783,17 +85818,22 @@ cc._RF.pop();
         if (!ctx) { return; }
 
         /* addEventListener passes the event; the scene-launch call passes
-         * nothing. Only a real gesture should try to flush the engine queue. */
-        var fromGesture = !!(ev && ev.type);
+         * nothing. Only a real gesture should resume / replay. A REAL
+         * touchstart is left to the engine's own flusher, so we do not replay
+         * there (that would double the sound). */
+        var isTouchStart = !!(ev && ev.type === 'touchstart');
+        var wantReplay = !!(ev && ev.type) && !isTouchStart;
 
         PORT.audioUnlocks = (PORT.audioUnlocks || 0) + 1;
 
         if (ctx.state === 'suspended' && ctx.resume) {
             var p = ctx.resume();
             if (p && p.then) {
-                p.then(function () { if (fromGesture) { flushPendingAudio(); } }, function () {});
+                p.then(function () { if (wantReplay) { flushPendingAudio(); } }, function () {});
+            } else if (wantReplay) {
+                flushPendingAudio();
             }
-        } else if (ctx.state === 'running' && fromGesture) {
+        } else if (ctx.state === 'running' && wantReplay) {
             flushPendingAudio();
         }
 
