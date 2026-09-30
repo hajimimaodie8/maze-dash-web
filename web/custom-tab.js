@@ -301,11 +301,21 @@
         var orig = hall.showBarView;
         hall.showBarView = function () {
             try {
-                return orig.apply(this, arguments);
+                var r = orig.apply(this, arguments);
+                /* A page switch moves the page in world space (parked pages sit at +-one page width,
+                   the active one is centred), so anything laid out from the parked frame lands off
+                   screen once the page is really shown - that is why the editor home's button row was
+                   invisible while its numbers said "inside". Re-run the editor-home layout against the
+                   CURRENT frame right after every switch, once now and once on the next frames. */
+                try { relayoutEditorHomeNow(); } catch (e) {}
+                setTimeout(function () { try { relayoutEditorHomeNow(); } catch (e) {} }, 320);
+                return r;
             } catch (e) {
                 stats.showBarViewRetries = (stats.showBarViewRetries || 0) + 1;
                 log('showBarView threw (retrying once):', e && e.message);
-                return orig.apply(this, arguments);
+                var r2 = orig.apply(this, arguments);
+                try { relayoutEditorHomeNow(); } catch (e2) {}
+                return r2;
             }
         };
         hall.showBarView.__retryable = true;
@@ -1184,9 +1194,16 @@
         /* restore the editor home page the grid editor hid (mutual exclusion, other half) */
         try {
             var homeShow = window.hallScene && window.hallScene.viewGroup ? window.hallScene.viewGroup[CFG.index] : null;
-            if (homeShow && homeShow.isValid && !homeShow.active) {
-                homeShow.active = true;
-                stats.editorHomeRestored = (stats.editorHomeRestored || 0) + 1;
+            if (homeShow && homeShow.isValid) {
+                if (!homeShow.active) {
+                    homeShow.active = true;
+                    stats.editorHomeRestored = (stats.editorHomeRestored || 0) + 1;
+                }
+                /* Always re-run the frame-correct layout on the way back: the page may already be
+                   active (the guard above would otherwise skip it), and the 1.5s sweep runs its own
+                   parked-frame math in between, which is what left the left big button off screen
+                   right after the back button. */
+                try { relayoutEditorHomeNow(); } catch (e) {}
             }
         } catch (e) {}
         return closed;
@@ -2124,6 +2141,8 @@
             }
             stats.smallRowLayouts = (stats.smallRowLayouts || 0) + 1;
         };
+        /* exposed so the page-switch hook can re-run it against the CURRENT frame */
+        view.__layoutSmallRow = layoutSmallRow;
         setTimeout(layoutSmallRow, 800);
         var framesLeft = 4;
         (function relayoutTick() {
@@ -2609,6 +2628,36 @@
             if (hint) { var lb = hint.getComponent(cc.Label); if (lb) { lb.string = msg; } }
         }
         stats.importSummary = msg;
+    }
+
+    /* ==================== 按"当前帧"重算编辑器主页布局 ====================
+       所有坐标都必须由页面节点在**此刻**的世界位置推出：停靠页在世界 x = +-一页宽，活动页在屏幕
+       中心，两者相差 2276，按停靠帧算出来的局部坐标在页面真正显示后就会整排出屏（这正是"数字说
+       inside:true、画面上却看不到"的物理原因）。本函数只在页面 active 时计算，写入后**立刻重新读
+       世界坐标**做校正。 */
+    function relayoutEditorHomeNow() {
+        try {
+            var hall = window.hallScene;
+            var view = hall && hall.viewGroup ? hall.viewGroup[CFG.index] : null;
+            if (!view || !view.isValid || !view.activeInHierarchy) { return false; }
+            var W = visibleWidth();
+            if (view.__layoutSmallRow) { try { view.__layoutSmallRow(); } catch (e) {} }
+            [['createWorld', 0], ['createLevel', 1]].forEach(function (pair) {
+                var btn = view.getChildByName('editorBtn_' + pair[0]);
+                if (!btn || !btn.isValid) { return; }
+                /* desired WORLD x: 60px margin from the screen edge */
+                var want = (pair[1] === 0) ? (60 + btn.width / 2) : (W - 60 - btn.width / 2);
+                var got = btn.convertToWorldSpaceAR(cc.v2(0, 0)).x;
+                if (Math.abs(got - want) > 1) {
+                    btn.x += (want - got);
+                    stats.editorBigBtnShifted = (stats.editorBigBtnShifted || 0) + 1;
+                }
+                var after = btn.convertToWorldSpaceAR(cc.v2(0, 0)).x;
+                if (Math.abs(after - want) > 1) { stats.editorBigBtnStillOff = (stats.editorBigBtnStillOff || 0) + 1; }
+            });
+            stats.editorHomeRelayouts = (stats.editorHomeRelayouts || 0) + 1;
+            return true;
+        } catch (e) { return false; }
     }
 
     function editorAction(id) {
@@ -3585,7 +3634,7 @@
     setInterval(function () {
         try {
             var hall = window.hallScene;
-            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); sweepTextAndMarkers(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); keepPreviewSized(); }
+            if (hall && hall.node && hall.node.isValid) { freeTabBarArea(); layoutTabs(hall); applyPageTint(); raiseActiveView(); positionModeSwitch(hall); sweepTextAndMarkers(hall); positionEditorHome(hall.viewGroup && hall.viewGroup[CFG.index]); positionWorldBackButtons(hall); keepPreviewSized(); try { relayoutEditorHomeNow(); } catch (e) {} }
         } catch (e) {}
     }, 1500);
 
