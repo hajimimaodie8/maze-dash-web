@@ -1117,6 +1117,34 @@
             return n;
         } catch (e) { return 0; }
     }
+    /* Open the GAME's own level-select page for a world, instead of the preview page I invented: the
+       user asked for the original screens (the green mode panel plus the world's themed number strip).
+       Evidence: Canvas/gameView/scrollView's content children ARE the per-world level-select pages,
+       each carrying a StageSelectLayer whose m_stageId is the world id - see refreshStagePages() above
+       and the engine's own showLockLayer(), which reads conf.worlds[this.m_stageId]. */
+    function openGameWorldPage(worldId) {
+        try {
+            var gm = window.gamemain, hall = window.hallScene;
+            if (gm) { gm.showTabBarViewIndex = 0; }                 /* tab 0 = the play/level-select tab */
+            if (hall && typeof hall.showBarView === 'function') { hall.showBarView(); }
+            var sv = cc.find('Canvas/gameView/scrollView');
+            var comp = sv && sv.getComponent(cc.ScrollView);
+            var content = comp && comp.content;
+            if (!content) { return false; }
+            var want = null;
+            content.children.forEach(function (page) {
+                var c = page.getComponent && page.getComponent('StageSelectLayer');
+                if (c && Number(c.m_stageId) === Number(worldId)) { want = page; }
+            });
+            if (!want) { return false; }
+            /* bring that world's page into view; ScrollView offsets are not worth trusting blind, so the
+               direct content.x assignment is the fallback (our own pager does the same). */
+            try { comp.scrollToOffset(cc.v2(-want.x, comp.getScrollOffset().y)); }
+            catch (e2) { content.x = -want.x; }
+            stats.gameWorldPagesOpened = (stats.gameWorldPagesOpened || 0) + 1;
+            return true;
+        } catch (e) { warn('openGameWorldPage failed:', e && e.message); return false; }
+    }
     function applyMode(mode) {
         var gm = window.gamemain;
         if (!gm) { return false; }
@@ -2682,6 +2710,11 @@
     }
 
     function previewCustomWorld() {
+        /* The user asked for the GAME's own level-select page (green mode panel + the world's themed
+           number strip), not the preview page I invented - so go through openGameWorldPage() first and
+           only fall back to the old overlay if that world's page cannot be found. */
+        var id = firstCustomWorldId();
+        if (id !== null && openGameWorldPage(id)) { return; }
         openWorldPreview();
         return;
     }
