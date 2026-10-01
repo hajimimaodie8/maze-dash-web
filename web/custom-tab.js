@@ -2999,7 +2999,17 @@
                 try {
                     var host2 = cc.find('Canvas');
                     var openPrev = host2 && host2.getChildByName(PREVIEW_NAME);
-                    if (made && openPrev && openPrev.isValid) { closePreview(); openWorldPreview(wasWorld); }
+                    if (made) {
+                        /* The level now lives in that world, so show it where it belongs: the GAME's own
+                           level-select page for that world (my home-grown overlay is only a fallback).
+                           If the overlay happened to be open, close it - otherwise the user keeps looking
+                           at the page that never listed levels in the first place. */
+                        var openedGame = openGameWorldPage(wasWorld);
+                        if (openPrev && openPrev.isValid) {
+                            closePreview();
+                            if (!openedGame) { openWorldPreview(wasWorld); }
+                        }
+                    }
                 } catch (er2) {}
                 log('adopted library level', e.id, 'as custom level', made, 'into world', wasWorld);
             });
