@@ -88485,6 +88485,54 @@ cc._RF.pop();
             del.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(del, true); });
             del.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(del, false); });
             del.on(cc.Node.EventType.TOUCH_END, function () { pressFeedback(del, false); confirmDeleteWorld(id); });
+            /* The levels this world actually has. Without this the world page was only ever an action
+               page (new level / move a level in / delete world), so a level moved in had nowhere to
+               appear - which is exactly what the user reported as "moving a level in shows nothing".
+               Each level is registered in stage_level_cfg under BOTH its map id and its level number
+               (see the twin-key writes), so a naive for-in lists every level twice; keep one entry per
+               mapId. Labels read the way the game numbers levels: world-level, e.g. 101-1. */
+            var listed = {}, lvls = [];
+            try {
+                var scfg = conf.stage_level_cfg[id] || {};
+                for (var lk in scfg) {
+                    var le = scfg[lk];
+                    if (!le || le.mapId === undefined || le.mapId === null) { continue; }
+                    if (listed[String(le.mapId)]) { continue; }
+                    listed[String(le.mapId)] = 1;
+                    lvls.push(le);
+                }
+                lvls.sort(function (a, b) { return (a.levelId || 0) - (b.levelId || 0); });
+            } catch (e) { lvls = []; }
+            /* fits the band between the two action tiles (their top edge is about -65) and the delete
+               button in the lower right, and stays clear of the bottom tab bar */
+            var LIST_TOP = 300, LIST_STEP = 96, LIST_PER_ROW = 6;
+            if (!lvls.length) {
+                var noneYet = makeLabel(page, t('emptyHint'), LIST_TOP, 26, cc.color(255, 255, 255, 190));
+                noneYet.name = 'previewNoLevels_' + id;
+                noneYet.zIndex = 6;
+            } else {
+                lvls.forEach(function (le, li) {
+                    var lv = new cc.Node('previewLevel_' + le.mapId);
+                    lv.parent = page;
+                    lv.setContentSize(200, 78);
+                    var row = Math.floor(li / LIST_PER_ROW), col = li % LIST_PER_ROW;
+                    var inRow = Math.min(LIST_PER_ROW, lvls.length - row * LIST_PER_ROW);
+                    lv.x = (col - (inRow - 1) / 2) * 220;
+                    lv.y = LIST_TOP - row * LIST_STEP;
+                    roundedPanel(lv, cc.color(226, 210, 172, 255), 200, 78);
+                    makeLabel(lv, String(id) + '-' + (le.levelId || (li + 1)), 0, 30, cc.color(74, 56, 40, 255)).name = 'previewLevelLabel_' + le.mapId;
+                    lv.zIndex = 6;
+                    lv.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(lv, true); });
+                    lv.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(lv, false); });
+                    lv.on(cc.Node.EventType.TOUCH_END, function () {
+                        pressFeedback(lv, false);
+                        var target = (le.id !== undefined && le.id !== null) ? le.id : le.mapId;
+                        try { setActiveMapColours(le.mapId); } catch (e3) {}
+                        closePreview();
+                        try { gamemain.enterEnterGameScene(target); } catch (e4) { warn('enter level failed:', e4 && e4.message); }
+                    });
+                });
+            }
             pages.push(page);
             animateIn(page);
         });
