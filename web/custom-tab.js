@@ -3815,10 +3815,51 @@
             } catch (e) {}
         }
         armWordIdWrappers();
+        /* One visible hint, never a stack of them, and never the bare i18n key on screen. */
+        function showInvalidLevelHint(id) {
+            try {
+                var host = cc.find('Canvas');
+                if (!host) { return; }
+                var old = host.getChildByName('invalidLevelHint');
+                if (old && old.isValid) { old.destroy(); }
+                var msg = '';
+                try { msg = t('invalidLevel'); } catch (e) {}
+                if (!msg || msg === 'invalidLevel') { msg = '\u5173\u5361\u6570\u636e\u4e0d\u5b8c\u6574\uff0c\u65e0\u6cd5\u8fdb\u5165'; }
+                var n = new cc.Node('invalidLevelHint');
+                n.parent = host;
+                n.zIndex = 1200;
+                roundedPanel(n, cc.color(30, 26, 34, 235), 640, 88);
+                makeLabel(n, msg, 0, 32, cc.color(255, 255, 255, 255)).name = 'invalidLevelHintLabel';
+                /* screen-space: the visible area's own height, not a hardcoded design coordinate */
+                n.setPosition(0, visibleHeight() / 2 - 170);
+                n.runAction(cc.sequence(cc.delayTime(1.8), cc.fadeOut(0.4), cc.callFunc(function () { if (n.isValid) { n.destroy(); } })));
+                stats.invalidLevelHintShown = (stats.invalidLevelHintShown || 0) + 1;
+            } catch (e) {}
+        }
         gamemain.enterEnterGameScene = function (id) {
             try {
                 var w = conf.level_cfg && conf.level_cfg[id] && conf.level_cfg[id].wordId;
                 if (w) { stats.lastEnteredWordId = w; }
+            } catch (e) {}
+            /* Refuse to enter a level whose data cannot start. The user's custom worlds accumulated
+               hero-less / empty entries (every old "Save & Play" used to take a world slot), and
+               opening one threw. This single guard covers every entry - the engine's own level buttons
+               (StageSelectLayer.clickEnterGame -> enterEnterGameScene) and all of our calls - and it
+               deletes nothing. */
+            try {
+                var g = conf.all_Level && conf.all_Level[id];
+                var ok = !!(g && g.length && g[0] && g[0].length);
+                if (ok) {
+                    ok = false;
+                    for (var gy = 0; gy < g.length && !ok; gy++) {
+                        for (var gx = 0; gx < g[gy].length; gx++) { if (g[gy][gx] === -1) { ok = true; break; } }
+                    }
+                }
+                if (!ok) {
+                    stats.invalidLevelBlocked = (stats.invalidLevelBlocked || 0) + 1;
+                    showInvalidLevelHint(id);
+                    return null;
+                }
             } catch (e) {}
                 try { if (conf.level_cfg && conf.level_cfg[id] && portalColoursByMap[id]) { stats.colourTableRestored = (stats.colourTableRestored || 0) + 1; activePortalColours = portalColoursByMap[id]; stats.colourTableRestored = (stats.colourTableRestored || 0) + 1; } } catch (e) {}
                 return orig(id);
