@@ -2058,8 +2058,14 @@
                 conf.level_cfg[id] = entry;
                 var world = entry.wordId;
                 conf.stage_level_cfg[world] = conf.stage_level_cfg[world] || {};
-                conf.stage_level_cfg[world][String(id)] = entry;
-                conf.stage_level_cfg[world][String(entry.levelId)] = entry;
+                /* Drafts written by "Save & Play" carry draft:1 and stay OUT of the world's level table:
+                   every save used to come back as a world slot after a reload, which is how ~30 broken
+                   hero-less entries piled up. Only levels adopted by "move a level in" (no draft flag)
+                   are restored into a world. */
+                if (!rec.draft) {
+                    conf.stage_level_cfg[world][String(id)] = entry;
+                    conf.stage_level_cfg[world][String(entry.levelId)] = entry;
+                }
                 n++;
             } catch (e) {}
         });
@@ -2106,10 +2112,14 @@
             var display = Object.keys(conf.stage_level_cfg[world]).length + 1;
             var entry = { id: id, wordId: world, levelId: display, mapId: id, sz_solution: '' };
             conf.level_cfg[id] = entry;
-            conf.stage_level_cfg[world][String(id)] = entry;
-            conf.stage_level_cfg[world][String(entry.levelId)] = entry;
+            /* Do NOT write conf.stage_level_cfg[world] here any more. Every "Save & Play" used to take a
+               slot in the current world, so unfinished or hero-less drafts became real "levels" that blew
+               up when opened (the user had ~30 of them). Saving now only registers the level so it can be
+               played (all_Level + level_cfg) and stores a draft (draft:1) in the "my levels" library;
+               putting a level into a world is done only by "move a level in" (adoptLevelInto), which
+               still writes both stage keys. */
             var libName = t('createLevel') + ' ' + display;
-            saveCustomLevel(id, { grid: copy, colours: JSON.parse(JSON.stringify(editorColours)), world: world, levelId: display, name: libName });
+            saveCustomLevel(id, { grid: copy, colours: JSON.parse(JSON.stringify(editorColours)), world: world, levelId: display, draft: 1, name: libName });
             /* also into the user's own library, so "Move in" can list it later (same name overwrites) */
             libUpsert({ id: id, name: libName, grid: copy, colours: JSON.parse(JSON.stringify(editorColours)) });
             try { if (window.MazeDashCustomTab && MazeDashCustomTab.refreshStagePages) { MazeDashCustomTab.refreshStagePages(); } } catch (e) {}
