@@ -1141,6 +1141,31 @@
                direct content.x assignment is the fallback (our own pager does the same). */
             try { comp.scrollToOffset(cc.v2(-want.x, comp.getScrollOffset().y)); }
             catch (e2) { content.x = -want.x; }
+            /* The editor entry lives ON the game's own page, as the user asked: a small themed button in
+               the page's top-right corner (the top-left carries the game's own mode panel). It is a child
+               of that page, so it appears and disappears with the page and never lingers on another tab,
+               and the old one is destroyed first so repeated calls cannot stack copies. */
+            try {
+                var oldEntry = want.getChildByName('editorEntryButton');
+                if (oldEntry && oldEntry.isValid) { oldEntry.destroy(); }
+                var W = visibleWidth(), H = visibleHeight();
+                var bw = 260, bh = 96;
+                var entry = new cc.Node('editorEntryButton');
+                entry.parent = want;
+                entry.setContentSize(bw, bh);
+                entry.x = W / 2 - 40 - bw / 2;
+                entry.y = H / 2 - 60 - bh / 2;
+                entry.zIndex = 800;
+                roundedPanel(entry, cc.color(226, 210, 172, 255), bw, bh);
+                makeLabel(entry, '\u7f16\u8f91\u5668', 0, 30, cc.color(74, 56, 40, 255)).name = 'editorEntryLabel';
+                entry.on(cc.Node.EventType.TOUCH_START, function () { pressFeedback(entry, true); });
+                entry.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(entry, false); });
+                entry.on(cc.Node.EventType.TOUCH_END, function () {
+                    pressFeedback(entry, false);
+                    try { if (window.gamemain) { gamemain.showTabBarViewIndex = 5; } } catch (e3) {}
+                    try { if (window.hallScene && hallScene.showBarView) { hallScene.showBarView(); } } catch (e4) {}
+                });
+            } catch (e5) { warn('editor entry button failed:', e5 && e5.message); }
             stats.gameWorldPagesOpened = (stats.gameWorldPagesOpened || 0) + 1;
             return true;
         } catch (e) { warn('openGameWorldPage failed:', e && e.message); return false; }
