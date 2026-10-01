@@ -2350,7 +2350,7 @@
 
     /* 编辑器自己的世界预览：**整页翻页**，与选关界面同构
        （每页一个自定义世界、主题色背景、左上角返回、两侧箭头换页），不再是我之前那个列表。 */
-    function openWorldPreview() {
+    function openWorldPreview(startWorldId) {
         var host = cc.find('Canvas');
         if (!host) { return null; }
         closePreview();
@@ -2519,7 +2519,16 @@
         });
 
         root.__show = show;   // let the keyboard drive the same snapping
-        if (pages.length) { show(0, false); }
+        /* start on the requested world when the caller names one (so "move a level in" can rebuild the
+           preview on the world the user is actually looking at), otherwise the first page as before */
+        if (pages.length) {
+            var _startIdx = 0;
+            if (startWorldId !== undefined && startWorldId !== null) {
+                var _wi = ids.indexOf(Number(startWorldId));
+                if (_wi >= 0) { _startIdx = _wi; }
+            }
+            show(_startIdx, false);
+        }
         /* the game's own entrance idiom: fade in, and ease the content up */
         root.opacity = 0;
         content.scale = 0.96;
@@ -2891,7 +2900,7 @@
                 try {
                     var host2 = cc.find('Canvas');
                     var openPrev = host2 && host2.getChildByName(PREVIEW_NAME);
-                    if (made && openPrev && openPrev.isValid) { closePreview(); openWorldPreview(); }
+                    if (made && openPrev && openPrev.isValid) { closePreview(); openWorldPreview(wasWorld); }
                 } catch (er2) {}
                 log('adopted library level', e.id, 'as custom level', made, 'into world', wasWorld);
             });
