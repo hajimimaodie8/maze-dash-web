@@ -2423,6 +2423,7 @@
 
         function show(i, animate) {
             idx = Math.max(0, Math.min(pages.length - 1, i));
+            previewShownWorldId = ids[idx] || 0;   /* so "move a level in" can default to the world the user is looking at */
             stats.previewPage = idx;
             var tx = pageOffset(idx);
             content.stopAllActions();
@@ -2799,6 +2800,7 @@
        tile belongs to; moveLevels opens this picker, which copies a shipped level's matrix
        into that world as a brand new custom level. */
     var gridTargetWorld = 0;        /* set by the tile handlers; 0 = derive the world as before */
+    var previewShownWorldId = 0;    /* which world the editor's world-preview overlay is showing (set in show()) */
     var pickerWorld = 1;            /* which shipped world the picker is listing */
     var pickerRootRef = null;
 
@@ -2825,7 +2827,7 @@
     /* copy one shipped level's matrix into a custom world as a new level (both registration keys,
        exactly like every other write path in this file) */
     function adoptLevelInto(world, srcEntry, label) {
-        var target = world || gridTargetWorld || TEST_WORLD;
+        var target = world || gridTargetWorld || previewShownWorldId || TEST_WORLD;
         var src = (srcEntry && srcEntry.grid) ? srcEntry.grid : conf.all_Level[srcEntry.mapId];   /* library items carry their own matrix */
         if (!src) { return 0; }
         var id = nextCustomLevelId();
@@ -2877,11 +2879,21 @@
             tile.on(cc.Node.EventType.TOUCH_CANCEL, function () { pressFeedback(tile, false); });
             tile.on(cc.Node.EventType.TOUCH_END, function () {
                 pressFeedback(tile, false);
-                var made = adoptLevelInto(gridTargetWorld, e, nm);
+                var wasWorld = gridTargetWorld || previewShownWorldId || TEST_WORLD;
+                var made = adoptLevelInto(wasWorld, e, nm);
                 stats.pickerAdopted = made;
+                stats.pickerAdoptedInto = wasWorld;
                 closeLevelPicker();
                 try { if (window.MazeDashCustomTab && MazeDashCustomTab.refreshStagePages) { MazeDashCustomTab.refreshStagePages(); } } catch (er) {}
-                log('adopted library level', e.id, 'as custom level', made, 'into world', gridTargetWorld);
+                /* The data write alone is invisible: the world preview the user is looking at was built
+                   once and is never rebuilt, so the new level simply did not appear (the user's report).
+                   Rebuild it in place so the tile shows up at once - no reload, no re-entry. */
+                try {
+                    var host2 = cc.find('Canvas');
+                    var openPrev = host2 && host2.getChildByName(PREVIEW_NAME);
+                    if (made && openPrev && openPrev.isValid) { closePreview(); openWorldPreview(); }
+                } catch (er2) {}
+                log('adopted library level', e.id, 'as custom level', made, 'into world', wasWorld);
             });
         });
     }
