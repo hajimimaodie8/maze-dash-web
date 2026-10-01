@@ -90105,29 +90105,10 @@ cc._RF.pop();
             return origVignette.apply(this, arguments);
         };
 
-        var origNext = proto.nextLevel;
-        proto.nextLevel = function () {
-            try {
-                if (Number(this.worldId) >= 100) {
-                    stats.nextLevelRerouted = (stats.nextLevelRerouted || 0) + 1;
-                    goToEditorFromLevel();
-                    return;
-                }
-            } catch (e) {}
-            return origNext.apply(this, arguments);
-        };
-
-        var origHall = proto.clickEnterHallScene;
-        proto.clickEnterHallScene = function () {
-            try {
-                if (Number(this.worldId) >= 100) {
-                    stats.listRerouted = (stats.listRerouted || 0) + 1;
-                    goToEditorFromLevel();
-                    return;
-                }
-            } catch (e) {}
-            return origHall.apply(this, arguments);
-        };
+        /* The editor reroutes that used to live here are GONE, on the user's explicit instruction:
+           for a custom world the game's own flow must run - clearing a level opens the next one, and
+           the hall/return button goes back to that world's page rather than into the level editor.
+           goToEditorFromLevel() is still defined above and is used by the editor's own entry points. */
 
         stats.gameSceneGuards = (stats.gameSceneGuards || 0) + 1;
         return true;
