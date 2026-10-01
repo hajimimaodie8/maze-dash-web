@@ -2432,6 +2432,13 @@
         }
 
         var dragFrom = null, dragBase = 0;
+        /* A real finger tap always wobbles a few pixels. This pager used to pan content on the very
+           first touchmove, which dragged the tile out from under the finger and turned the tile's
+           TOUCH_END into a TOUCH_CANCEL - so tapping the preview tiles (New level / Move in) did
+           nothing at all, while direct-event probes never noticed. Only start panning once the
+           finger has moved past this much, in the same design units the touch events use
+           (~15 CSS px at the default 1440-wide window; the page-flip threshold is W*0.10 ~ 228). */
+        var TAP_SLOP = 24;
         pagerNode.on(cc.Node.EventType.TOUCH_START, function (e) {
             content.stopAllActions();
             dragFrom = e.getLocation().x;
@@ -2440,6 +2447,7 @@
         pagerNode.on(cc.Node.EventType.TOUCH_MOVE, function (e) {
             if (dragFrom === null) { return; }
             var dx = e.getLocation().x - dragFrom;
+            if (Math.abs(dx) < TAP_SLOP) { return; }   /* a tap, not a drag: leave content (and the tile under the finger) alone */
             var min = pageOffset(pages.length - 1), max = pageOffset(0);
             var want = dragBase + dx;
             if (want > max) { want = max + (want - max) * 0.35; }
